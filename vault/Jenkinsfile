@@ -1,0 +1,114 @@
+pipeline {
+    agent any
+    
+    environment {
+        DOCKER_IMAGE = 'hico-vault'
+        KUBECONFIG = credentials('kubeconfig') // Jenkins credential ID for your kubeconfig
+        DOCKER_REGISTRY = credentials('docker-registry') // Optional: if using private registry
+    }
+    
+    stages {
+        stage('Checkout') {
+            steps {
+                checkout scm
+                script {
+                    env.GIT_COMMIT_SHORT = sh(
+                        script: 'git rev-parse --short HEAD',
+                        returnStdout: true
+                    ).trim()
+                }
+            }
+        }
+        
+        stage('Build & Test') {
+            steps {
+                script {
+                    // Build Docker image
+                    sh "docker build -t ${DOCKER_IMAGE}:${env.GIT_COMMIT_SHORT} ."
+                    sh "docker tag ${DOCKER_IMAGE}:${env.GIT_COMMIT_SHORT} ${DOCKER_IMAGE}:latest"
+                    
+                    // Optional: Run tests if you have them
+                    // sh "docker run --rm ${DOCKER_IMAGE}:latest python -m pytest tests/"
+                }
+            }
+        }
+        
+        stage('Deploy to Staging') {
+            when {
+                branch 'staging'
+            }
+            steps {
+                script {
+                    echo "🚀 Deploying to Staging Environment..."
+                    
+                    // Make deploy script executable
+                    sh 'chmod +x deploy.sh'
+                    
+                    // Deploy to staging (production mode but could be staging cluster)
+                    sh './deploy.sh production'
+                }
+            }
+            post {
+                success {
+                    echo "✅ Successfully deployed to staging!"
+                    // Optional: Send notification (Slack, Teams, etc.)
+                }
+                failure {
+                    echo "❌ Staging deployment failed!"
+                    // Optional: Send failure notification
+                }
+            }
+        }
+        
+        stage('Deploy to Production') {
+            when {
+                branch 'main'
+            }
+            steps {
+                script {
+                    // Optional: Add manual approval for production
+                    input message: 'Deploy to Production?', ok: 'Deploy'
+                    
+                    echo "🚀 Deploying to Production Environment..."
+                    
+                    sh 'chmod +x deploy.sh'
+                    sh './deploy.sh production'
+                }
+            }
+            post {
+                success {
+                    echo "✅ Successfully deployed to production!"
+                    // Send success notification
+                }
+                failure {
+                    echo "❌ Production deployment failed!"
+                    // Send failure notification
+                }
+            }
+        }
+        
+        stage('Cleanup') {
+            steps {
+                script {
+                    // Clean up Docker images to save space
+                    sh "docker rmi ${DOCKER_IMAGE}:${env.GIT_COMMIT_SHORT} || true"
+                    sh "docker system prune -f || true"
+                }
+            }
+        }
+    }
+    
+    post {
+        always {
+            // Clean up workspace
+            cleanWs()
+        }
+        success {
+            echo "🎉 Pipeline completed successfully!"
+        }
+        failure {
+            echo "💥 Pipeline failed!"
+            // Send failure notifications
+        }
+    }
+} 

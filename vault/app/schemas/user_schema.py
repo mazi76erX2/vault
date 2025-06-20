@@ -1,0 +1,44 @@
+from pydantic import BaseModel, EmailStr
+from typing import List, Optional
+
+# Define the User Schema Base Model (for common fields)
+class UserBase(BaseModel):
+    username: str
+    name: Optional[str] = None
+    email: EmailStr
+    current_position: Optional[str] = None
+    expertise_domain: Optional[str] = None
+    experience_years: Optional[int] = None
+    severity_level: Optional[int] = None
+    roles: List[str] = []  # Roles as a list of strings, as stored in a comma-separated string
+
+    # This will allow you to convert the SQLAlchemy model to a Pydantic model
+    class Config:
+        orm_mode = True
+
+
+class UserCreate(UserBase):
+    password: str  # Required to create a new user
+
+
+class UserLogin(BaseModel):
+    username: str
+    password: str
+
+
+class UserResponse(UserBase):
+    id: int
+    is_active: bool = True
+
+    class UserResponseConfig:
+        from_attributes  = True
+
+
+class UserUpdate(BaseModel):
+    name: Optional[str] = None
+    current_position: Optional[str] = None
+    expertise_domain: Optional[str] = None
+    experience_years: Optional[int] = None
+    severity_level: Optional[int] = None
+    roles: Optional[List[str]] = None  # If roles need to be updated
+    is_active: Optional[bool] = None

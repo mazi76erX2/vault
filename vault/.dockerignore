@@ -1,0 +1,70 @@
+__pycache__
+*.pyc
+*.pyo
+*.pyd
+.env
+.vault_venv
+.git
+docker-compose.yml
+docker/Dockerfile
+.dockerignore
+.idea
+vault_venv
+Dockerfile
+README.md
+app/.env
+
+# --- Start of new critical suggestions ---
+# Common virtual environment names
+venv/
+.venv/
+venvs/
+env/
+.env/ # .env file is already ignored, this is for a directory named .env
+
+# Log files and directories
+*.log
+logs/
+
+# Test directories and cache
+tests/
+app/tests/ # If you have tests inside app too
+.pytest_cache/
+.mypy_cache/
+htmlcov/
+.coverage
+
+# Uploads directory (if not needed in the image)
+uploads/
+
+# Poetry/Pyproject files (if requirements.txt is canonical for Docker)
+poetry.lock
+pyproject.toml
+
+# OS-specific files
+.DS_Store
+Thumbs.db
+
+# Common backup/temp files
+*.bak
+*.tmp
+
+# IDE specific (beyond .idea if others are used)
+.vscode/
+
+# Compiled files from other languages if present
+*.o
+*.so
+*.dll
+*.exe
+
+# Large data files (be specific if possible)
+# *.csv
+# *.json
+# *.data
+# *.db
+# *.sqlite3
+
+# Node.js dependencies (if any frontend stuff accidentally gets in context)
+node_modules/
+# --- End of new critical suggestions ---

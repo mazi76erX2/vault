@@ -1,0 +1,57 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project name="vault-ui">
+    <property name="npm" location="C:/Program Files/nodejs/npm.cmd"/>
+    <property environment="env"/>
+    <property name="env.BUILD_NUMBER" value="0" description="Fallback if environment variable isn't set"/>
+    <property file="version.properties" prefix="properties.version"/>
+    <property name="version-full" value="${properties.version.major}.${properties.version.minor}.${properties.version.patch}_${env.BUILD_NUMBER}"/>
+
+    <target name="Install-Generic-Components" description="Installs the dependency generic-components">
+        <exec executable="${npm}" failonerror="true">
+            <arg value="install"/>
+            <arg value="../dependencies/generic-components-1.0.0.tgz"/>
+        </exec>
+    </target>
+    <target name="Build-Vault-UI" description="Compiles Typescript to Javascript">
+        <delete dir="dist" includeemptydirs="true" />
+
+        <replace file="src/config.ts">
+            <replacefilter token="##VERSION_FULL##" value="${version-full}" />
+        </replace>
+
+        <exec executable="${npm}" failonerror="true">
+            <arg value="install"/>
+        </exec>
+
+        <exec executable="${npm}" failonerror="true">
+            <arg value="run"/>
+            <arg value="build"/>
+        </exec>
+        <copy file="package.json" tofile="./dist/package.json" />
+        <copy file="tsconfig.json" tofile="./dist/tsconfig.json" />
+        <copy file="vite.config.ts" tofile="./dist/vite.config.ts" />
+        <copy file="dockerstart.sh" tofile="./dist/dockerstart.sh" />
+
+        <fixcrlf srcdir="./dist/" includes="*.sh" eol="lf" />
+        <mkdir dir="./dist/dependencies" />
+        <copy file="../dependencies/generic-components-1.0.0.tgz" tofile="./dist/dependencies/generic-components-1.0.0.tgz" />
+
+        <replace file="src/config.ts">
+            <replacefilter token="${version-full}" value="##VERSION_FULL##" />
+        </replace>
+    </target>
+
+    <target name="Push-Vault-UI" description="Compiles Typescript to Javascript">
+        <exec executable="docker" failonerror="true">
+            <arg value="build"/>
+            <arg value="."/>
+            <arg value="-t"/>
+            <arg value="truechart/vault-ui:latest"/>
+        </exec>
+        <exec executable="docker" failonerror="true">
+            <arg value="push"/>
+            <arg value="truechart/vault-ui:latest"/>
+        </exec>
+    </target>
+
+</project>

@@ -1,0 +1,86 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project name="generic-components">
+    <property name="npm" location="C:/Program Files/nodejs/npm.cmd"/>
+
+    <target name="Run-Test" description="Runs unit tests">
+        <exec executable="${npm}" failonerror="true" dir=".">
+            <arg value="run"/>
+            <arg value="test"/>
+        </exec>
+    </target>
+
+    <target name="Build-Dependency" description="Builds Dependency for vault-ui">
+        <mkdir dir="../dependencies" />
+        <exec executable="${npm}" failonerror="true">
+            <arg value="install"/>
+        </exec>
+        <exec executable="${npm}" failonerror="true">
+            <arg value="pack"/>
+            <arg value="../generic-components"/>
+            <arg value="--pack-destination"/>
+            <arg value="../dependencies"/>
+        </exec>
+    </target>
+
+    <target name="Build-Storybook" description="Builds the storybook static files">
+        <exec executable="${npm}" failonerror="true">
+            <arg value="run"/>
+            <arg value="build-storybook"/>
+        </exec>
+    </target>
+
+    <!-- Jenkins-friendly build target that skips Docker -->
+    <target name="Build-Jenkins" description="Builds Storybook for Jenkins CI (no Docker)">
+        <echo message="🔧 Jenkins Build: Building Storybook without Docker..."/>
+        <antcall target="Build-Storybook"/>
+        <copy file="server.js" tofile="./storybook-static/server.js"/>
+        <echo message="✅ Jenkins Build Complete! Storybook files ready in ./storybook-static/"/>
+        <echo message="📁 To build Docker image manually later, run: docker build . -t truechart/vault-storybook"/>
+    </target>
+
+    <target name="Check-Docker" description="Check if Docker is available">
+        <echo message="🔍 Checking Docker availability..."/>
+        <exec executable="docker" failonerror="false" resultproperty="docker.available" outputproperty="docker.output" errorproperty="docker.error">
+            <arg value="version"/>
+        </exec>
+        <condition property="docker.present">
+            <equals arg1="${docker.available}" arg2="0"/>
+        </condition>
+        <condition property="docker.failed">
+            <not>
+                <equals arg1="${docker.available}" arg2="0"/>
+            </not>
+        </condition>
+        <antcall target="Docker-Status-Success"/>
+        <antcall target="Docker-Status-Failed"/>
+    </target>
+
+    <target name="Docker-Status-Success" if="docker.present">
+        <echo message="✅ Docker is available and ready"/>
+    </target>
+
+    <target name="Docker-Status-Failed" if="docker.failed">
+        <echo message="⚠️  Docker not available: ${docker.error}"/>
+        <echo message="💡 Use 'Build-Jenkins' target for CI builds without Docker"/>
+    </target>
+
+    <target name="Build-Docker-Image" depends="Check-Docker" description="Builds and pushes the docker image">
+        <fail message="❌ Docker is not available. Use 'Build-Jenkins' target instead." unless="docker.present"/>
+        
+        <echo message="🐳 Building with Docker..."/>
+        <antcall target="Build-Storybook"/>
+        <copy file="server.js" tofile="./storybook-static/server.js"/>
+        
+        <exec executable="docker" failonerror="true">
+            <arg value="build"/>
+            <arg value="."/>
+            <arg value="-t"/>
+            <arg value="truechart/vault-storybook"/>
+        </exec>
+        <exec executable="docker" failonerror="true">
+            <arg value="push"/>
+            <arg value="truechart/vault-storybook:latest"/>
+        </exec>
+        <echo message="✅ Docker image built and pushed successfully!"/>
+    </target>
+</project> 

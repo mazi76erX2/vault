@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project name="vault">
+    <property name="npm" location="C:/Program Files/nodejs/npm.cmd"/>
+
+    <target name="Build-Vault" description="Builds Vault docker image">
+        <exec executable="docker" failonerror="true">
+            <arg value="build"/>
+            <arg value="."/>
+            <arg value="-t"/>
+            <arg value="truechart/vault:latest"/>
+        </exec>
+    </target>
+
+    <target name="Push-Vault" description="Pushes Vault docker image">
+        <exec executable="docker" failonerror="true">
+            <arg value="push"/>
+            <arg value="truechart/vault:latest"/>
+        </exec>
+    </target>
+
+</project>

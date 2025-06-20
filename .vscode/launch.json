@@ -1,0 +1,53 @@
+{
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "🎨 Debug HICO Vault Frontend",
+            "type": "node",
+            "request": "launch",
+            "program": "${workspaceFolder}/vault-ui/node_modules/.bin/vite",
+            "args": ["--host", "0.0.0.0", "--port", "5173"],
+            "cwd": "${workspaceFolder}/vault-ui",
+            "console": "integratedTerminal",
+            "skipFiles": [
+                "<node_internals>/**"
+            ],
+            "env": {
+                "NODE_ENV": "development"
+            },
+            "presentation": {
+                "group": "HICO Vault",
+                "order": 1
+            }
+        },
+        {
+            "name": "🐳 Attach to Backend Container",
+            "type": "node",
+            "request": "attach",
+            "port": 9229,
+            "address": "localhost",
+            "localRoot": "${workspaceFolder}/vault",
+            "remoteRoot": "/app",
+            "skipFiles": [
+                "<node_internals>/**"
+            ],
+            "presentation": {
+                "group": "HICO Vault",
+                "order": 2
+            }
+        }
+    ],
+    "compounds": [
+        {
+            "name": "🚀 Debug Full HICO Vault Stack",
+            "configurations": [
+                "🎨 Debug HICO Vault Frontend"
+            ],
+            "stopAll": true,
+            "presentation": {
+                "group": "HICO Vault",
+                "order": 3
+            }
+        }
+    ]
+} 

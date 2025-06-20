@@ -1,0 +1,1200 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`should test a default HCAutoComplete 1`] = `
+{
+  "asFragment": [Function],
+  "baseElement": <body>
+    <div>
+      <div
+        class="MuiScopedCssBaseline-root css-1rgmn6t-MuiScopedCssBaseline-root"
+        style="height: 100%;"
+      >
+        <div
+          class="MuiBox-root css-0"
+        >
+          <div
+            class="MuiFormControl-root css-1qe0y20-MuiFormControl-root"
+          >
+            <label
+              class="MuiFormLabel-root MuiFormLabel-colorPrimary css-sawdgp-MuiFormLabel-root"
+              for="undefined"
+            >
+              Default DropDown
+            </label>
+            <div
+              class="MuiAutocomplete-root MuiAutocomplete-hasPopupIcon css-1mh2xla-MuiAutocomplete-root"
+            >
+              <div
+                class="MuiFormControl-root css-1qe0y20-MuiFormControl-root"
+              >
+                <div
+                  class="MuiInputBase-root MuiOutlinedInput-root MuiInputBase-colorPrimary MuiInputBase-formControl MuiInputBase-adornedEnd MuiAutocomplete-inputRoot css-1s5rmx4-MuiInputBase-root-MuiOutlinedInput-root"
+                >
+                  <input
+                    aria-autocomplete="list"
+                    aria-expanded="false"
+                    aria-invalid="false"
+                    autocapitalize="none"
+                    autocomplete="off"
+                    class="MuiInputBase-input MuiOutlinedInput-input MuiInputBase-inputAdornedEnd MuiAutocomplete-input MuiAutocomplete-inputFocused css-nxo287-MuiInputBase-input-MuiOutlinedInput-input"
+                    id=":r0:"
+                    role="combobox"
+                    spellcheck="false"
+                    style="padding: 0px;"
+                    type="text"
+                    value=""
+                  />
+                  <div
+                    style="display: flex; align-items: center; position: absolute; right: 8px; top: 50%; transform: translateY(-50%);"
+                  >
+                    <svg
+                      aria-hidden="true"
+                      class="MuiSvgIcon-root MuiSvgIcon-fontSizeMedium css-f85f4f-MuiSvgIcon-root"
+                      data-testid="KeyboardArrowDownIcon"
+                      focusable="false"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        d="M7.41 8.59 12 13.17l4.59-4.58L18 10l-6 6-6-6z"
+                      />
+                    </svg>
+                  </div>
+                  <fieldset
+                    aria-hidden="true"
+                    class="MuiOutlinedInput-notchedOutline css-1d3z3hw-MuiOutlinedInput-notchedOutline"
+                  >
+                    <legend
+                      class="css-ihdtdm"
+                    >
+                      <span
+                        class="notranslate"
+                      >
+                        ​
+                      </span>
+                    </legend>
+                  </fieldset>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </body>,
+  "container": <div>
+    <div
+      class="MuiScopedCssBaseline-root css-1rgmn6t-MuiScopedCssBaseline-root"
+      style="height: 100%;"
+    >
+      <div
+        class="MuiBox-root css-0"
+      >
+        <div
+          class="MuiFormControl-root css-1qe0y20-MuiFormControl-root"
+        >
+          <label
+            class="MuiFormLabel-root MuiFormLabel-colorPrimary css-sawdgp-MuiFormLabel-root"
+            for="undefined"
+          >
+            Default DropDown
+          </label>
+          <div
+            class="MuiAutocomplete-root MuiAutocomplete-hasPopupIcon css-1mh2xla-MuiAutocomplete-root"
+          >
+            <div
+              class="MuiFormControl-root css-1qe0y20-MuiFormControl-root"
+            >
+              <div
+                class="MuiInputBase-root MuiOutlinedInput-root MuiInputBase-colorPrimary MuiInputBase-formControl MuiInputBase-adornedEnd MuiAutocomplete-inputRoot css-1s5rmx4-MuiInputBase-root-MuiOutlinedInput-root"
+              >
+                <input
+                  aria-autocomplete="list"
+                  aria-expanded="false"
+                  aria-invalid="false"
+                  autocapitalize="none"
+                  autocomplete="off"
+                  class="MuiInputBase-input MuiOutlinedInput-input MuiInputBase-inputAdornedEnd MuiAutocomplete-input MuiAutocomplete-inputFocused css-nxo287-MuiInputBase-input-MuiOutlinedInput-input"
+                  id=":r0:"
+                  role="combobox"
+                  spellcheck="false"
+                  style="padding: 0px;"
+                  type="text"
+                  value=""
+                />
+                <div
+                  style="display: flex; align-items: center; position: absolute; right: 8px; top: 50%; transform: translateY(-50%);"
+                >
+                  <svg
+                    aria-hidden="true"
+                    class="MuiSvgIcon-root MuiSvgIcon-fontSizeMedium css-f85f4f-MuiSvgIcon-root"
+                    data-testid="KeyboardArrowDownIcon"
+                    focusable="false"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      d="M7.41 8.59 12 13.17l4.59-4.58L18 10l-6 6-6-6z"
+                    />
+                  </svg>
+                </div>
+                <fieldset
+                  aria-hidden="true"
+                  class="MuiOutlinedInput-notchedOutline css-1d3z3hw-MuiOutlinedInput-notchedOutline"
+                >
+                  <legend
+                    class="css-ihdtdm"
+                  >
+                    <span
+                      class="notranslate"
+                    >
+                      ​
+                    </span>
+                  </legend>
+                </fieldset>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>,
+  "debug": [Function],
+  "findAllByAltText": [Function],
+  "findAllByDisplayValue": [Function],
+  "findAllByLabelText": [Function],
+  "findAllByPlaceholderText": [Function],
+  "findAllByRole": [Function],
+  "findAllByTestId": [Function],
+  "findAllByText": [Function],
+  "findAllByTitle": [Function],
+  "findByAltText": [Function],
+  "findByDisplayValue": [Function],
+  "findByLabelText": [Function],
+  "findByPlaceholderText": [Function],
+  "findByRole": [Function],
+  "findByTestId": [Function],
+  "findByText": [Function],
+  "findByTitle": [Function],
+  "getAllByAltText": [Function],
+  "getAllByDisplayValue": [Function],
+  "getAllByLabelText": [Function],
+  "getAllByPlaceholderText": [Function],
+  "getAllByRole": [Function],
+  "getAllByTestId": [Function],
+  "getAllByText": [Function],
+  "getAllByTitle": [Function],
+  "getByAltText": [Function],
+  "getByDisplayValue": [Function],
+  "getByLabelText": [Function],
+  "getByPlaceholderText": [Function],
+  "getByRole": [Function],
+  "getByTestId": [Function],
+  "getByText": [Function],
+  "getByTitle": [Function],
+  "queryAllByAltText": [Function],
+  "queryAllByDisplayValue": [Function],
+  "queryAllByLabelText": [Function],
+  "queryAllByPlaceholderText": [Function],
+  "queryAllByRole": [Function],
+  "queryAllByTestId": [Function],
+  "queryAllByText": [Function],
+  "queryAllByTitle": [Function],
+  "queryByAltText": [Function],
+  "queryByDisplayValue": [Function],
+  "queryByLabelText": [Function],
+  "queryByPlaceholderText": [Function],
+  "queryByRole": [Function],
+  "queryByTestId": [Function],
+  "queryByText": [Function],
+  "queryByTitle": [Function],
+  "rerender": [Function],
+  "unmount": [Function],
+}
+`;
+
+exports[`should test a default HCAutoComplete with Error 1`] = `
+{
+  "asFragment": [Function],
+  "baseElement": <body>
+    <div>
+      <div
+        class="MuiScopedCssBaseline-root css-1rgmn6t-MuiScopedCssBaseline-root"
+        style="height: 100%;"
+      >
+        <div
+          class="MuiBox-root css-0"
+        >
+          <div
+            class="MuiFormControl-root css-1qe0y20-MuiFormControl-root"
+          >
+            <label
+              class="MuiFormLabel-root MuiFormLabel-colorPrimary Mui-error css-sawdgp-MuiFormLabel-root"
+              for="undefined"
+            >
+              Default DropDown with Error
+            </label>
+            <div
+              class="MuiAutocomplete-root MuiAutocomplete-hasPopupIcon css-1mh2xla-MuiAutocomplete-root"
+            >
+              <div
+                class="MuiFormControl-root css-1qe0y20-MuiFormControl-root"
+              >
+                <div
+                  class="MuiInputBase-root MuiOutlinedInput-root MuiInputBase-colorPrimary MuiInputBase-formControl MuiInputBase-adornedEnd MuiAutocomplete-inputRoot css-1s5rmx4-MuiInputBase-root-MuiOutlinedInput-root"
+                >
+                  <input
+                    aria-autocomplete="list"
+                    aria-expanded="false"
+                    aria-invalid="false"
+                    autocapitalize="none"
+                    autocomplete="off"
+                    class="MuiInputBase-input MuiOutlinedInput-input MuiInputBase-inputAdornedEnd MuiAutocomplete-input MuiAutocomplete-inputFocused css-nxo287-MuiInputBase-input-MuiOutlinedInput-input"
+                    id=":r2:"
+                    role="combobox"
+                    spellcheck="false"
+                    style="padding: 0px;"
+                    type="text"
+                    value=""
+                  />
+                  <div
+                    style="display: flex; align-items: center; position: absolute; right: 8px; top: 50%; transform: translateY(-50%);"
+                  >
+                    <svg
+                      aria-hidden="true"
+                      class="MuiSvgIcon-root MuiSvgIcon-fontSizeMedium css-f85f4f-MuiSvgIcon-root"
+                      data-testid="KeyboardArrowDownIcon"
+                      focusable="false"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        d="M7.41 8.59 12 13.17l4.59-4.58L18 10l-6 6-6-6z"
+                      />
+                    </svg>
+                  </div>
+                  <fieldset
+                    aria-hidden="true"
+                    class="MuiOutlinedInput-notchedOutline css-1d3z3hw-MuiOutlinedInput-notchedOutline"
+                  >
+                    <legend
+                      class="css-ihdtdm"
+                    >
+                      <span
+                        class="notranslate"
+                      >
+                        ​
+                      </span>
+                    </legend>
+                  </fieldset>
+                </div>
+              </div>
+            </div>
+            <div
+              class="MuiBox-root css-ltqa49"
+            >
+              <svg
+                fill="none"
+                height="16"
+                viewBox="0 0 16 16"
+                width="16"
+                xmlns="http://www.w3.org/2000/svg"
+              >
+                <path
+                  d="M7.33301 8.66665L7.33301 5.99998C7.33301 5.63179 7.63148 5.33331 7.99967 5.33331C8.36786 5.33331 8.66634 5.63179 8.66634 5.99998L8.66634 8.66665C8.66634 9.03484 8.36787 9.33331 7.99968 9.33331C7.63149 9.33331 7.33301 9.03484 7.33301 8.66665Z"
+                  fill="#FB2047"
+                />
+                <path
+                  d="M7.99968 12C8.36787 12 8.66634 11.7015 8.66634 11.3333C8.66634 10.9651 8.36787 10.6666 7.99968 10.6666C7.63149 10.6666 7.33301 10.9651 7.33301 11.3333C7.33301 11.7015 7.63149 12 7.99968 12Z"
+                  fill="#FB2047"
+                />
+                <path
+                  clip-rule="evenodd"
+                  d="M7.99968 1.33331C8.50471 1.33331 8.96639 1.61865 9.19225 2.07036L14.5256 12.737C14.7322 13.1503 14.7102 13.6412 14.4672 14.0343C14.2243 14.4274 13.7951 14.6666 13.333 14.6666H2.66634C2.20424 14.6666 1.77508 14.4274 1.53214 14.0343C1.2892 13.6412 1.26711 13.1503 1.47377 12.737L6.80711 2.07036C7.03296 1.61865 7.49465 1.33331 7.99968 1.33331ZM2.66634 13.3333H13.333L7.99968 2.66665L2.66634 13.3333Z"
+                  fill="#FB2047"
+                  fill-rule="evenodd"
+                />
+              </svg>
+              <span
+                class="MuiTypography-root MuiTypography-caption css-gfu4bo-MuiTypography-root"
+              >
+                Some error text
+              </span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </body>,
+  "container": <div>
+    <div
+      class="MuiScopedCssBaseline-root css-1rgmn6t-MuiScopedCssBaseline-root"
+      style="height: 100%;"
+    >
+      <div
+        class="MuiBox-root css-0"
+      >
+        <div
+          class="MuiFormControl-root css-1qe0y20-MuiFormControl-root"
+        >
+          <label
+            class="MuiFormLabel-root MuiFormLabel-colorPrimary Mui-error css-sawdgp-MuiFormLabel-root"
+            for="undefined"
+          >
+            Default DropDown with Error
+          </label>
+          <div
+            class="MuiAutocomplete-root MuiAutocomplete-hasPopupIcon css-1mh2xla-MuiAutocomplete-root"
+          >
+            <div
+              class="MuiFormControl-root css-1qe0y20-MuiFormControl-root"
+            >
+              <div
+                class="MuiInputBase-root MuiOutlinedInput-root MuiInputBase-colorPrimary MuiInputBase-formControl MuiInputBase-adornedEnd MuiAutocomplete-inputRoot css-1s5rmx4-MuiInputBase-root-MuiOutlinedInput-root"
+              >
+                <input
+                  aria-autocomplete="list"
+                  aria-expanded="false"
+                  aria-invalid="false"
+                  autocapitalize="none"
+                  autocomplete="off"
+                  class="MuiInputBase-input MuiOutlinedInput-input MuiInputBase-inputAdornedEnd MuiAutocomplete-input MuiAutocomplete-inputFocused css-nxo287-MuiInputBase-input-MuiOutlinedInput-input"
+                  id=":r2:"
+                  role="combobox"
+                  spellcheck="false"
+                  style="padding: 0px;"
+                  type="text"
+                  value=""
+                />
+                <div
+                  style="display: flex; align-items: center; position: absolute; right: 8px; top: 50%; transform: translateY(-50%);"
+                >
+                  <svg
+                    aria-hidden="true"
+                    class="MuiSvgIcon-root MuiSvgIcon-fontSizeMedium css-f85f4f-MuiSvgIcon-root"
+                    data-testid="KeyboardArrowDownIcon"
+                    focusable="false"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      d="M7.41 8.59 12 13.17l4.59-4.58L18 10l-6 6-6-6z"
+                    />
+                  </svg>
+                </div>
+                <fieldset
+                  aria-hidden="true"
+                  class="MuiOutlinedInput-notchedOutline css-1d3z3hw-MuiOutlinedInput-notchedOutline"
+                >
+                  <legend
+                    class="css-ihdtdm"
+                  >
+                    <span
+                      class="notranslate"
+                    >
+                      ​
+                    </span>
+                  </legend>
+                </fieldset>
+              </div>
+            </div>
+          </div>
+          <div
+            class="MuiBox-root css-ltqa49"
+          >
+            <svg
+              fill="none"
+              height="16"
+              viewBox="0 0 16 16"
+              width="16"
+              xmlns="http://www.w3.org/2000/svg"
+            >
+              <path
+                d="M7.33301 8.66665L7.33301 5.99998C7.33301 5.63179 7.63148 5.33331 7.99967 5.33331C8.36786 5.33331 8.66634 5.63179 8.66634 5.99998L8.66634 8.66665C8.66634 9.03484 8.36787 9.33331 7.99968 9.33331C7.63149 9.33331 7.33301 9.03484 7.33301 8.66665Z"
+                fill="#FB2047"
+              />
+              <path
+                d="M7.99968 12C8.36787 12 8.66634 11.7015 8.66634 11.3333C8.66634 10.9651 8.36787 10.6666 7.99968 10.6666C7.63149 10.6666 7.33301 10.9651 7.33301 11.3333C7.33301 11.7015 7.63149 12 7.99968 12Z"
+                fill="#FB2047"
+              />
+              <path
+                clip-rule="evenodd"
+                d="M7.99968 1.33331C8.50471 1.33331 8.96639 1.61865 9.19225 2.07036L14.5256 12.737C14.7322 13.1503 14.7102 13.6412 14.4672 14.0343C14.2243 14.4274 13.7951 14.6666 13.333 14.6666H2.66634C2.20424 14.6666 1.77508 14.4274 1.53214 14.0343C1.2892 13.6412 1.26711 13.1503 1.47377 12.737L6.80711 2.07036C7.03296 1.61865 7.49465 1.33331 7.99968 1.33331ZM2.66634 13.3333H13.333L7.99968 2.66665L2.66634 13.3333Z"
+                fill="#FB2047"
+                fill-rule="evenodd"
+              />
+            </svg>
+            <span
+              class="MuiTypography-root MuiTypography-caption css-gfu4bo-MuiTypography-root"
+            >
+              Some error text
+            </span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>,
+  "debug": [Function],
+  "findAllByAltText": [Function],
+  "findAllByDisplayValue": [Function],
+  "findAllByLabelText": [Function],
+  "findAllByPlaceholderText": [Function],
+  "findAllByRole": [Function],
+  "findAllByTestId": [Function],
+  "findAllByText": [Function],
+  "findAllByTitle": [Function],
+  "findByAltText": [Function],
+  "findByDisplayValue": [Function],
+  "findByLabelText": [Function],
+  "findByPlaceholderText": [Function],
+  "findByRole": [Function],
+  "findByTestId": [Function],
+  "findByText": [Function],
+  "findByTitle": [Function],
+  "getAllByAltText": [Function],
+  "getAllByDisplayValue": [Function],
+  "getAllByLabelText": [Function],
+  "getAllByPlaceholderText": [Function],
+  "getAllByRole": [Function],
+  "getAllByTestId": [Function],
+  "getAllByText": [Function],
+  "getAllByTitle": [Function],
+  "getByAltText": [Function],
+  "getByDisplayValue": [Function],
+  "getByLabelText": [Function],
+  "getByPlaceholderText": [Function],
+  "getByRole": [Function],
+  "getByTestId": [Function],
+  "getByText": [Function],
+  "getByTitle": [Function],
+  "queryAllByAltText": [Function],
+  "queryAllByDisplayValue": [Function],
+  "queryAllByLabelText": [Function],
+  "queryAllByPlaceholderText": [Function],
+  "queryAllByRole": [Function],
+  "queryAllByTestId": [Function],
+  "queryAllByText": [Function],
+  "queryAllByTitle": [Function],
+  "queryByAltText": [Function],
+  "queryByDisplayValue": [Function],
+  "queryByLabelText": [Function],
+  "queryByPlaceholderText": [Function],
+  "queryByRole": [Function],
+  "queryByTestId": [Function],
+  "queryByText": [Function],
+  "queryByTitle": [Function],
+  "rerender": [Function],
+  "unmount": [Function],
+}
+`;
+
+exports[`should test a default HCAutoComplete with Error and Helper 1`] = `
+{
+  "asFragment": [Function],
+  "baseElement": <body>
+    <div>
+      <div
+        class="MuiScopedCssBaseline-root css-1rgmn6t-MuiScopedCssBaseline-root"
+        style="height: 100%;"
+      >
+        <div
+          class="MuiBox-root css-0"
+        >
+          <div
+            class="MuiFormControl-root css-1qe0y20-MuiFormControl-root"
+          >
+            <label
+              class="MuiFormLabel-root MuiFormLabel-colorPrimary Mui-error css-sawdgp-MuiFormLabel-root"
+              for="undefined"
+            >
+              Default DropDown with Error and Helper
+            </label>
+            <div
+              class="MuiAutocomplete-root MuiAutocomplete-hasPopupIcon css-1mh2xla-MuiAutocomplete-root"
+            >
+              <div
+                class="MuiFormControl-root css-1qe0y20-MuiFormControl-root"
+              >
+                <div
+                  class="MuiInputBase-root MuiOutlinedInput-root MuiInputBase-colorPrimary MuiInputBase-formControl MuiInputBase-adornedEnd MuiAutocomplete-inputRoot css-1s5rmx4-MuiInputBase-root-MuiOutlinedInput-root"
+                >
+                  <input
+                    aria-autocomplete="list"
+                    aria-expanded="false"
+                    aria-invalid="false"
+                    autocapitalize="none"
+                    autocomplete="off"
+                    class="MuiInputBase-input MuiOutlinedInput-input MuiInputBase-inputAdornedEnd MuiAutocomplete-input MuiAutocomplete-inputFocused css-nxo287-MuiInputBase-input-MuiOutlinedInput-input"
+                    id=":r4:"
+                    role="combobox"
+                    spellcheck="false"
+                    style="padding: 0px;"
+                    type="text"
+                    value=""
+                  />
+                  <div
+                    style="display: flex; align-items: center; position: absolute; right: 8px; top: 50%; transform: translateY(-50%);"
+                  >
+                    <svg
+                      aria-hidden="true"
+                      class="MuiSvgIcon-root MuiSvgIcon-fontSizeMedium css-f85f4f-MuiSvgIcon-root"
+                      data-testid="KeyboardArrowDownIcon"
+                      focusable="false"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        d="M7.41 8.59 12 13.17l4.59-4.58L18 10l-6 6-6-6z"
+                      />
+                    </svg>
+                  </div>
+                  <fieldset
+                    aria-hidden="true"
+                    class="MuiOutlinedInput-notchedOutline css-1d3z3hw-MuiOutlinedInput-notchedOutline"
+                  >
+                    <legend
+                      class="css-ihdtdm"
+                    >
+                      <span
+                        class="notranslate"
+                      >
+                        ​
+                      </span>
+                    </legend>
+                  </fieldset>
+                </div>
+              </div>
+            </div>
+            <div
+              class="MuiBox-root css-ltqa49"
+            >
+              <svg
+                fill="none"
+                height="16"
+                viewBox="0 0 16 16"
+                width="16"
+                xmlns="http://www.w3.org/2000/svg"
+              >
+                <path
+                  d="M7.33301 8.66665L7.33301 5.99998C7.33301 5.63179 7.63148 5.33331 7.99967 5.33331C8.36786 5.33331 8.66634 5.63179 8.66634 5.99998L8.66634 8.66665C8.66634 9.03484 8.36787 9.33331 7.99968 9.33331C7.63149 9.33331 7.33301 9.03484 7.33301 8.66665Z"
+                  fill="#FB2047"
+                />
+                <path
+                  d="M7.99968 12C8.36787 12 8.66634 11.7015 8.66634 11.3333C8.66634 10.9651 8.36787 10.6666 7.99968 10.6666C7.63149 10.6666 7.33301 10.9651 7.33301 11.3333C7.33301 11.7015 7.63149 12 7.99968 12Z"
+                  fill="#FB2047"
+                />
+                <path
+                  clip-rule="evenodd"
+                  d="M7.99968 1.33331C8.50471 1.33331 8.96639 1.61865 9.19225 2.07036L14.5256 12.737C14.7322 13.1503 14.7102 13.6412 14.4672 14.0343C14.2243 14.4274 13.7951 14.6666 13.333 14.6666H2.66634C2.20424 14.6666 1.77508 14.4274 1.53214 14.0343C1.2892 13.6412 1.26711 13.1503 1.47377 12.737L6.80711 2.07036C7.03296 1.61865 7.49465 1.33331 7.99968 1.33331ZM2.66634 13.3333H13.333L7.99968 2.66665L2.66634 13.3333Z"
+                  fill="#FB2047"
+                  fill-rule="evenodd"
+                />
+              </svg>
+              <span
+                class="MuiTypography-root MuiTypography-caption css-gfu4bo-MuiTypography-root"
+              >
+                Some error text
+              </span>
+            </div>
+            <p
+              class="MuiFormHelperText-root MuiFormHelperText-sizeMedium MuiFormHelperText-contained css-1o5sjh7-MuiFormHelperText-root"
+            >
+              Some helper text
+            </p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </body>,
+  "container": <div>
+    <div
+      class="MuiScopedCssBaseline-root css-1rgmn6t-MuiScopedCssBaseline-root"
+      style="height: 100%;"
+    >
+      <div
+        class="MuiBox-root css-0"
+      >
+        <div
+          class="MuiFormControl-root css-1qe0y20-MuiFormControl-root"
+        >
+          <label
+            class="MuiFormLabel-root MuiFormLabel-colorPrimary Mui-error css-sawdgp-MuiFormLabel-root"
+            for="undefined"
+          >
+            Default DropDown with Error and Helper
+          </label>
+          <div
+            class="MuiAutocomplete-root MuiAutocomplete-hasPopupIcon css-1mh2xla-MuiAutocomplete-root"
+          >
+            <div
+              class="MuiFormControl-root css-1qe0y20-MuiFormControl-root"
+            >
+              <div
+                class="MuiInputBase-root MuiOutlinedInput-root MuiInputBase-colorPrimary MuiInputBase-formControl MuiInputBase-adornedEnd MuiAutocomplete-inputRoot css-1s5rmx4-MuiInputBase-root-MuiOutlinedInput-root"
+              >
+                <input
+                  aria-autocomplete="list"
+                  aria-expanded="false"
+                  aria-invalid="false"
+                  autocapitalize="none"
+                  autocomplete="off"
+                  class="MuiInputBase-input MuiOutlinedInput-input MuiInputBase-inputAdornedEnd MuiAutocomplete-input MuiAutocomplete-inputFocused css-nxo287-MuiInputBase-input-MuiOutlinedInput-input"
+                  id=":r4:"
+                  role="combobox"
+                  spellcheck="false"
+                  style="padding: 0px;"
+                  type="text"
+                  value=""
+                />
+                <div
+                  style="display: flex; align-items: center; position: absolute; right: 8px; top: 50%; transform: translateY(-50%);"
+                >
+                  <svg
+                    aria-hidden="true"
+                    class="MuiSvgIcon-root MuiSvgIcon-fontSizeMedium css-f85f4f-MuiSvgIcon-root"
+                    data-testid="KeyboardArrowDownIcon"
+                    focusable="false"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      d="M7.41 8.59 12 13.17l4.59-4.58L18 10l-6 6-6-6z"
+                    />
+                  </svg>
+                </div>
+                <fieldset
+                  aria-hidden="true"
+                  class="MuiOutlinedInput-notchedOutline css-1d3z3hw-MuiOutlinedInput-notchedOutline"
+                >
+                  <legend
+                    class="css-ihdtdm"
+                  >
+                    <span
+                      class="notranslate"
+                    >
+                      ​
+                    </span>
+                  </legend>
+                </fieldset>
+              </div>
+            </div>
+          </div>
+          <div
+            class="MuiBox-root css-ltqa49"
+          >
+            <svg
+              fill="none"
+              height="16"
+              viewBox="0 0 16 16"
+              width="16"
+              xmlns="http://www.w3.org/2000/svg"
+            >
+              <path
+                d="M7.33301 8.66665L7.33301 5.99998C7.33301 5.63179 7.63148 5.33331 7.99967 5.33331C8.36786 5.33331 8.66634 5.63179 8.66634 5.99998L8.66634 8.66665C8.66634 9.03484 8.36787 9.33331 7.99968 9.33331C7.63149 9.33331 7.33301 9.03484 7.33301 8.66665Z"
+                fill="#FB2047"
+              />
+              <path
+                d="M7.99968 12C8.36787 12 8.66634 11.7015 8.66634 11.3333C8.66634 10.9651 8.36787 10.6666 7.99968 10.6666C7.63149 10.6666 7.33301 10.9651 7.33301 11.3333C7.33301 11.7015 7.63149 12 7.99968 12Z"
+                fill="#FB2047"
+              />
+              <path
+                clip-rule="evenodd"
+                d="M7.99968 1.33331C8.50471 1.33331 8.96639 1.61865 9.19225 2.07036L14.5256 12.737C14.7322 13.1503 14.7102 13.6412 14.4672 14.0343C14.2243 14.4274 13.7951 14.6666 13.333 14.6666H2.66634C2.20424 14.6666 1.77508 14.4274 1.53214 14.0343C1.2892 13.6412 1.26711 13.1503 1.47377 12.737L6.80711 2.07036C7.03296 1.61865 7.49465 1.33331 7.99968 1.33331ZM2.66634 13.3333H13.333L7.99968 2.66665L2.66634 13.3333Z"
+                fill="#FB2047"
+                fill-rule="evenodd"
+              />
+            </svg>
+            <span
+              class="MuiTypography-root MuiTypography-caption css-gfu4bo-MuiTypography-root"
+            >
+              Some error text
+            </span>
+          </div>
+          <p
+            class="MuiFormHelperText-root MuiFormHelperText-sizeMedium MuiFormHelperText-contained css-1o5sjh7-MuiFormHelperText-root"
+          >
+            Some helper text
+          </p>
+        </div>
+      </div>
+    </div>
+  </div>,
+  "debug": [Function],
+  "findAllByAltText": [Function],
+  "findAllByDisplayValue": [Function],
+  "findAllByLabelText": [Function],
+  "findAllByPlaceholderText": [Function],
+  "findAllByRole": [Function],
+  "findAllByTestId": [Function],
+  "findAllByText": [Function],
+  "findAllByTitle": [Function],
+  "findByAltText": [Function],
+  "findByDisplayValue": [Function],
+  "findByLabelText": [Function],
+  "findByPlaceholderText": [Function],
+  "findByRole": [Function],
+  "findByTestId": [Function],
+  "findByText": [Function],
+  "findByTitle": [Function],
+  "getAllByAltText": [Function],
+  "getAllByDisplayValue": [Function],
+  "getAllByLabelText": [Function],
+  "getAllByPlaceholderText": [Function],
+  "getAllByRole": [Function],
+  "getAllByTestId": [Function],
+  "getAllByText": [Function],
+  "getAllByTitle": [Function],
+  "getByAltText": [Function],
+  "getByDisplayValue": [Function],
+  "getByLabelText": [Function],
+  "getByPlaceholderText": [Function],
+  "getByRole": [Function],
+  "getByTestId": [Function],
+  "getByText": [Function],
+  "getByTitle": [Function],
+  "queryAllByAltText": [Function],
+  "queryAllByDisplayValue": [Function],
+  "queryAllByLabelText": [Function],
+  "queryAllByPlaceholderText": [Function],
+  "queryAllByRole": [Function],
+  "queryAllByTestId": [Function],
+  "queryAllByText": [Function],
+  "queryAllByTitle": [Function],
+  "queryByAltText": [Function],
+  "queryByDisplayValue": [Function],
+  "queryByLabelText": [Function],
+  "queryByPlaceholderText": [Function],
+  "queryByRole": [Function],
+  "queryByTestId": [Function],
+  "queryByText": [Function],
+  "queryByTitle": [Function],
+  "rerender": [Function],
+  "unmount": [Function],
+}
+`;
+
+exports[`should test a default HCAutoComplete with Helper 1`] = `
+{
+  "asFragment": [Function],
+  "baseElement": <body>
+    <div>
+      <div
+        class="MuiScopedCssBaseline-root css-1rgmn6t-MuiScopedCssBaseline-root"
+        style="height: 100%;"
+      >
+        <div
+          class="MuiBox-root css-0"
+        >
+          <div
+            class="MuiFormControl-root css-1qe0y20-MuiFormControl-root"
+          >
+            <label
+              class="MuiFormLabel-root MuiFormLabel-colorPrimary css-sawdgp-MuiFormLabel-root"
+              for="undefined"
+            >
+              Default DropDown with Helper
+            </label>
+            <div
+              class="MuiAutocomplete-root MuiAutocomplete-hasPopupIcon css-1mh2xla-MuiAutocomplete-root"
+            >
+              <div
+                class="MuiFormControl-root css-1qe0y20-MuiFormControl-root"
+              >
+                <div
+                  class="MuiInputBase-root MuiOutlinedInput-root MuiInputBase-colorPrimary MuiInputBase-formControl MuiInputBase-adornedEnd MuiAutocomplete-inputRoot css-1s5rmx4-MuiInputBase-root-MuiOutlinedInput-root"
+                >
+                  <input
+                    aria-autocomplete="list"
+                    aria-expanded="false"
+                    aria-invalid="false"
+                    autocapitalize="none"
+                    autocomplete="off"
+                    class="MuiInputBase-input MuiOutlinedInput-input MuiInputBase-inputAdornedEnd MuiAutocomplete-input MuiAutocomplete-inputFocused css-nxo287-MuiInputBase-input-MuiOutlinedInput-input"
+                    id=":r3:"
+                    role="combobox"
+                    spellcheck="false"
+                    style="padding: 0px;"
+                    type="text"
+                    value=""
+                  />
+                  <div
+                    style="display: flex; align-items: center; position: absolute; right: 8px; top: 50%; transform: translateY(-50%);"
+                  >
+                    <svg
+                      aria-hidden="true"
+                      class="MuiSvgIcon-root MuiSvgIcon-fontSizeMedium css-f85f4f-MuiSvgIcon-root"
+                      data-testid="KeyboardArrowDownIcon"
+                      focusable="false"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        d="M7.41 8.59 12 13.17l4.59-4.58L18 10l-6 6-6-6z"
+                      />
+                    </svg>
+                  </div>
+                  <fieldset
+                    aria-hidden="true"
+                    class="MuiOutlinedInput-notchedOutline css-1d3z3hw-MuiOutlinedInput-notchedOutline"
+                  >
+                    <legend
+                      class="css-ihdtdm"
+                    >
+                      <span
+                        class="notranslate"
+                      >
+                        ​
+                      </span>
+                    </legend>
+                  </fieldset>
+                </div>
+              </div>
+            </div>
+            <p
+              class="MuiFormHelperText-root MuiFormHelperText-sizeMedium MuiFormHelperText-contained css-1o5sjh7-MuiFormHelperText-root"
+            >
+              Some helper text
+            </p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </body>,
+  "container": <div>
+    <div
+      class="MuiScopedCssBaseline-root css-1rgmn6t-MuiScopedCssBaseline-root"
+      style="height: 100%;"
+    >
+      <div
+        class="MuiBox-root css-0"
+      >
+        <div
+          class="MuiFormControl-root css-1qe0y20-MuiFormControl-root"
+        >
+          <label
+            class="MuiFormLabel-root MuiFormLabel-colorPrimary css-sawdgp-MuiFormLabel-root"
+            for="undefined"
+          >
+            Default DropDown with Helper
+          </label>
+          <div
+            class="MuiAutocomplete-root MuiAutocomplete-hasPopupIcon css-1mh2xla-MuiAutocomplete-root"
+          >
+            <div
+              class="MuiFormControl-root css-1qe0y20-MuiFormControl-root"
+            >
+              <div
+                class="MuiInputBase-root MuiOutlinedInput-root MuiInputBase-colorPrimary MuiInputBase-formControl MuiInputBase-adornedEnd MuiAutocomplete-inputRoot css-1s5rmx4-MuiInputBase-root-MuiOutlinedInput-root"
+              >
+                <input
+                  aria-autocomplete="list"
+                  aria-expanded="false"
+                  aria-invalid="false"
+                  autocapitalize="none"
+                  autocomplete="off"
+                  class="MuiInputBase-input MuiOutlinedInput-input MuiInputBase-inputAdornedEnd MuiAutocomplete-input MuiAutocomplete-inputFocused css-nxo287-MuiInputBase-input-MuiOutlinedInput-input"
+                  id=":r3:"
+                  role="combobox"
+                  spellcheck="false"
+                  style="padding: 0px;"
+                  type="text"
+                  value=""
+                />
+                <div
+                  style="display: flex; align-items: center; position: absolute; right: 8px; top: 50%; transform: translateY(-50%);"
+                >
+                  <svg
+                    aria-hidden="true"
+                    class="MuiSvgIcon-root MuiSvgIcon-fontSizeMedium css-f85f4f-MuiSvgIcon-root"
+                    data-testid="KeyboardArrowDownIcon"
+                    focusable="false"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      d="M7.41 8.59 12 13.17l4.59-4.58L18 10l-6 6-6-6z"
+                    />
+                  </svg>
+                </div>
+                <fieldset
+                  aria-hidden="true"
+                  class="MuiOutlinedInput-notchedOutline css-1d3z3hw-MuiOutlinedInput-notchedOutline"
+                >
+                  <legend
+                    class="css-ihdtdm"
+                  >
+                    <span
+                      class="notranslate"
+                    >
+                      ​
+                    </span>
+                  </legend>
+                </fieldset>
+              </div>
+            </div>
+          </div>
+          <p
+            class="MuiFormHelperText-root MuiFormHelperText-sizeMedium MuiFormHelperText-contained css-1o5sjh7-MuiFormHelperText-root"
+          >
+            Some helper text
+          </p>
+        </div>
+      </div>
+    </div>
+  </div>,
+  "debug": [Function],
+  "findAllByAltText": [Function],
+  "findAllByDisplayValue": [Function],
+  "findAllByLabelText": [Function],
+  "findAllByPlaceholderText": [Function],
+  "findAllByRole": [Function],
+  "findAllByTestId": [Function],
+  "findAllByText": [Function],
+  "findAllByTitle": [Function],
+  "findByAltText": [Function],
+  "findByDisplayValue": [Function],
+  "findByLabelText": [Function],
+  "findByPlaceholderText": [Function],
+  "findByRole": [Function],
+  "findByTestId": [Function],
+  "findByText": [Function],
+  "findByTitle": [Function],
+  "getAllByAltText": [Function],
+  "getAllByDisplayValue": [Function],
+  "getAllByLabelText": [Function],
+  "getAllByPlaceholderText": [Function],
+  "getAllByRole": [Function],
+  "getAllByTestId": [Function],
+  "getAllByText": [Function],
+  "getAllByTitle": [Function],
+  "getByAltText": [Function],
+  "getByDisplayValue": [Function],
+  "getByLabelText": [Function],
+  "getByPlaceholderText": [Function],
+  "getByRole": [Function],
+  "getByTestId": [Function],
+  "getByText": [Function],
+  "getByTitle": [Function],
+  "queryAllByAltText": [Function],
+  "queryAllByDisplayValue": [Function],
+  "queryAllByLabelText": [Function],
+  "queryAllByPlaceholderText": [Function],
+  "queryAllByRole": [Function],
+  "queryAllByTestId": [Function],
+  "queryAllByText": [Function],
+  "queryAllByTitle": [Function],
+  "queryByAltText": [Function],
+  "queryByDisplayValue": [Function],
+  "queryByLabelText": [Function],
+  "queryByPlaceholderText": [Function],
+  "queryByRole": [Function],
+  "queryByTestId": [Function],
+  "queryByText": [Function],
+  "queryByTitle": [Function],
+  "rerender": [Function],
+  "unmount": [Function],
+}
+`;
+
+exports[`should test a default HCAutoComplete with value selected 1`] = `
+{
+  "asFragment": [Function],
+  "baseElement": <body>
+    <div>
+      <div
+        class="MuiScopedCssBaseline-root css-1rgmn6t-MuiScopedCssBaseline-root"
+        style="height: 100%;"
+      >
+        <div
+          class="MuiBox-root css-0"
+        >
+          <div
+            class="MuiFormControl-root css-1qe0y20-MuiFormControl-root"
+          >
+            <label
+              class="MuiFormLabel-root MuiFormLabel-colorPrimary css-sawdgp-MuiFormLabel-root"
+              for="undefined"
+            >
+              Default DropDown
+            </label>
+            <div
+              class="MuiAutocomplete-root MuiAutocomplete-hasClearIcon MuiAutocomplete-hasPopupIcon css-1mh2xla-MuiAutocomplete-root"
+            >
+              <div
+                class="MuiFormControl-root css-1qe0y20-MuiFormControl-root"
+              >
+                <div
+                  class="MuiInputBase-root MuiOutlinedInput-root MuiInputBase-colorPrimary MuiInputBase-formControl MuiInputBase-adornedEnd MuiAutocomplete-inputRoot css-1s5rmx4-MuiInputBase-root-MuiOutlinedInput-root"
+                >
+                  <input
+                    aria-autocomplete="list"
+                    aria-expanded="false"
+                    aria-invalid="false"
+                    autocapitalize="none"
+                    autocomplete="off"
+                    class="MuiInputBase-input MuiOutlinedInput-input MuiInputBase-inputAdornedEnd MuiAutocomplete-input MuiAutocomplete-inputFocused css-nxo287-MuiInputBase-input-MuiOutlinedInput-input"
+                    id=":r1:"
+                    role="combobox"
+                    spellcheck="false"
+                    style="padding: 0px;"
+                    type="text"
+                    value="Item 2"
+                  />
+                  <div
+                    style="display: flex; align-items: center; position: absolute; right: 8px; top: 50%; transform: translateY(-50%);"
+                  >
+                    <svg
+                      aria-hidden="true"
+                      class="MuiSvgIcon-root MuiSvgIcon-fontSizeMedium css-f85f4f-MuiSvgIcon-root"
+                      data-testid="KeyboardArrowDownIcon"
+                      focusable="false"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        d="M7.41 8.59 12 13.17l4.59-4.58L18 10l-6 6-6-6z"
+                      />
+                    </svg>
+                  </div>
+                  <fieldset
+                    aria-hidden="true"
+                    class="MuiOutlinedInput-notchedOutline css-1d3z3hw-MuiOutlinedInput-notchedOutline"
+                  >
+                    <legend
+                      class="css-ihdtdm"
+                    >
+                      <span
+                        class="notranslate"
+                      >
+                        ​
+                      </span>
+                    </legend>
+                  </fieldset>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </body>,
+  "container": <div>
+    <div
+      class="MuiScopedCssBaseline-root css-1rgmn6t-MuiScopedCssBaseline-root"
+      style="height: 100%;"
+    >
+      <div
+        class="MuiBox-root css-0"
+      >
+        <div
+          class="MuiFormControl-root css-1qe0y20-MuiFormControl-root"
+        >
+          <label
+            class="MuiFormLabel-root MuiFormLabel-colorPrimary css-sawdgp-MuiFormLabel-root"
+            for="undefined"
+          >
+            Default DropDown
+          </label>
+          <div
+            class="MuiAutocomplete-root MuiAutocomplete-hasClearIcon MuiAutocomplete-hasPopupIcon css-1mh2xla-MuiAutocomplete-root"
+          >
+            <div
+              class="MuiFormControl-root css-1qe0y20-MuiFormControl-root"
+            >
+              <div
+                class="MuiInputBase-root MuiOutlinedInput-root MuiInputBase-colorPrimary MuiInputBase-formControl MuiInputBase-adornedEnd MuiAutocomplete-inputRoot css-1s5rmx4-MuiInputBase-root-MuiOutlinedInput-root"
+              >
+                <input
+                  aria-autocomplete="list"
+                  aria-expanded="false"
+                  aria-invalid="false"
+                  autocapitalize="none"
+                  autocomplete="off"
+                  class="MuiInputBase-input MuiOutlinedInput-input MuiInputBase-inputAdornedEnd MuiAutocomplete-input MuiAutocomplete-inputFocused css-nxo287-MuiInputBase-input-MuiOutlinedInput-input"
+                  id=":r1:"
+                  role="combobox"
+                  spellcheck="false"
+                  style="padding: 0px;"
+                  type="text"
+                  value="Item 2"
+                />
+                <div
+                  style="display: flex; align-items: center; position: absolute; right: 8px; top: 50%; transform: translateY(-50%);"
+                >
+                  <svg
+                    aria-hidden="true"
+                    class="MuiSvgIcon-root MuiSvgIcon-fontSizeMedium css-f85f4f-MuiSvgIcon-root"
+                    data-testid="KeyboardArrowDownIcon"
+                    focusable="false"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      d="M7.41 8.59 12 13.17l4.59-4.58L18 10l-6 6-6-6z"
+                    />
+                  </svg>
+                </div>
+                <fieldset
+                  aria-hidden="true"
+                  class="MuiOutlinedInput-notchedOutline css-1d3z3hw-MuiOutlinedInput-notchedOutline"
+                >
+                  <legend
+                    class="css-ihdtdm"
+                  >
+                    <span
+                      class="notranslate"
+                    >
+                      ​
+                    </span>
+                  </legend>
+                </fieldset>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>,
+  "debug": [Function],
+  "findAllByAltText": [Function],
+  "findAllByDisplayValue": [Function],
+  "findAllByLabelText": [Function],
+  "findAllByPlaceholderText": [Function],
+  "findAllByRole": [Function],
+  "findAllByTestId": [Function],
+  "findAllByText": [Function],
+  "findAllByTitle": [Function],
+  "findByAltText": [Function],
+  "findByDisplayValue": [Function],
+  "findByLabelText": [Function],
+  "findByPlaceholderText": [Function],
+  "findByRole": [Function],
+  "findByTestId": [Function],
+  "findByText": [Function],
+  "findByTitle": [Function],
+  "getAllByAltText": [Function],
+  "getAllByDisplayValue": [Function],
+  "getAllByLabelText": [Function],
+  "getAllByPlaceholderText": [Function],
+  "getAllByRole": [Function],
+  "getAllByTestId": [Function],
+  "getAllByText": [Function],
+  "getAllByTitle": [Function],
+  "getByAltText": [Function],
+  "getByDisplayValue": [Function],
+  "getByLabelText": [Function],
+  "getByPlaceholderText": [Function],
+  "getByRole": [Function],
+  "getByTestId": [Function],
+  "getByText": [Function],
+  "getByTitle": [Function],
+  "queryAllByAltText": [Function],
+  "queryAllByDisplayValue": [Function],
+  "queryAllByLabelText": [Function],
+  "queryAllByPlaceholderText": [Function],
+  "queryAllByRole": [Function],
+  "queryAllByTestId": [Function],
+  "queryAllByText": [Function],
+  "queryAllByTitle": [Function],
+  "queryByAltText": [Function],
+  "queryByDisplayValue": [Function],
+  "queryByLabelText": [Function],
+  "queryByPlaceholderText": [Function],
+  "queryByRole": [Function],
+  "queryByTestId": [Function],
+  "queryByText": [Function],
+  "queryByTitle": [Function],
+  "rerender": [Function],
+  "unmount": [Function],
+}
+`;

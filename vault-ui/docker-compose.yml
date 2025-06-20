@@ -1,0 +1,18 @@
+services:
+  vaultui:
+    image: truechart/vault-ui:latest
+    container_name: vault-ui
+    restart: unless-stopped
+    ports:
+      - "8081:8081"
+    environment:
+      VAULT_API_URL: "http://localhost:7860"
+      VAULT_API_WEBSOCKET_URL: "ws://localhost:8000"
+      SUPABASE_URL: "http://localhost:8000/"
+      SUPABASE_KEY: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyAgCiAgICAicm9sZSI6ICJhbm9uIiwKICAgICJpc3MiOiAic3VwYWJhc2UtZGVtbyIsCiAgICAiaWF0IjogMTY0MTc2OTIwMCwKICAgICJleHAiOiAxNzk5NTM1NjAwCn0.dc_X5iR_VP_qT0zsiyj_I_OZ2T9FtRU2BBNWN8Bu4GE"
+  storybook:
+    image: truechart/vault-storybook:latest
+    container_name: storybook
+    restart: unless-stopped
+    ports:
+      - "7070:8080"

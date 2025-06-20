@@ -1,0 +1,65 @@
+{
+    "version": "2.0.0",
+    "tasks": [
+        {
+            "label": "🚀 Start Backend",
+            "type": "shell",
+            "command": "cd vaultsrc/vault && docker compose up -d",
+            "group": "build",
+            "presentation": {
+                "echo": true,
+                "reveal": "always",
+                "panel": "new"
+            },
+            "problemMatcher": []
+        },
+        {
+            "label": "🌐 Start Frontend",
+            "type": "shell",
+            "command": "cd vault-ui && npm start",
+            "group": "build",
+            "presentation": {
+                "echo": true,
+                "reveal": "always",
+                "panel": "new"
+            },
+            "problemMatcher": []
+        },
+        {
+            "label": "🔧 Build Backend Image",
+            "type": "shell",
+            "command": "cd vaultsrc/vault && docker build -t truechart/vault:latest .",
+            "group": "build",
+            "presentation": {
+                "echo": true,
+                "reveal": "always",
+                "panel": "new"
+            },
+            "problemMatcher": []
+        },
+        {
+            "label": "🛑 Stop All Services",
+            "type": "shell",
+            "command": "cd vaultsrc/vault && docker compose down && docker stop vault-manual 2>/dev/null || echo 'No manual container'",
+            "group": "build",
+            "presentation": {
+                "echo": true,
+                "reveal": "always",
+                "panel": "new"
+            },
+            "problemMatcher": []
+        },
+        {
+            "label": "📊 Check Status",
+            "type": "shell",
+            "command": "echo '=== HICO Vault Status ===' && echo 'Frontend: http://localhost:5173' && echo 'Backend: http://localhost:8090' && echo 'Supabase: http://localhost:8000' && echo '' && echo '=== Running Containers ===' && docker ps --format 'table {{.Names}}\\t{{.Status}}\\t{{.Ports}}' | grep -E '(vault|supabase)'",
+            "group": "test",
+            "presentation": {
+                "echo": true,
+                "reveal": "always",
+                "panel": "new"
+            },
+            "problemMatcher": []
+        }
+    ]
+} 

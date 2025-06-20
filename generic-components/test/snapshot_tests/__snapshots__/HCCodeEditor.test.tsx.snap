@@ -1,0 +1,308 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`should test a default HCCodeEditor 1`] = `
+{
+  "asFragment": [Function],
+  "baseElement": <body>
+    <div>
+      <div
+        class="MuiScopedCssBaseline-root css-1rgmn6t-MuiScopedCssBaseline-root"
+        style="height: 100%;"
+      >
+        <div
+          class="MuiFormControl-root css-1qe0y20-MuiFormControl-root"
+        >
+          <label
+            class="MuiFormLabel-root MuiFormLabel-colorPrimary css-sawdgp-MuiFormLabel-root"
+            for="undefined"
+          >
+            Code Editor
+          </label>
+          <div
+            class="MuiBox-root css-1yvzp6t"
+          >
+            <div
+              class="cm-theme-light"
+              lang="css"
+            >
+              <div
+                class="cm-editor ͼ1 ͼ2 ͼ4 ͼ19 ͼ15"
+              >
+                <div
+                  aria-live="polite"
+                  class="cm-announced"
+                />
+                <div
+                  class="cm-scroller"
+                  tabindex="-1"
+                >
+                  <div
+                    aria-hidden="true"
+                    class="cm-gutters"
+                    style="min-height: 14px; position: sticky;"
+                  >
+                    <div
+                      class="cm-gutter cm-lineNumbers"
+                    >
+                      <div
+                        class="cm-gutterElement"
+                        style="height: 0px; visibility: hidden; pointer-events: none;"
+                      >
+                        9
+                      </div>
+                      <div
+                        class="cm-gutterElement cm-activeLineGutter"
+                        style="height: 14px;"
+                      >
+                        1
+                      </div>
+                    </div>
+                    <div
+                      class="cm-gutter cm-foldGutter"
+                    >
+                      <div
+                        class="cm-gutterElement"
+                        style="height: 0px; visibility: hidden; pointer-events: none;"
+                      >
+                        <span
+                          title="Unfold line"
+                        >
+                          ›
+                        </span>
+                      </div>
+                      <div
+                        class="cm-gutterElement cm-activeLineGutter"
+                        style="height: 14px;"
+                      />
+                    </div>
+                  </div>
+                  <div
+                    aria-multiline="true"
+                    autocapitalize="off"
+                    autocorrect="off"
+                    class="cm-content"
+                    contenteditable="true"
+                    role="textbox"
+                    spellcheck="false"
+                    style="tab-size: 4;"
+                    translate="no"
+                    writingsuggestions="false"
+                  >
+                    <div
+                      class="cm-activeLine cm-line"
+                    >
+                      <br />
+                    </div>
+                  </div>
+                  <div
+                    aria-hidden="true"
+                    class="cm-layer cm-layer-above cm-cursorLayer"
+                    style="z-index: 150; animation-duration: 1200ms;"
+                  />
+                  <div
+                    aria-hidden="true"
+                    class="cm-layer cm-selectionLayer"
+                    style="z-index: -2;"
+                  />
+                </div>
+              </div>
+            </div>
+            <div
+              aria-label="FillScreenFull"
+              role="img"
+              style="position: absolute; top: 0px; right: 0px; width: 22px; height: 22px; margin: 4px;"
+            >
+              <div
+                class="css-zlpnp1"
+                style="width: 100%; height: 100%;"
+              >
+                <div>
+                  <div
+                    data-src="data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjQiIGhlaWdodD0iMjQiIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHBhdGggZmlsbC1ydWxlPSJldmVub2RkIiBjbGlwLXJ1bGU9ImV2ZW5vZGQiIGQ9Ik0xNC41IDQuNUMxNC41IDMuOTQ3NzIgMTQuOTQ3NyAzLjUgMTUuNSAzLjVIMTcuNUMxOS4xNTY5IDMuNSAyMC41IDQuODQzMTUgMjAuNSA2LjVWOC41QzIwLjUgOS4wNTIyOCAyMC4wNTIzIDkuNSAxOS41IDkuNUMxOC45NDc3IDkuNSAxOC41IDkuMDUyMjggMTguNSA4LjVMMTguNSA2LjVDMTguNSA1Ljk0NzcyIDE4LjA1MjMgNS41IDE3LjUgNS41SDE1LjVDMTQuOTQ3NyA1LjUgMTQuNSA1LjA1MjI4IDE0LjUgNC41Wk0zLjUgOC41QzMuNSA5LjA1MjI5IDMuOTQ3NzIgOS41IDQuNSA5LjVDNS4wNTIyOCA5LjUgNS41IDkuMDUyMjkgNS41IDguNVY2LjVDNS41IDUuOTQ3NzIgNS45NDc3MiA1LjUgNi41IDUuNUw4LjUgNS41QzkuMDUyMjggNS41IDkuNSA1LjA1MjI4IDkuNSA0LjVDOS41IDMuOTQ3NzIgOS4wNTIyOCAzLjUgOC41IDMuNUw2LjUgMy41QzQuODQzMTUgMy41IDMuNSA0Ljg0MzE1IDMuNSA2LjVMMy41IDguNVpNMjAuNSAxNS41QzIwLjUgMTQuOTQ3NyAyMC4wNTIzIDE0LjUgMTkuNSAxNC41QzE4Ljk0NzcgMTQuNSAxOC41IDE0Ljk0NzcgMTguNSAxNS41VjE3LjVDMTguNSAxOC4wNTIzIDE4LjA1MjMgMTguNSAxNy41IDE4LjVIMTUuNUMxNC45NDc3IDE4LjUgMTQuNSAxOC45NDc3IDE0LjUgMTkuNUMxNC41IDIwLjA1MjMgMTQuOTQ3NyAyMC41IDE1LjUgMjAuNUgxNy41QzE5LjE1NjkgMjAuNSAyMC41IDE5LjE1NjkgMjAuNSAxNy41VjE1LjVaTTguNSAyMC41QzkuMDUyMjkgMjAuNSA5LjUgMjAuMDUyMyA5LjUgMTkuNUM5LjUgMTguOTQ3NyA5LjA1MjI5IDE4LjUgOC41IDE4LjVMNi41IDE4LjVDNS45NDc3MiAxOC41IDUuNSAxOC4wNTIzIDUuNSAxNy41TDUuNSAxNS41QzUuNSAxNC45NDc3IDUuMDUyMjkgMTQuNSA0LjUgMTQuNUMzLjk0NzcyIDE0LjUgMy41IDE0Ljk0NzcgMy41IDE1LjVMMy41IDE3LjVDMy41IDE5LjE1NjkgNC44NDMxNSAyMC41IDYuNSAyMC41TDguNSAyMC41WiIgZmlsbD0iY3VycmVudENvbG9yIi8+Cjwvc3ZnPgo="
+                    src=""
+                  />
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </body>,
+  "container": <div>
+    <div
+      class="MuiScopedCssBaseline-root css-1rgmn6t-MuiScopedCssBaseline-root"
+      style="height: 100%;"
+    >
+      <div
+        class="MuiFormControl-root css-1qe0y20-MuiFormControl-root"
+      >
+        <label
+          class="MuiFormLabel-root MuiFormLabel-colorPrimary css-sawdgp-MuiFormLabel-root"
+          for="undefined"
+        >
+          Code Editor
+        </label>
+        <div
+          class="MuiBox-root css-1yvzp6t"
+        >
+          <div
+            class="cm-theme-light"
+            lang="css"
+          >
+            <div
+              class="cm-editor ͼ1 ͼ2 ͼ4 ͼ19 ͼ15"
+            >
+              <div
+                aria-live="polite"
+                class="cm-announced"
+              />
+              <div
+                class="cm-scroller"
+                tabindex="-1"
+              >
+                <div
+                  aria-hidden="true"
+                  class="cm-gutters"
+                  style="min-height: 14px; position: sticky;"
+                >
+                  <div
+                    class="cm-gutter cm-lineNumbers"
+                  >
+                    <div
+                      class="cm-gutterElement"
+                      style="height: 0px; visibility: hidden; pointer-events: none;"
+                    >
+                      9
+                    </div>
+                    <div
+                      class="cm-gutterElement cm-activeLineGutter"
+                      style="height: 14px;"
+                    >
+                      1
+                    </div>
+                  </div>
+                  <div
+                    class="cm-gutter cm-foldGutter"
+                  >
+                    <div
+                      class="cm-gutterElement"
+                      style="height: 0px; visibility: hidden; pointer-events: none;"
+                    >
+                      <span
+                        title="Unfold line"
+                      >
+                        ›
+                      </span>
+                    </div>
+                    <div
+                      class="cm-gutterElement cm-activeLineGutter"
+                      style="height: 14px;"
+                    />
+                  </div>
+                </div>
+                <div
+                  aria-multiline="true"
+                  autocapitalize="off"
+                  autocorrect="off"
+                  class="cm-content"
+                  contenteditable="true"
+                  role="textbox"
+                  spellcheck="false"
+                  style="tab-size: 4;"
+                  translate="no"
+                  writingsuggestions="false"
+                >
+                  <div
+                    class="cm-activeLine cm-line"
+                  >
+                    <br />
+                  </div>
+                </div>
+                <div
+                  aria-hidden="true"
+                  class="cm-layer cm-layer-above cm-cursorLayer"
+                  style="z-index: 150; animation-duration: 1200ms;"
+                />
+                <div
+                  aria-hidden="true"
+                  class="cm-layer cm-selectionLayer"
+                  style="z-index: -2;"
+                />
+              </div>
+            </div>
+          </div>
+          <div
+            aria-label="FillScreenFull"
+            role="img"
+            style="position: absolute; top: 0px; right: 0px; width: 22px; height: 22px; margin: 4px;"
+          >
+            <div
+              class="css-zlpnp1"
+              style="width: 100%; height: 100%;"
+            >
+              <div>
+                <div
+                  data-src="data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjQiIGhlaWdodD0iMjQiIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHBhdGggZmlsbC1ydWxlPSJldmVub2RkIiBjbGlwLXJ1bGU9ImV2ZW5vZGQiIGQ9Ik0xNC41IDQuNUMxNC41IDMuOTQ3NzIgMTQuOTQ3NyAzLjUgMTUuNSAzLjVIMTcuNUMxOS4xNTY5IDMuNSAyMC41IDQuODQzMTUgMjAuNSA2LjVWOC41QzIwLjUgOS4wNTIyOCAyMC4wNTIzIDkuNSAxOS41IDkuNUMxOC45NDc3IDkuNSAxOC41IDkuMDUyMjggMTguNSA4LjVMMTguNSA2LjVDMTguNSA1Ljk0NzcyIDE4LjA1MjMgNS41IDE3LjUgNS41SDE1LjVDMTQuOTQ3NyA1LjUgMTQuNSA1LjA1MjI4IDE0LjUgNC41Wk0zLjUgOC41QzMuNSA5LjA1MjI5IDMuOTQ3NzIgOS41IDQuNSA5LjVDNS4wNTIyOCA5LjUgNS41IDkuMDUyMjkgNS41IDguNVY2LjVDNS41IDUuOTQ3NzIgNS45NDc3MiA1LjUgNi41IDUuNUw4LjUgNS41QzkuMDUyMjggNS41IDkuNSA1LjA1MjI4IDkuNSA0LjVDOS41IDMuOTQ3NzIgOS4wNTIyOCAzLjUgOC41IDMuNUw2LjUgMy41QzQuODQzMTUgMy41IDMuNSA0Ljg0MzE1IDMuNSA2LjVMMy41IDguNVpNMjAuNSAxNS41QzIwLjUgMTQuOTQ3NyAyMC4wNTIzIDE0LjUgMTkuNSAxNC41QzE4Ljk0NzcgMTQuNSAxOC41IDE0Ljk0NzcgMTguNSAxNS41VjE3LjVDMTguNSAxOC4wNTIzIDE4LjA1MjMgMTguNSAxNy41IDE4LjVIMTUuNUMxNC45NDc3IDE4LjUgMTQuNSAxOC45NDc3IDE0LjUgMTkuNUMxNC41IDIwLjA1MjMgMTQuOTQ3NyAyMC41IDE1LjUgMjAuNUgxNy41QzE5LjE1NjkgMjAuNSAyMC41IDE5LjE1NjkgMjAuNSAxNy41VjE1LjVaTTguNSAyMC41QzkuMDUyMjkgMjAuNSA5LjUgMjAuMDUyMyA5LjUgMTkuNUM5LjUgMTguOTQ3NyA5LjA1MjI5IDE4LjUgOC41IDE4LjVMNi41IDE4LjVDNS45NDc3MiAxOC41IDUuNSAxOC4wNTIzIDUuNSAxNy41TDUuNSAxNS41QzUuNSAxNC45NDc3IDUuMDUyMjkgMTQuNSA0LjUgMTQuNUMzLjk0NzcyIDE0LjUgMy41IDE0Ljk0NzcgMy41IDE1LjVMMy41IDE3LjVDMy41IDE5LjE1NjkgNC44NDMxNSAyMC41IDYuNSAyMC41TDguNSAyMC41WiIgZmlsbD0iY3VycmVudENvbG9yIi8+Cjwvc3ZnPgo="
+                  src=""
+                />
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>,
+  "debug": [Function],
+  "findAllByAltText": [Function],
+  "findAllByDisplayValue": [Function],
+  "findAllByLabelText": [Function],
+  "findAllByPlaceholderText": [Function],
+  "findAllByRole": [Function],
+  "findAllByTestId": [Function],
+  "findAllByText": [Function],
+  "findAllByTitle": [Function],
+  "findByAltText": [Function],
+  "findByDisplayValue": [Function],
+  "findByLabelText": [Function],
+  "findByPlaceholderText": [Function],
+  "findByRole": [Function],
+  "findByTestId": [Function],
+  "findByText": [Function],
+  "findByTitle": [Function],
+  "getAllByAltText": [Function],
+  "getAllByDisplayValue": [Function],
+  "getAllByLabelText": [Function],
+  "getAllByPlaceholderText": [Function],
+  "getAllByRole": [Function],
+  "getAllByTestId": [Function],
+  "getAllByText": [Function],
+  "getAllByTitle": [Function],
+  "getByAltText": [Function],
+  "getByDisplayValue": [Function],
+  "getByLabelText": [Function],
+  "getByPlaceholderText": [Function],
+  "getByRole": [Function],
+  "getByTestId": [Function],
+  "getByText": [Function],
+  "getByTitle": [Function],
+  "queryAllByAltText": [Function],
+  "queryAllByDisplayValue": [Function],
+  "queryAllByLabelText": [Function],
+  "queryAllByPlaceholderText": [Function],
+  "queryAllByRole": [Function],
+  "queryAllByTestId": [Function],
+  "queryAllByText": [Function],
+  "queryAllByTitle": [Function],
+  "queryByAltText": [Function],
+  "queryByDisplayValue": [Function],
+  "queryByLabelText": [Function],
+  "queryByPlaceholderText": [Function],
+  "queryByRole": [Function],
+  "queryByTestId": [Function],
+  "queryByText": [Function],
+  "queryByTitle": [Function],
+  "rerender": [Function],
+  "unmount": [Function],
+}
+`;

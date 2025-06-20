@@ -1,0 +1,288 @@
+---
+# Namespace
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: hico-vault
+---
+# PostgreSQL ConfigMap
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: postgres-config
+  namespace: hico-vault
+data:
+  POSTGRES_DB: postgres
+  POSTGRES_USER: postgres
+  POSTGRES_PASSWORD: postgres
+---
+# PostgreSQL PersistentVolumeClaim
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: postgres-pvc
+  namespace: hico-vault
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 10Gi
+---
+# PostgreSQL Deployment
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: postgres
+  namespace: hico-vault
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: postgres
+  template:
+    metadata:
+      labels:
+        app: postgres
+    spec:
+      containers:
+      - name: postgres
+        image: postgres:15
+        ports:
+        - containerPort: 5432
+        envFrom:
+        - configMapRef:
+            name: postgres-config
+        env:
+        - name: POSTGRES_HOST_AUTH_METHOD
+          value: "trust"
+        volumeMounts:
+        - name: postgres-storage
+          mountPath: /var/lib/postgresql/data
+        livenessProbe:
+          exec:
+            command:
+            - pg_isready
+            - -U
+            - postgres
+          initialDelaySeconds: 30
+          periodSeconds: 10
+        readinessProbe:
+          exec:
+            command:
+            - pg_isready
+            - -U
+            - postgres
+          initialDelaySeconds: 5
+          periodSeconds: 5
+      volumes:
+      - name: postgres-storage
+        persistentVolumeClaim:
+          claimName: postgres-pvc
+---
+# PostgreSQL Service
+apiVersion: v1
+kind: Service
+metadata:
+  name: postgres-service
+  namespace: hico-vault
+spec:
+  selector:
+    app: postgres
+  ports:
+  - port: 5432
+    targetPort: 5432
+  type: ClusterIP
+---
+# PostgREST ConfigMap
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: postgrest-config
+  namespace: hico-vault
+data:
+  PGRST_DB_URI: postgresql://postgres:postgres@postgres-service:5432/postgres
+  PGRST_OPENAPI_SERVER_PROXY_URI: http://127.0.0.1:3000
+  PGRST_DB_SCHEMAS: public
+  PGRST_DB_ANON_ROLE: postgres
+  PGRST_JWT_SECRET: reallyreallyreallyreallyverysafe
+  PGRST_DB_USE_LEGACY_GUCS: "false"
+---
+# PostgREST Deployment
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: postgrest
+  namespace: hico-vault
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: postgrest
+  template:
+    metadata:
+      labels:
+        app: postgrest
+    spec:
+      containers:
+      - name: postgrest
+        image: postgrest/postgrest:v12.2.12
+        ports:
+        - containerPort: 3000
+        envFrom:
+        - configMapRef:
+            name: postgrest-config
+        livenessProbe:
+          httpGet:
+            path: /
+            port: 3000
+          initialDelaySeconds: 30
+          periodSeconds: 10
+        readinessProbe:
+          httpGet:
+            path: /
+            port: 3000
+          initialDelaySeconds: 5
+          periodSeconds: 5
+---
+# PostgREST Service
+apiVersion: v1
+kind: Service
+metadata:
+  name: postgrest-service
+  namespace: hico-vault
+spec:
+  selector:
+    app: postgrest
+  ports:
+  - port: 3000
+    targetPort: 3000
+  type: ClusterIP
+---
+# HICO Vault Backend ConfigMap
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: vault-backend-config
+  namespace: hico-vault
+data:
+  DATABASE_URL: postgresql://postgres:postgres@postgres-service:5432/postgres
+  DB_HOST: postgres-service
+  DB_PORT: "5432"
+  DB_NAME: postgres
+  DB_USER: postgres
+  DB_PASSWORD: postgres
+  SUPABASE_URL: http://postgrest-service:3000
+  SUPABASE_KEY: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZS1kZW1vIiwicm9sZSI6ImFub24iLCJleHAiOjE5ODM4MTI5OTZ9.CRXP1A7WOeoJeXxjNni43kdQwgnWNReilDMblYTn_I0
+  SUPABASE_ANON_KEY: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZS1kZW1vIiwicm9sZSI6ImFub24iLCJleHAiOjE5ODM4MTI5OTZ9.CRXP1A7WOeoJeXxjNni43kdQwgnWNReilDMblYTn_I0
+  SUPABASE_SERVICE_ROLE_KEY: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZS1kZW1vIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImV4cCI6MTk4MzgxMjk5Nn0.EGIM96RAZx35lJzdJsyH-qQwv8Hdp7fsn3W0YpN81IU
+  DEBUG: "True"
+  LOG_LEVEL: INFO
+  LOG_FILE: logs/backend_logs.log
+---
+# HICO Vault Backend Secret (for sensitive data)
+apiVersion: v1
+kind: Secret
+metadata:
+  name: vault-backend-secret
+  namespace: hico-vault
+type: Opaque
+stringData:
+  AZURE_SEARCH_ENDPOINT: ""  # Set in production
+  AZURE_SEARCH_KEY: ""       # Set in production
+  AZURE_OPENAI_ENDPOINT: ""  # Set in production
+  AZURE_OPENAI_KEY: ""       # Set in production
+  CLIENT_ID: ""              # Set in production
+  CLIENT_SECRET: ""          # Set in production
+  TENANT_ID: ""              # Set in production
+  SMTP_SERVER: ""            # Set in production
+  SMTP_PORT: "587"
+  SMTP_USERNAME: ""          # Set in production
+  SMTP_PASSWORD: ""          # Set in production
+  EMAIL_FROM: ""             # Set in production
+---
+# HICO Vault Backend Deployment
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: vault-backend
+  namespace: hico-vault
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: vault-backend
+  template:
+    metadata:
+      labels:
+        app: vault-backend
+    spec:
+      containers:
+      - name: vault-backend
+        image: hico-vault:latest  # Build and push your image to a registry
+        ports:
+        - containerPort: 7860
+        envFrom:
+        - configMapRef:
+            name: vault-backend-config
+        - secretRef:
+            name: vault-backend-secret
+        volumeMounts:
+        - name: logs-volume
+          mountPath: /app/logs
+        - name: uploads-volume
+          mountPath: /app/uploads
+        livenessProbe:
+          httpGet:
+            path: /api/ldap/connectors
+            port: 7860
+          initialDelaySeconds: 60
+          periodSeconds: 30
+          timeoutSeconds: 10
+        readinessProbe:
+          httpGet:
+            path: /api/ldap/connectors
+            port: 7860
+          initialDelaySeconds: 30
+          periodSeconds: 10
+          timeoutSeconds: 5
+      volumes:
+      - name: logs-volume
+        emptyDir: {}
+      - name: uploads-volume
+        emptyDir: {}
+---
+# HICO Vault Backend Service
+apiVersion: v1
+kind: Service
+metadata:
+  name: vault-backend-service
+  namespace: hico-vault
+spec:
+  selector:
+    app: vault-backend
+  ports:
+  - port: 7860
+    targetPort: 7860
+  type: ClusterIP
+---
+# Ingress for external access (optional)
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: vault-ingress
+  namespace: hico-vault
+  annotations:
+    nginx.ingress.kubernetes.io/rewrite-target: /
+spec:
+  rules:
+  - host: vault.yourdomain.com  # Update with your domain
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: vault-backend-service
+            port:
+              number: 7860 

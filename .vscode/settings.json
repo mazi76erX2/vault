@@ -1,0 +1,19 @@
+{
+    "terminal.integrated.defaultProfile.windows": "Git Bash",
+    "terminal.integrated.cwd": "${workspaceFolder}",
+    "files.exclude": {
+        "**/node_modules": true,
+        "**/dist": true,
+        "**/build": true
+    },
+    "search.exclude": {
+        "**/node_modules": true,
+        "**/dist": true,
+        "**/build": true
+    },
+    "editor.formatOnSave": true,
+    "files.associations": {
+        "docker-compose*.yml": "dockercompose",
+        "Dockerfile*": "dockerfile"
+    }
+} 
