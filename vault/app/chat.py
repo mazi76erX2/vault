@@ -4,15 +4,14 @@ import re
 from pathlib import Path
 from typing import List
 
-from app.database import supabase
 from app.database import supabase, get_db
-from azure.core.credentials import AzureKeyCredential
-from azure.search.documents import SearchClient
-from azure.search.documents.models import Vector
 from dotenv import load_dotenv
 from fastapi import APIRouter, WebSocket
-from openai import AzureOpenAI
 from sklearn.metrics.pairwise import cosine_similarity
+import requests
+import json
+from qdrant_client import QdrantClient
+from types import SimpleNamespace
 
 from .shared_utils import readtxt, readpdf, read_docx, filter_by_severity
 
@@ -20,24 +19,130 @@ from .shared_utils import readtxt, readpdf, read_docx, filter_by_severity
 env_path = Path(__file__).parent / ".env"
 load_dotenv(env_path)
 
-AZURE_SEARCH_ENDPOINT = os.environ["AZURE_SEARCH_ENDPOINT"]
-AZURE_SEARCH_KEY = os.environ["AZURE_SEARCH_KEY"]
+# Make Azure env lookups safe (some parts of the project may still reference these vars)
+AZURE_SEARCH_ENDPOINT = os.environ.get("AZURE_SEARCH_ENDPOINT", "")
+AZURE_SEARCH_KEY = os.environ.get("AZURE_SEARCH_KEY", "")
 AZURE_SEARCH_INDEX_NAME = "hicovault"
-CLIENT_ID = os.environ["CLIENT_ID"]
-CLIENT_SECRET = os.environ["CLIENT_SECRET"]
-TENANT_ID = os.environ["TENANT_ID"]
+CLIENT_ID = os.environ.get("CLIENT_ID", "")
+CLIENT_SECRET = os.environ.get("CLIENT_SECRET", "")
+TENANT_ID = os.environ.get("TENANT_ID", "")
+
+# Ollama & Qdrant configuration (local defaults)
+OLLAMA_HOST = os.environ.get("OLLAMA_HOST", "http://localhost:11434")
+OLLAMA_MODEL = os.environ.get("OLLAMA_MODEL", "llama2")
+QDRANT_HOST = os.environ.get("QDRANT_HOST", "localhost")
+QDRANT_PORT = int(os.environ.get("QDRANT_PORT", "6333"))
+QDRANT_COLLECTION = os.environ.get("QDRANT_COLLECTION", "hicovault")
+
 RETRIEVAL_SIMILARITY_THRESHOLD = 0.5
 conversation_history = []
-clientOpenAI = AzureOpenAI(
-    azure_endpoint=os.environ["AZURE_OPENAI_ENDPOINT"],
-    api_key=os.environ["AZURE_OPENAI_KEY"],
-    api_version="2024-02-15-preview",
-)
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 ws_router = APIRouter()
+
+# Simple Ollama helpers (HTTP API)
+
+
+def _ollama_embed(texts: List[str]) -> List[List[float]]:
+    """Return embeddings for a list of texts via Ollama HTTP API.
+    Falls back with a helpful error if the API contract differs.
+    """
+    try:
+        url = f"{OLLAMA_HOST.rstrip('/')}/api/embed"
+        payload = {"model": OLLAMA_MODEL, "input": texts}
+        resp = requests.post(url, json=payload, timeout=60)
+        resp.raise_for_status()
+        data = resp.json()
+        # Try common response shapes
+        if isinstance(data, dict) and "embeddings" in data:
+            return data["embeddings"]
+        if isinstance(data, dict) and "output" in data:
+            return data["output"]
+        # some Ollama versions return a list directly
+        if isinstance(data, list):
+            return data
+        raise RuntimeError(f"Unexpected Ollama embed response shape: {type(data)}")
+    except Exception as e:
+        logger.error(f"Ollama embed request failed: {e}")
+        raise
+
+
+def _ollama_generate(
+    prompt: str, max_tokens: int = 800, temperature: float = 0.1
+) -> str:
+    """Generate a response using Ollama HTTP API.
+    Returns the generated text (best-effort parsing).
+    """
+    try:
+        url = f"{OLLAMA_HOST.rstrip('/')}/api/generate"
+        payload = {
+            "model": OLLAMA_MODEL,
+            "prompt": prompt,
+            "max_tokens": max_tokens,
+            "temperature": temperature,
+        }
+        resp = requests.post(url, json=payload, timeout=120)
+        resp.raise_for_status()
+        data = resp.json()
+        # Common shapes: {"output": "..."} or {"text": "..."} or choices
+        if isinstance(data, dict):
+            if "output" in data and isinstance(data["output"], str):
+                return data["output"]
+            if "text" in data and isinstance(data["text"], str):
+                return data["text"]
+            # choices -> join texts
+            choices = data.get("choices") or data.get("outputs")
+            if choices and isinstance(choices, list):
+                parts = []
+                for c in choices:
+                    if isinstance(c, dict):
+                        if "text" in c:
+                            parts.append(c["text"])
+                        elif "output" in c:
+                            parts.append(c["output"])
+                    elif isinstance(c, str):
+                        parts.append(c)
+                return "\n".join(parts)
+        # fallback to raw JSON
+        return json.dumps(data)
+    except Exception as e:
+        logger.error(f"Ollama generate request failed: {e}")
+        raise
+
+
+# Initialize Qdrant client once
+_qdrant_client = QdrantClient(url=f"http://{QDRANT_HOST}:{QDRANT_PORT}")
+
+
+# Lightweight shim so existing code that calls clientOpenAI.chat.completions.create continues to work
+class _ClientOpenAIShim:
+    class _Chat:
+        class _Completions:
+            def create(
+                self, model, messages, temperature=0.1, max_tokens=800, **kwargs
+            ):
+                # Convert messages list into a single prompt for Ollama
+                prompt_parts = []
+                for m in messages:
+                    role = m.get("role", "")
+                    content = m.get("content", "")
+                    prompt_parts.append(f"[{role}] {content}")
+                prompt = "\n".join(prompt_parts)
+                text = _ollama_generate(
+                    prompt, max_tokens=max_tokens, temperature=temperature
+                )
+                return SimpleNamespace(
+                    model_dump=lambda: {"choices": [{"message": {"content": text}}]}
+                )
+
+        completions = _Completions()
+
+    chat = _Chat()
+
+
+clientOpenAI = _ClientOpenAIShim()
 
 
 @ws_router.websocket("/ws/chat")
@@ -56,35 +161,46 @@ def validate_retrieved_docs(
     """
     Validate retrieved documents by comparing their embeddings to the query's embedding.
 
-    Args:
-        query (str): Sanitized user query.
-        docs (List[dict]): Retrieved documents from Azure Search.
-        similarity_threshold (float): Minimum cosine similarity for relevance.
-
-    Returns:
-        List[dict]: Filtered list of relevant documents.
+    This implementation uses Ollama to compute embeddings for document text (truncated)
+    and sklearn cosine_similarity to validate relevance.
     """
     try:
         valid_docs = []
 
+        # Normalize query embedding (accept either a raw list or an object with .value)
+        if hasattr(query_embedding, "value"):
+            qvec = query_embedding.value
+        else:
+            qvec = query_embedding
+
         for doc in docs:
-            # Assume doc["embedding"] exists or compute embedding from doc["content"]
-            doc_content = doc["content"]
-            doc_embedding = (
-                clientOpenAI.embeddings.create(
-                    input=doc_content[:1000], model="embedding-rag-confluence"
-                )
-                .data[0]
-                .embedding
-            )  # Truncate for efficiency
-            similarity = cosine_similarity([query_embedding.value], [doc_embedding])[0][
-                0
-            ]
+            # doc may already be a dict payload (we normalized Qdrant hits earlier)
+            doc_content = doc.get("content", "")
+            if not doc_content:
+                # Skip empty docs
+                continue
+
+            # Compute doc embedding via Ollama (truncate for speed)
+            try:
+                doc_embedding = _ollama_embed([doc_content[:1000]])[0]
+            except Exception as e:
+                logger.error(f"Failed to embed doc for validation: {e}")
+                continue
+
+            # Compute cosine similarity
+            try:
+                similarity = cosine_similarity([qvec], [doc_embedding])[0][0]
+            except Exception as e:
+                logger.error(f"Cosine similarity computation failed: {e}")
+                continue
+
             if similarity >= similarity_threshold:
+                # Attach validation score for later use
+                doc["_validation_score"] = similarity
                 valid_docs.append(doc)
             else:
                 logger.info(
-                    f"Discarded irrelevant document: {doc['title']} (similarity: {similarity})"
+                    f"Discarded irrelevant document: {doc.get('title','<no-title>')} (similarity: {similarity})"
                 )
         return valid_docs
     except Exception as e:
@@ -142,22 +258,35 @@ def generate_response_helper(user_id, user_question, history):
             f"Error getting the access level for the user id: {user_id}: {str(e)}"
         )
         raise
-    query_vector = Vector(
-        value=clientOpenAI.embeddings.create(
-            input=user_question, model="embedding-rag-confluence"
-        )
-        .data[0]
-        .embedding,
-        fields="embedding",
+    query_vector = _ollama_embed([user_question])[0]
+
+    # Query Qdrant and normalize results into the doc shape used elsewhere in the file
+    hits = _qdrant_client.search(
+        collection_name=QDRANT_COLLECTION,
+        query_vector=query_vector,
+        limit=5,
     )
 
-    search_client = SearchClient(
-        endpoint=AZURE_SEARCH_ENDPOINT,
-        index_name=AZURE_SEARCH_INDEX_NAME,
-        credential=AzureKeyCredential(AZURE_SEARCH_KEY),
-    )
+    # Normalize hits -> list[dict] with expected keys used by the rest of the code
+    docs = []
+    for hit in hits:
+        # qdrant returns objects with .payload, .id, .score
+        payload = getattr(hit, "payload", None) or {}
+        score = getattr(hit, "score", None)
+        doc = {
+            "content": payload.get("content", payload.get("text", "")),
+            "sourcefile": payload.get("sourcefile", payload.get("source", "")),
+            "title": payload.get("title", payload.get("name", "")),
+            "last_modified_date": payload.get(
+                "last_modified_date", payload.get("date", "")
+            ),
+            "@search.score": score if score is not None else payload.get("score", 0),
+            "access_level": payload.get("access_level", payload.get("access", 1)),
+        }
+        # merge entire payload so downstream code can access other metadata if needed
+        doc.update(payload)
+        docs.append(doc)
 
-    docs = search_client.search(search_text="", vectors=[query_vector], top=5)
     docs_list = []
     context_list = []
     # history = []
@@ -252,106 +381,43 @@ def generate_response_helper(user_id, user_question, history):
             try:
                 complete_message = formatted_history + message
                 # Call LLM model to generate response
-                completion = clientOpenAI.chat.completions.create(
-                    model=llm_val,
-                    messages=complete_message,
+                response = _ollama_generate(
+                    prompt=str(complete_message),
                     temperature=temperature_value,
                     max_tokens=max_token,
-                    top_p=0.95,
-                    frequency_penalty=0,
-                    presence_penalty=0,
-                    stop=None,
                 )
-
-                response = completion.model_dump()["choices"][0]["message"]["content"]
 
             except Exception as e:
 
-                # Default message in case no other specific details are found
-
+                # Generic error handling for LLM generation failures
+                logger.error(f"LLM generation failed: {e}")
                 error_message = (
                     "WARNING! An unexpected error occurred. "
-                    "Please refresh the page or try reducing the context/document count. "
-                    "Alternatively, switch to a larger context window LLM if available.\n"
+                    "Please refresh the page or try reducing the context/document count.\n"
                 )
 
+                # Try to extract structured error information when available, but do not assume Azure-specific shape
                 try:
-
-                    # Check if the exception has an attached response
-
+                    err_text = None
                     if hasattr(e, "response") and e.response is not None:
-
-                        error_data = e.response.json()
-
-                        error_details = error_data.get("error", {})
-
-                        # If the error code indicates a content filter has been triggered
-
-                        if error_details.get("code") == "content_filter":
-
-                            cf_message = error_details.get(
-                                "message", "No detailed message provided."
-                            )
-
-                            inner_error = error_details.get("innererror", {})
-
-                            content_filter_info = inner_error.get(
-                                "content_filter_result", {}
-                            )
-
-                            # Build a more detailed explanation for each filter category
-
-                            filter_messages = []
-
-                            for category, filter_details in content_filter_info.items():
-                                is_filtered = filter_details.get("filtered", False)
-
-                                severity = filter_details.get("severity", "N/A")
-
-                                filter_messages.append(
-                                    f"  - {category.capitalize()}: Filtered={is_filtered}, Severity={severity}"
-                                )
-
-                            # Construct a custom message
-
-                            error_message = (
-                                "WARNING! Your request triggered Azure OpenAI's content management policy.\n"
-                                f"Details: {cf_message}\n"
-                                # "Content Filtering Report:\n"
-                                #
-                                # + "\n".join(filter_messages)
-                                + "\n\nPlease adjust your prompt and try again."
-                            )
-
-                        else:
-
-                            # For other error codes or unknown errors, include basic details
-
-                            msg = error_details.get(
-                                "message", "No error message provided."
-                            )
-
-                            code = error_details.get("code", "N/A")
-
-                            param = error_details.get("param", "N/A")
-
-                            error_message = (
-                                "An error occurred while generating the response:\n"
-                                f"  - Message: {msg}\n"
-                                f"  - Code: {code}\n"
-                                f"  - Parameter: {param}"
-                            )
-
-                    else:
-
-                        # If we cannot parse any specific error details from the response
-
-                        error_message = f"{error_message}\nDetails: {str(e)}"
-
+                        try:
+                            err_json = e.response.json()
+                            # Prefer a human-readable message if present
+                            if isinstance(err_json, dict):
+                                err_text = err_json.get("error", {}).get(
+                                    "message"
+                                ) or json.dumps(err_json)
+                            else:
+                                err_text = str(err_json)
+                        except Exception:
+                            err_text = str(e.response)
+                    if not err_text:
+                        err_text = str(e)
+                    error_message = error_message + f"Details: {err_text}"
                 except Exception as parse_ex:
-                    # If parsing error details fails unexpectedly
                     logger.error(f"Failed to parse error details: {parse_ex}")
-                    error_message = f"{error_message}\nDetails: {str(e)}"
+                    error_message = error_message + f"Details: {str(e)}"
+
                 logger.error(error_message)
                 response = error_message
 

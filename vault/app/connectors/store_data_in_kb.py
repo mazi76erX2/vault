@@ -2,39 +2,34 @@ from typing import List, Dict
 
 import os
 import logging
-import gradio as gr
+
+# gradio removed
 from datetime import datetime
 import hashlib
+import json
+from pathlib import Path as _Path
 
 from langchain_community.document_loaders import ConfluenceLoader
 from atlassian import Confluence
-from openai import AzureOpenAI
+
+# Ollama + Qdrant
 from langchain.text_splitter import RecursiveCharacterTextSplitter
 from langchain.text_splitter import CharacterTextSplitter
-from azure.core.credentials import AzureKeyCredential
-from azure.search.documents import SearchClient
-from azure.search.documents.indexes import SearchIndexClient
-from azure.search.documents.indexes.models import SearchIndex
-from azure.search.documents.indexes.models import (
-    HnswParameters,
-    HnswVectorSearchAlgorithmConfiguration,
-    PrioritizedFields,
-    SearchableField,
-    SearchField,
-    SearchFieldDataType,
-    SemanticConfiguration,
-    SemanticField,
-    SemanticSettings,
-    SimpleField,
-    VectorSearch,
-)
+
+# Azure-specific index imports removed
 from app.connectors.sharepoint_client import SharePointClient
+from app.connectors.qdrant_utils import (
+    upsert_documents,
+    recreate_collection,
+    get_qdrant_client,
+    _ollama_embed,
+)
 from pathlib import Path
 from dotenv import load_dotenv
-import os
 import uuid
 from langchain.text_splitter import RecursiveCharacterTextSplitter
-from sentence_transformers import SentenceTransformer
+
+# sentence_transformers removed
 from qdrant_client import QdrantClient
 from qdrant_client.models import PointStruct
 
@@ -52,86 +47,91 @@ logging.basicConfig(
     ],
 )
 
+LOCAL_KB_PATH = os.environ.get("LOCAL_KB_PATH", "./kb_local")
 
-def check_doc_in_index(search_client, doc_id, last_modified_date):
+
+def _ensure_local_kb_dir():
+    p = _Path(LOCAL_KB_PATH)
+    p.mkdir(parents=True, exist_ok=True)
+    return p
+
+
+def _save_points_locally(collection_name: str, points: List[dict]):
+    """Append points to a newline-delimited JSON file for the collection.
+
+    Each line is a JSON object with keys: id, content, metadata, saved_at.
     """
-    Check if a document with the given doc_id exists in the Azure Cognitive Search index.
+    try:
+        _ensure_local_kb_dir()
+        out_file = _Path(LOCAL_KB_PATH) / f"{collection_name}.jsonl"
+        with out_file.open("a", encoding="utf-8") as fh:
+            for pt in points:
+                record = {
+                    "id": pt.get("id"),
+                    "content": pt.get("content", ""),
+                    "metadata": pt.get("metadata", {}),
+                    "saved_at": datetime.now().isoformat(),
+                }
+                fh.write(json.dumps(record, ensure_ascii=False) + "\n")
+        logging.debug(f"Saved {len(points)} points to local KB file {out_file}")
+    except Exception as e:
+        logging.error(f"Failed to save points locally for '{collection_name}': {e}")
 
-    Args:
-        search_client (SearchClient): An instance of the Azure Cognitive Search client.
-        doc_id (str): The unique document ID to search for.
 
-    Returns:
-        bool: True if the document exists, False otherwise.
+def dump_qdrant_collection_to_disk(collection_name: str, out_path: str = None):
+    """Fetch points from Qdrant and write them to a local JSONL file.
+
+    This is a snapshot and may be used for backups or offline inspection.
     """
-    query = doc_id
-    results = search_client.search(
-        query, search_fields=["doc_id"]
-    )  # Limit results to 1 for efficiency
-    ids = []
-    is_old = False
-    for result in results:  # If any result exists, the doc_id is in the index
-        if doc_id == result.get("doc_id"):
-            is_old = True
-            if last_modified_date != result.get("last_modified_date"):
-                ids.append(result.get("id"))
-    return ids, is_old
+    try:
+        client = get_qdrant_client()
+        out_dir = _ensure_local_kb_dir()
+        out_file = (
+            _Path(out_path)
+            if out_path
+            else out_dir / f"{collection_name}_snapshot.jsonl"
+        )
+        # Attempt to scroll through collection (page through results)
+        batch = 100
+        offset = 0
+        total_written = 0
+        with out_file.open("w", encoding="utf-8") as fh:
+            while True:
+                try:
+                    resp = client.scroll(
+                        collection_name=collection_name, limit=batch, offset=offset
+                    )
+                except Exception:
+                    # Fallback: try with 'limit' only (older client versions)
+                    try:
+                        resp = client.scroll(
+                            collection_name=collection_name, limit=batch
+                        )
+                    except Exception as e:
+                        logging.error(f"Failed to scroll Qdrant collection: {e}")
+                        break
 
-
-def get_index(name: str) -> SearchIndex:
-    """
-    Returns an Azure Cognitive Search index with the given name.
-    """
-    fields = [
-        SimpleField(name="id", type=SearchFieldDataType.String, key=True),
-        SearchableField(name="doc_id", type=SearchFieldDataType.String),
-        SimpleField(name="chunk_index", type=SearchFieldDataType.Int32),
-        SimpleField(name="sourcefile", type=SearchFieldDataType.String),
-        SimpleField(name="title", type=SearchFieldDataType.String),
-        SimpleField(name="created_date", type=SearchFieldDataType.String),
-        SimpleField(name="last_modified_date", type=SearchFieldDataType.String),
-        SimpleField(name="created_by", type=SearchFieldDataType.String),
-        SimpleField(name="last_modified_by", type=SearchFieldDataType.String),
-        SimpleField(name="access_level", type=SearchFieldDataType.Int32),
-        SearchableField(name="content", type=SearchFieldDataType.String),
-        SearchField(
-            name="embedding",
-            type=SearchFieldDataType.Collection(SearchFieldDataType.Single),
-            vector_search_dimensions=1536,
-            vector_search_configuration="default",
-        ),
-    ]
-
-    semantic_settings = SemanticSettings(
-        configurations=[
-            SemanticConfiguration(
-                name="default",
-                prioritized_fields=PrioritizedFields(
-                    title_field=None,
-                    prioritized_content_fields=[SemanticField(field_name="content")],
-                ),
-            )
-        ]
-    )
-
-    vector_search = VectorSearch(
-        algorithm_configurations=[
-            HnswVectorSearchAlgorithmConfiguration(
-                name="default",
-                kind="hnsw",
-                parameters=HnswParameters(metric="cosine"),
-            )
-        ]
-    )
-
-    index = SearchIndex(
-        name=name,
-        fields=fields,
-        semantic_settings=semantic_settings,
-        vector_search=vector_search,
-    )
-
-    return index
+                points = getattr(resp, "points", None) or resp.get("points", [])
+                if not points:
+                    break
+                for p in points:
+                    payload = getattr(p, "payload", None) or p.get("payload", {})
+                    rec = {
+                        "id": getattr(p, "id", None) or p.get("id"),
+                        "payload": payload,
+                    }
+                    fh.write(json.dumps(rec, ensure_ascii=False) + "\n")
+                    total_written += 1
+                if len(points) < batch:
+                    break
+                offset += len(points)
+        logging.info(
+            f"Dumped {total_written} points from Qdrant collection '{collection_name}' to {out_file}"
+        )
+        return str(out_file)
+    except Exception as e:
+        logging.error(f"Error dumping Qdrant collection to disk: {e}")
+        return None
 
 
 def load_from_confluence_loader(confluence_url, username, api_key, space_key):
@@ -210,308 +210,127 @@ def generate_chunk_ids(doc_id, num_chunks):
     return [f"{doc_id}_chunk_{i}" for i in range(1, num_chunks + 1)]
 
 
-def store_confluence_in_azure_kb(confluence_url, username, api_key, space_key, index):
-    AZURE_SEARCH_ENDPOINT = os.environ["AZURE_SEARCH_ENDPOINT"]
-    AZURE_SEARCH_KEY = os.environ["AZURE_SEARCH_KEY"]
-    AZURE_SEARCH_INDEX_NAME = index
+def ensure_collection_exists(collection_name: str):
+    """Create the Qdrant collection only if it does not already exist."""
+    client = get_qdrant_client()
+    try:
+        cols_resp = client.get_collections()
+        cols = cols_resp.get("collections", []) if isinstance(cols_resp, dict) else []
+        names = [c.get("name") for c in cols if isinstance(c, dict)]
+    except Exception:
+        # Fallback if client returns different shape
+        try:
+            names = [c.name for c in client.get_collections().collections]
+        except Exception:
+            names = []
+    if collection_name not in names:
+        logging.info(
+            f"Creating qdrant collection '{collection_name}' because it does not exist."
+        )
+        recreate_collection(collection_name)
+    else:
+        logging.debug(
+            f"Qdrant collection '{collection_name}' already exists. Skipping recreate."
+        )
 
-    search_client = SearchClient(
-        endpoint=AZURE_SEARCH_ENDPOINT,
-        index_name=AZURE_SEARCH_INDEX_NAME,
-        credential=AzureKeyCredential(AZURE_SEARCH_KEY),
-    )
-    clientOpenAI = AzureOpenAI(
-        azure_endpoint=os.environ["AZURE_OPENAI_ENDPOINT"],
-        api_key=os.environ["AZURE_OPENAI_KEY"],
-        api_version="2024-02-15-preview",
-    )
-    search_index_client = SearchIndexClient(
-        AZURE_SEARCH_ENDPOINT, AzureKeyCredential(AZURE_SEARCH_KEY)
-    )
+
+# New: ingest Confluence content directly into Qdrant using Ollama for embeddings
+def store_confluence_in_qdrant(
+    confluence_url, username, api_key, space_key, collection_name="hicovault"
+):
     docs = load_from_confluence_loader(confluence_url, username, api_key, space_key)
     page_tree = get_hiearchy_space(docs, confluence_url, username, api_key)
-    # Split data into manageable chunks
     text_splitter = RecursiveCharacterTextSplitter(
         chunk_size=5000, chunk_overlap=20, length_function=len
     )
     chunks = text_splitter.split_documents(docs)
-    datas = []
-    # Store the data into Azure search index
+
+    points = []
+    doc_counter = None
     chunk_counter = 0
-    doc_counter = ""
-    for index, chunk in enumerate(chunks):
+
+    for chunk in chunks:
         hierarchy = format_hierarchy(chunk.metadata["id"], page_tree)
         augmented_content = augment_content_with_hierarchy(
             chunk.page_content, hierarchy, chunk.metadata["when"][:10]
         )
-
         doc_id = generate_doc_id(chunk.metadata["title"], chunk.metadata["source"])
-        try:
-            ids, is_old = check_doc_in_index(
-                search_client, doc_id, chunk.metadata["when"][:10]
-            )
-        except:
-            ids = []
-            is_old = False
-
-        if ids:
-            print(f"the file: {chunk.metadata['title']} deleted from the KB")
-
-            search_client.delete_documents(ids)
-
-            if doc_id == doc_counter:
-                chunk_counter += 1
-            else:
-                doc_counter = doc_id
-                chunk_counter = 0
-            chunk_id = (
-                f"{doc_id}_chunk_{chunk_counter}"  # Combine doc_id and chunk index
-            )
-            data = {
-                "id": chunk_id,
-                "doc_id": doc_id,
-                "chunk_index": chunk_counter,
-                "content": augmented_content,
-                "sourcefile": chunk.metadata["source"],
-                "title": chunk.metadata["title"],
-                "created_date": "",
-                "last_modified_date": "",
-                "created_by": "",
-                "last_modified_by": chunk.metadata["when"][:10],
+        if doc_id == doc_counter:
+            chunk_counter += 1
+        else:
+            doc_counter = doc_id
+            chunk_counter = 0
+        chunk_id = f"{doc_id}_chunk_{chunk_counter}"
+        point = {
+            "id": chunk_id,
+            "content": augmented_content,
+            "metadata": {
+                "sourcefile": chunk.metadata.get("source", ""),
+                "title": chunk.metadata.get("title", ""),
+                "last_modified_date": chunk.metadata.get("when", "")[:10],
                 "access_level": 1,
-            }
-            datas.append(data)
-        if not is_old:
-            if doc_id == doc_counter:
-                chunk_counter += 1
-            else:
-                doc_counter = doc_id
-                chunk_counter = 0
-            chunk_id = (
-                f"{doc_id}_chunk_{chunk_counter}"  # Combine doc_id and chunk index
-            )
-            data = {
-                "id": chunk_id,
-                "doc_id": doc_id,
-                "chunk_index": chunk_counter,
-                "content": augmented_content,
-                "sourcefile": chunk.metadata["source"],
-                "title": chunk.metadata["title"],
-                "created_date": "",
-                "last_modified_date": chunk.metadata["when"][:10],
-                "created_by": "",
-                "last_modified_by": "",
-                "access_level": 1,
-            }
-            datas.append(data)
+            },
+        }
+        points.append(point)
 
-    for doc in datas:
-        doc["embedding"] = (
-            clientOpenAI.embeddings.create(
-                input=doc["content"], model="embedding-rag-confluence"
-            )
-            .data[0]
-            .embedding
-        )
+    # Persist locally first (so we have a local copy regardless of Qdrant state)
+    try:
+        _save_points_locally(collection_name, points)
+    except Exception:
+        logging.exception("Local save failed for confluence points")
 
-    # Create an Azure Cognitive Search index.
-    index = get_index(AZURE_SEARCH_INDEX_NAME)
-    search_index_client.create_or_update_index(index)
-
-    # Upload our data to the index.
-
-    if datas:
-        search_client.upload_documents(datas)
-
-
-def store_sharepoint_in_azure_kb(site_hostname, site_path, index):
-    CLIENT_ID = os.environ["sharepoint_Client_ID"]
-    CLIENT_SECRET = os.environ["sharepoint_Secret"]
-    TENANT_ID = os.environ["TENANT_ID"]
-    site_url = f"{site_hostname}:/sites/{site_path}"
-    logging.info("Starting the SharePoint Client")
-    sharepoint_client = SharePointClient(
-        TENANT_ID, CLIENT_ID, CLIENT_SECRET, "https://graph.microsoft.com/", index
+    # Ensure collection exists (create only if missing) and upsert using qdrant_utils which will call Ollama for embeddings
+    ensure_collection_exists(collection_name)
+    upsert_documents(collection_name, points)
+    logging.info(
+        f"Upserted {len(points)} points into Qdrant collection '{collection_name}'"
     )
-    site_id = sharepoint_client.get_site_id(site_url)
-    print("Site ID:", site_id)
 
-    drive_info = sharepoint_client.get_drive_id(site_id)
-    print("Root folder:", drive_info)
 
-    drive_id = drive_info[0][0]  # Assume the first drive ID
-    folder_content = sharepoint_client.get_folder_content(site_id, drive_id)
+# Convenience wrapper for single-document ingestion
+def store_in_qdrant(doc, collection_name="hicovault"):
+    # doc expected: {"file_name", "content", "file_title", "level"}
+    point = {
+        "id": doc.get("file_name") or str(uuid.uuid4()),
+        "content": doc.get("content", ""),
+        "metadata": {
+            "sourcefile": doc.get("file_name", ""),
+            "title": doc.get("file_title", ""),
+            "last_modified_date": doc.get("created_date", ""),
+            "access_level": doc.get("level", 1),
+        },
+    }
+    # Persist locally before upsert
+    try:
+        _save_points_locally(collection_name, [point])
+    except Exception:
+        logging.exception("Local save failed for single doc")
 
-    for folder_name in folder_content.keys():
-        logging.info(f"Processing the SharePoint folder: {folder_name}")
-        folder_id = folder_content[folder_name]
-        sharepoint_client.process_folder_contents(
-            site_id, drive_id, folder_id, local_folder_path="data"
-        )
+    # Ensure collection exists but do not recreate if present
+    ensure_collection_exists(collection_name)
+    upsert_documents(collection_name, [point])
+    logging.info(
+        f"Stored document {point['id']} in Qdrant collection '{collection_name}'"
+    )
+
+
+# Compatibility wrappers (preserve existing call sites)
+
+
+def store_confluence_in_azure_kb(confluence_url, username, api_key, space_key, index):
+    logging.warning(
+        "store_confluence_in_azure_kb is deprecated; routing to Qdrant ingestion."
+    )
+    return store_confluence_in_qdrant(
+        confluence_url, username, api_key, space_key, collection_name=index
+    )
 
 
 def store_in_azure_kb(doc):
-    AZURE_SEARCH_ENDPOINT = os.environ["AZURE_SEARCH_ENDPOINT"]
-    AZURE_SEARCH_KEY = os.environ["AZURE_SEARCH_KEY"]
-    AZURE_SEARCH_INDEX_NAME = "hicovault"
-
-    clientOpenAI = AzureOpenAI(
-        azure_endpoint=os.environ["AZURE_OPENAI_ENDPOINT"],
-        api_key=os.environ["AZURE_OPENAI_KEY"],
-        api_version="2024-02-15-preview",
+    logging.warning("store_in_azure_kb is deprecated; routing to Qdrant ingestion.")
+    return store_in_qdrant(
+        doc, collection_name=os.environ.get("QDRANT_COLLECTION", "hicovault")
     )
 
-    # Initialize Azure Cognitive Search client
-    search_index_client = SearchIndexClient(
-        AZURE_SEARCH_ENDPOINT, AzureKeyCredential(AZURE_SEARCH_KEY)
-    )
 
-    datas = []
-    counter = 0
-    splitter = CharacterTextSplitter(separator="\n", chunk_size=5000, chunk_overlap=20)
-
-    # Process each text document
-    chunks = splitter.split_text(doc["content"])
-    for chunk in chunks:
-        counter += 1
-        data = {
-            "id": str(counter),
-            "content": chunk,
-            "sourcefile": doc["file_name"],
-            "title": doc["file_title"],
-            "created_date": datetime.now().date(),  # or extract actual date if available
-            "access_level": doc["level"],
-        }
-        datas.append(data)
-
-    for doc in datas:
-        doc["embedding"] = (
-            clientOpenAI.embeddings.create(
-                input=doc["content"], model="embedding-rag-confluence"
-            )
-            .data[0]
-            .embedding
-        )
-
-    # Create an Azure Cognitive Search index
-    index = get_index(AZURE_SEARCH_INDEX_NAME)
-    search_index_client.create_or_update_index(index)
-    logging.info("Uploading Embeddings into Vector Storage Place ...")
-
-    # Upload data to the index
-    search_client = SearchClient(
-        endpoint=AZURE_SEARCH_ENDPOINT,
-        index_name=AZURE_SEARCH_INDEX_NAME,
-        credential=AzureKeyCredential(AZURE_SEARCH_KEY),
-    )
-    search_client.upload_documents(datas)
-
-
-def store_confluence_in_qdrant(
-    confluence_url: str,
-    username: str,
-    api_key: str,
-    space_key: str,
-    collection_name: str = "confluence-kb",
-    host: str = "localhost",
-    port: int = 6333,
-    chunk_size: int = 5000,
-    chunk_overlap: int = 20,
-    embedding_model: str = "all-MiniLM-L6-v2",
-):
-    """
-    Extract documents from a Confluence space, split them into manageable chunks,
-    create embeddings for each chunk and store them in a Qdrant collection.
-
-    Parameters:
-      confluence_url (str): The base URL of your Confluence instance.
-      username (str): Username for Confluence.
-      api_key (str): API token for Confluence.
-      space_key (str): Key for the Confluence space.
-      collection_name (str): Name of the Qdrant collection to store documents.
-      host (str): Qdrant server host.
-      port (int): Qdrant server port.
-      chunk_size (int): Maximum number of characters per text chunk.
-      chunk_overlap (int): Number of overlapping characters between chunks.
-      embedding_model (str): SentenceTransformer model to use for creating embeddings.
-    """
-
-    # Step 1: Load data from Confluence.
-    print(f"Extracting data from Confluence space '{space_key}' at: {confluence_url}")
-    docs = load_from_confluence_loader(confluence_url, username, api_key, space_key)
-    page_tree = get_hiearchy_space(docs, confluence_url, username, api_key)
-
-    # Step 2: Split documents into chunks.
-    text_splitter = RecursiveCharacterTextSplitter(
-        chunk_size=chunk_size, chunk_overlap=chunk_overlap, length_function=len
-    )
-    chunks = text_splitter.split_documents(docs)
-    print(f"Split Confluence documents into {len(chunks)} chunks.")
-
-    # Step 3: Create embeddings for each chunk.
-    embedder = SentenceTransformer(embedding_model)
-
-    # Step 4: Initialize Qdrant client and recreate the collection.
-    # Adjust the 'size' in vectors_config to match your chosen embedding model's dimension,
-    # e.g., for "all-MiniLM-L6-v2" the vector size is 384.
-    client = QdrantClient(host=host, port=port)
-    client.recreate_collection(
-        collection_name=collection_name,
-        vectors_config={"size": 384, "distance": "Cosine"},
-    )
-
-    points = []
-    for i, chunk in enumerate(chunks):
-        # Prepare the hierarchy if available.
-        hierarchy = (
-            format_hierarchy(chunk.metadata["id"], page_tree)
-            if "id" in chunk.metadata
-            else ""
-        )
-        augmented_content = (
-            augment_content_with_hierarchy(
-                chunk.page_content, hierarchy, chunk.metadata["when"][:10]
-            )
-            if "when" in chunk.metadata
-            else chunk.page_content
-        )
-
-        # Create embedding for the (augmented) content.
-        embedding = embedder.encode(augmented_content).tolist()
-
-        # Generate a document ID based on available metadata.
-        doc_id = (
-            generate_doc_id(chunk.metadata["title"], chunk.metadata["source"])
-            if "title" in chunk.metadata and "source" in chunk.metadata
-            else str(uuid.uuid4())
-        )
-
-        # Create a unique identifier for each chunk in Qdrant.
-        point = PointStruct(
-            id=str(uuid.uuid4()),
-            vector=embedding,
-            payload={
-                "doc_id": doc_id,
-                "chunk_index": i,
-                "content": augmented_content,
-                "sourcefile": (
-                    chunk.metadata["source"]
-                    if "source" in chunk.metadata
-                    else confluence_url
-                ),
-                "title": chunk.metadata.get("title", "No Title"),
-                "created_date": (
-                    chunk.metadata["when"][:10] if "when" in chunk.metadata else ""
-                ),
-                "last_modified_date": (
-                    chunk.metadata["when"][:10] if "when" in chunk.metadata else ""
-                ),
-                "created_by": "",  # Optionally provide creator information.
-                "access_level": 1,
-            },
-        )
-        points.append(point)
-
-    # Step 5: Insert the points into Qdrant.
-    client.upsert(collection_name=collection_name, points=points)
-    print(f"Inserted {len(points)} chunks into Qdrant collection '{collection_name}'.")
+# End of file

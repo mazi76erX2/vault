@@ -1,4 +1,4 @@
-FROM python:3.12-slim
+FROM python:3.14-slim
 
 ENV PYTHONUNBUFFERED=1
 ENV PYTHONPATH="/app"
@@ -47,4 +47,4 @@ RUN chmod +x /app/startup.sh
 
 EXPOSE 7860
 
-CMD ["/app/startup.sh"] 
+CMD ["/app/startup.sh"]
