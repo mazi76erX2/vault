@@ -1,50 +1,64 @@
-FROM python:3.14-slim
+# Stage 1: builder
+FROM python:3.14-slim AS builder
 
-ENV PYTHONUNBUFFERED=1
-ENV PYTHONPATH="/app"
+ENV PYTHONUNBUFFERED=1 \
+    PYTHONDONTWRITEBYTECODE=1 \
+    UV_PROJECT_ENVIRONMENT=/opt/venv \
+    VIRTUAL_ENV=/opt/venv \
+    PATH="/opt/venv/bin:/usr/local/bin:$PATH"
+
+# uv binary
+COPY --from=ghcr.io/astral-sh/uv:latest /uv /usr/local/bin/uv
 
 WORKDIR /app
 
-# Install system dependencies including LDAP development libraries
-RUN apt-get update && apt-get install -y \
-    curl \
-    git \
-    pkg-config \
+# Build deps (only in builder)
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    curl git pkg-config \
     libcairo2-dev \
-    gcc \
-    libldap2-dev \
-    libsasl2-dev \
-    libssl-dev \
-    build-essential \
+    gcc build-essential \
+    libldap2-dev libsasl2-dev libssl-dev \
     && rm -rf /var/lib/apt/lists/*
 
-# Copy requirements first for better caching
-COPY requirements.txt .
+# Dependency layer (best cache hit rate)
+COPY pyproject.toml uv.lock* ./
 
-# Install Python dependencies with retries for large packages
-RUN pip install --upgrade pip && \
-    pip install --timeout=1000 --retries=5 -r requirements.txt
+RUN uv sync --frozen --no-dev || uv sync --no-dev
 
-# Copy application code
+# Now copy the app (separate layer so deps cache properly)
 COPY . .
 
-# Create startup script using traditional RUN approach
-RUN echo '#!/bin/bash\n\
-echo "🚀 Starting HICO Vault Container..."\n\
-\n\
-# Wait for database\n\
-echo "⏳ Waiting for database..."\n\
-sleep 5\n\
-\n\
-# Verify database connection\n\
-echo "✅ Verifying database connection..."\n\
-python scripts/setup_supabase_database.py --verify || echo "⚠️ Database verification failed"\n\
-\n\
-echo "🚀 Starting HICO Vault application..."\n\
-exec uvicorn main:app --host 0.0.0.0 --port 7860 --reload' > /app/startup.sh
 
-RUN chmod +x /app/startup.sh
+# Stage 2: runtime
+FROM python:3.14-slim AS runtime
+
+ENV PYTHONUNBUFFERED=1 \
+    PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONPATH="/app" \
+    VIRTUAL_ENV=/opt/venv \
+    PATH="/opt/venv/bin:/usr/local/bin:$PATH"
+
+WORKDIR /app
+
+# Runtime libs only
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    curl \
+    libcairo2 \
+    libldap-2.5-0 \
+    libsasl2-2 \
+    libssl3 \
+    && rm -rf /var/lib/apt/lists/*
+
+# Copy the virtualenv from builder
+COPY --from=builder /opt/venv /opt/venv
+
+# Copy application code
+COPY --from=builder /app /app
 
 EXPOSE 7860
 
-CMD ["/app/startup.sh"]
+HEALTHCHECK --interval=30s --timeout=10s --start-period=10s --retries=3 \
+  CMD curl -fsS http://localhost:7860/health || exit 1
+
+# Prefer no --reload in containers unless dev
+CMD ["python", "-m", "uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "7860"]

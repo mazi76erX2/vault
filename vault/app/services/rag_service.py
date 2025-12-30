@@ -1,0 +1,88 @@
+from __future__ import annotations
+
+from dataclasses import dataclass
+from typing import List, Optional, Tuple
+import re
+
+from sqlalchemy.orm import Session
+
+from app.core.config import settings
+from app.integrations.ollama_client import embed, chat
+from app.models.kb import KBChunk
+
+
+@dataclass
+class RetrievedChunk:
+    doc_id: str
+    chunk_index: int
+    title: Optional[str]
+    sourcefile: Optional[str]
+    content: str
+    accesslevel: int
+    score: float  # smaller is better for L2 distance
+
+
+def chunk_text(text: str, chunk_size: int, overlap: int) -> List[str]:
+    text = re.sub(r"\s+", " ", text).strip()
+    if not text:
+        return []
+
+    chunks: List[str] = []
+    start = 0
+    while start < len(text):
+        end = min(len(text), start + chunk_size)
+        chunks.append(text[start:end])
+        if end == len(text):
+            break
+        start = max(0, end - overlap)
+    return chunks
+
+
+def retrieve(db: Session, question: str, top_k: int) -> List[RetrievedChunk]:
+    q_emb = embed(question)
+
+    rows: List[Tuple[KBChunk, float]] = (
+        db.query(KBChunk, KBChunk.embedding.l2_distance(q_emb).label("distance"))
+        .order_by("distance")
+        .limit(top_k)
+        .all()
+    )
+
+    out: List[RetrievedChunk] = []
+    for row, dist in rows:
+        out.append(
+            RetrievedChunk(
+                doc_id=row.doc_id,
+                chunk_index=row.chunk_index,
+                title=row.title,
+                sourcefile=row.sourcefile,
+                content=row.content,
+                accesslevel=row.accesslevel,
+                score=float(dist),
+            )
+        )
+    return out
+
+
+def build_messages(question: str, chunks: List[RetrievedChunk]) -> List[dict]:
+    context = "\n\n---\n\n".join(
+        [
+            f"TITLE: {c.title or ''}\nSOURCE: {c.sourcefile or ''}\nCONTENT:\n{c.content}"
+            for c in chunks
+        ]
+    ).strip()
+
+    system = (
+        "You are a helpful assistant. "
+        "Answer using ONLY the provided context. "
+        "If the context does not contain the answer, say you couldn't find it in the knowledge base."
+    )
+
+    user = f"CONTEXT:\n{context}\n\nQUESTION:\n{question}"
+    return [{"role": "system", "content": system}, {"role": "user", "content": user}]
+
+
+def answer(db: Session, question: str) -> str:
+    chunks = retrieve(db, question, top_k=settings.kb_top_k)
+    messages = build_messages(question, chunks)
+    return chat(messages)
