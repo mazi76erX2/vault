@@ -1,5 +1,6 @@
-from typing import Optional
+from __future__ import annotations
 
+from typing import Optional
 from pydantic import BaseModel
 
 
@@ -9,21 +10,24 @@ class Document(BaseModel):
     author: str
     status: str
 
+
 class DocumentRow(BaseModel):
     id: int
     title: str
     reviewer: str
     status: str
 
+
 class AcceptDocumentRequest(BaseModel):
-    doc_id: int
-    severity_levels: str | None = None
+    docid: int
+    severitylevels: Optional[str] = None
     summary: str
     comment: str
 
+
 class RejectRequest(BaseModel):
-    doc_id: int
+    docid: int
     comment: str
     summary: str
     reviewer: Optional[str] = None
-    severity_levels: Optional[str] = None
+    severitylevels: Optional[str] = None

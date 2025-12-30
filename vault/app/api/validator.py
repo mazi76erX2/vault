@@ -1,431 +1,414 @@
+from __future__ import annotations
+
 import logging
+from datetime import datetime, timezone
+from typing import Any, Dict, List, Optional
 
-from fastapi import HTTPException, APIRouter
-from fastapi.params import Depends
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 from gotrue import UserResponse
-from starlette.responses import JSONResponse
 
-from app.connectors.store_data_in_kb import store_in_azure_kb
-from app.constants.constants import SEVERITY_LEVEL_MAP
 from app.database import supabase
+from app.middleware.auth import verifytoken
 from app.dto.validator import (
-    RejectDocumentRequest,
     AcceptDocumentRequest,
+    RejectDocumentRequest,
     DelegateRequest,
     DocumentFetchRequest,
 )
-from app.middleware.auth import verify_token
 
-router = APIRouter(prefix="/api/v1/validator", tags=["collector"])
 logger = logging.getLogger(__name__)
 
+router = APIRouter(prefix="/api/v1/validator", tags=["validator"])
 
-# ValidatorStartPage - get documents ready for validation
+
+def _uid(user: UserResponse) -> str:
+    uid = getattr(getattr(user, "user", None), "id", None)
+    if not uid:
+        raise HTTPException(status_code=400, detail="Missing user id")
+    return str(uid)
+
+
+def _companyid_for_user(userid: str) -> int:
+    resp = (
+        supabase.table("profiles")
+        .select("companyid")
+        .eq("id", userid)
+        .maybe_single()
+        .execute()
+    )
+    data = resp.data or {}
+    companyid = data.get("companyid")
+    if not companyid:
+        raise HTTPException(
+            status_code=400,
+            detail="User does not have a company associated with their profile",
+        )
+    return int(companyid)
+
+
+def _profiles_map(companyid: int) -> Dict[str, str]:
+    # Map userId -> fullname for display
+    resp = (
+        supabase.table("profiles")
+        .select("id, fullname")
+        .eq("companyid", companyid)
+        .execute()
+    )
+    m: Dict[str, str] = {}
+    for row in resp.data or []:
+        pid = row.get("id")
+        if pid:
+            m[str(pid)] = row.get("fullname") or "NA"
+    return m
+
+
+def _parse_dt(s: Optional[str]) -> Optional[datetime]:
+    if not s:
+        return None
+    try:
+        # Handle "Z"
+        s2 = s.replace("Z", "+00:00")
+        dt = datetime.fromisoformat(s2)
+        if dt.tzinfo is None:
+            dt = dt.replace(tzinfo=timezone.utc)
+        return dt
+    except Exception:
+        return None
+
+
 @router.get("/get-documents")
-async def validator_start_get_document(
-    user_id: str, user: UserResponse = Depends(verify_token)
-):
-    try:
-        # 0️⃣ Get company_id from the current logged-in user's profile (validator's company context)
-        profile_response_validator = (
-            supabase.table("profiles")
-            .select("company_id")
-            .eq("id", user.user.id)  # Use current user's id
-            .execute()
-        )
-        if not profile_response_validator.data or not profile_response_validator.data[
-            0
-        ].get("company_id"):
-            raise HTTPException(
-                status_code=400,
-                detail="Validator does not have a company associated with their profile",
-            )
-        company_id = profile_response_validator.data[0]["company_id"]
+async def get_documents(
+    userid: str = Query(...),
+    user: UserResponse = Depends(verifytoken),
+) -> Dict[str, Any]:
+    """
+    UI expects: { documents: [{ id, title, author, status }] }
+    """
+    token_uid = _uid(user)
+    if userid != token_uid:
+        raise HTTPException(status_code=403, detail="userid does not match token user")
 
-        # Fetch all profiles
-        profiles_response = supabase.table("profiles").select("id, full_name").execute()
-        profiles = profiles_response.data
+    companyid = _companyid_for_user(token_uid)
+    usermap = _profiles_map(companyid)
 
-        # Create a dictionary to map profile IDs to names
-        user_map = {profile["id"]: profile["full_name"] for profile in profiles}
+    # Documents awaiting validator action
+    docs = (
+        supabase.table("documents")
+        .select("docid, title, authorid, status")
+        .eq("companyid", companyid)
+        .eq("responsible", token_uid)
+        .in_("status", ["Pending", "Validated - Awaiting Approval"])
+        .execute()
+    ).data or []
 
-        # Fetch documents assigned to the user (responsible for validation)
-        documents_response = (
-            supabase.table("documents")
-            .select("doc_id, title, author_id, status")
-            .in_("status", ["Pending", "Rejected", "Validated - Awaiting Approval"])
-            .eq("responsible", user_id)  # user_id is the responsible validator
-            .eq("company_id", company_id)  # Filter by validator's company_id
-            .execute()
-        )
-
-        documents = documents_response.data
-
-        # Map author_id to full_name in the documents
-        documents_with_authors = [
-            {
-                "id": doc["doc_id"],
-                "title": doc["title"] or "Untitled",
-                "author": user_map.get(doc["author_id"], "N/A"),
-                "status": doc["status"] or "N/A",
-            }
-            for doc in documents
-        ]
-
-        return {"documents": documents_with_authors}
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
-
-
-# ValidatorDocPage - reject
-@router.post("/reject-document")
-async def validator_doc_reject_document(
-    payload: RejectDocumentRequest, user: UserResponse = Depends(verify_token)
-):
-    try:
-        # 0️⃣ Get company_id from user profile (validator's company context)
-        profile_response = (
-            supabase.table("profiles")
-            .select("company_id")
-            .eq("id", user.user.id)
-            .execute()
-        )
-        if not profile_response.data or not profile_response.data[0].get("company_id"):
-            raise HTTPException(
-                status_code=400,
-                detail="Validator does not have a company associated with their profile",
-            )
-        company_id = profile_response.data[0]["company_id"]
-
-        # Construct update fields from the payload
-        update_fields = {
-            "comment": payload.comment,
-            "status": "Rejected",
-            "summary": payload.summary,
-            "reviewer": payload.reviewer,
+    rows = [
+        {
+            "id": d.get("docid"),
+            "title": d.get("title") or "Untitled",
+            "author": usermap.get(str(d.get("authorid")), "NA"),
+            "status": d.get("status") or "NA",
         }
-        if payload.severity_levels:  # Add severity level if provided
-            update_fields["severity_levels"] = payload.severity_levels
-
-        # Perform the update in the "documents" table
-        result = (
-            supabase.table("documents")
-            .update(update_fields)
-            .eq("doc_id", payload.doc_id)
-            .eq("company_id", company_id)  # Filter by validator's company_id
-            .execute()
-        )
-
-        return {"message": "Document rejected successfully", "data": result.data}
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        for d in docs
+    ]
+    return {"documents": rows}
 
 
-# ValidatorDocPage - update document
-@router.post("/accept-document")
-async def validator_doc_accept_document(
-    request: AcceptDocumentRequest, user: UserResponse = Depends(verify_token)
-):
-    try:
-        # 0️⃣ Get company_id from user profile (validator's company context)
-        profile_response = (
-            supabase.table("profiles")
-            .select("company_id")
-            .eq("id", user.user.id)
-            .execute()
-        )
-        if not profile_response.data or not profile_response.data[0].get("company_id"):
-            raise HTTPException(
-                status_code=400,
-                detail="Validator does not have a company associated with their profile",
-            )
-        company_id = profile_response.data[0]["company_id"]
-
-        # Construct the update payload
-        update_payload = {
-            "comment": request.comment,
-            "status": "Validated - Stored",
-            "summary": request.summary,
-        }
-
-        # Include severity_levels only if present
-        if request.severity_levels:
-            update_payload["severity_levels"] = request.severity_levels
-
-        # Update the document in Supabase
-        response = (
-            supabase.table("documents")
-            .update(update_payload)
-            .eq("doc_id", request.doc_id)
-            .eq("company_id", company_id)  # Filter by validator's company_id
-            .execute()
-        )
-
-        documents = response.data
-        logger.info(f"Received document : {response.data}")
-
-        response_message = ""
-
-        if documents:  # Ensure data was returned
-            # Retrieve the 'summary' column value (assuming only one document is returned)
-            document = documents[0]
-            summary_values = document.get("summary", "N/A")
-            severity_levels = document.get("severity_levels", "N/A")
-            title = document.get("title", "N/A")
-            link = document.get("link", "N/A")
-            severity_level_int = SEVERITY_LEVEL_MAP.get(severity_levels, 1)
-            doc_to_store = {
-                "file_name": link,
-                "content": summary_values,
-                "file_title": title,
-                "level": severity_level_int,
-            }
-            store_in_azure_kb(doc_to_store)
-            # store_in_qdrant_kb(doc_to_store, collection_name="standalone_testing")
-            response_message = "Document validated and stored in the Knowledge Base"
-
-            logger.info(response_message)
-
-        else:
-            response_message = "No documents found."
-
-            logger.info(response_message)
-
-        return {"message": response_message, "data": response.data}
-
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Internal server error: {str(e)}")
-
-
-# ValidatorDocPage - delegate document
-@router.post("/delegate-document")
-async def validator_doc_delegate_document(
-    request: DelegateRequest, user: UserResponse = Depends(verify_token)
-):
-    try:
-        # 0️⃣ Get company_id from user profile (validator's company context)
-        profile_response = (
-            supabase.table("profiles")
-            .select("company_id")
-            .eq("id", user.user.id)
-            .execute()
-        )
-        if not profile_response.data or not profile_response.data[0].get("company_id"):
-            raise HTTPException(
-                status_code=400,
-                detail="Validator does not have a company associated with their profile",
-            )
-        company_id = profile_response.data[0]["company_id"]
-
-        # Build update object
-        update_fields = {
-            "comment": request.comment,
-            "status": "On Review",
-            "summary": request.summary,
-            "reviewer": request.delegator_id,
-        }
-        if request.severity_level:
-            update_fields["severity_levels"] = request.severity_level
-
-        # Execute the update query in Supabase
-        response = (
-            supabase.table("documents")
-            .update(update_fields)
-            .eq("doc_id", request.doc_id)
-            .execute()
-        )
-
-        return {"message": "Document updated successfully", "data": response.data}
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
-
-
-# ValidatorDocPage - get document
-@router.post("/get-document")
-async def validator_doc_get_document(
-    request: DocumentFetchRequest, user: UserResponse = Depends(verify_token)
-):
-    try:
-        # 0️⃣ Get company_id from user profile (validator's company context)
-        profile_response = (
-            supabase.table("profiles")
-            .select("company_id")
-            .eq("id", user.user.id)
-            .execute()
-        )
-        if not profile_response.data or not profile_response.data[0].get("company_id"):
-            raise HTTPException(
-                status_code=400,
-                detail="Validator does not have a company associated with their profile",
-            )
-        company_id = profile_response.data[0]["company_id"]
-
-        # Extract `document_id` from request and convert to string
-        document_id = str(request.document_id)
-
-        if not document_id:
-            raise HTTPException(status_code=400, detail="document_id is required")
-
-        # Query the `documents` table in Supabase
-        response = (
-            supabase.table("documents")
-            .select("*")
-            .eq("doc_id", document_id)
-            .eq("company_id", company_id)  # Filter by validator's company_id
-            .execute()
-        )
-
-        data = response.data
-
-        if not data:
-            raise HTTPException(status_code=404, detail="Document not found")
-
-        # Return the first document (assuming doc_id is unique)
-        return {"document": data[0]}
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
-
-
-# ValidatorDocPage - get delegators
-@router.get("/get-delegators")
-async def validator_doc_get_delegators(user: UserResponse = Depends(verify_token)):
-    try:
-        # Query the `profiles` table
-        response = supabase.from_("profiles").select("id, full_name").execute()
-
-        # Format the result
-        data = response.data
-        formatted_data = [
-            {"id": profile.get("id"), "value": profile.get("full_name")}
-            for profile in data
-        ]
-
-        # Return the delegators as JSON
-        return JSONResponse(content={"delegators": formatted_data})
-
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
-
-
-# ValidatorDocPage - fetch document by id (alias for get-document)
-@router.post("/fetch_document_by_id")
-async def validator_doc_fetch_document_by_id(
-    request: DocumentFetchRequest, user: UserResponse = Depends(verify_token)
-):
-    try:
-        # 0️⃣ Get company_id from user profile (validator's company context)
-        profile_response = (
-            supabase.table("profiles")
-            .select("company_id")
-            .eq("id", user.user.id)
-            .execute()
-        )
-        if not profile_response.data or not profile_response.data[0].get("company_id"):
-            raise HTTPException(
-                status_code=400,
-                detail="Validator does not have a company associated with their profile",
-            )
-        company_id = profile_response.data[0]["company_id"]
-
-        # Extract `document_id` from request and convert to string
-        document_id = str(request.document_id)
-
-        if not document_id:
-            raise HTTPException(status_code=400, detail="document_id is required")
-
-        # Query the `documents` table in Supabase
-        response = (
-            supabase.table("documents")
-            .select("*")
-            .eq("doc_id", document_id)
-            .eq("company_id", company_id)  # Filter by validator's company_id
-            .execute()
-        )
-
-        data = response.data
-
-        if not data:
-            raise HTTPException(status_code=404, detail="Document not found")
-
-        # Return the first document (assuming doc_id is unique)
-        return {"document": data[0]}
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
-
-
-# ValidatorDocPage - fetch delegators (alias for get-delegators)
-@router.post("/fetch_delegators")
-async def validator_doc_fetch_delegators(
-    request: dict, user: UserResponse = Depends(verify_token)
-):
-    try:
-        # Query the `profiles` table
-        response = supabase.from_("profiles").select("id, full_name").execute()
-
-        # Format the result
-        data = response.data
-        formatted_data = [
-            {"id": profile.get("id"), "fullName": profile.get("full_name")}
-            for profile in data
-        ]
-
-        # Return the delegators as JSON
-        return {"delegators": formatted_data}
-
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
-
-
-# ValidatorStartCompletedPage - get documents
 @router.get("/completed-documents")
-async def validator_start_completed_documents(
-    user: UserResponse = Depends(verify_token),
-):
-    try:
-        # 0️⃣ Get company_id from user profile (validator's company context)
-        profile_response_validator = (
-            supabase.table("profiles")
-            .select("company_id")
-            .eq("id", user.user.id)  # Use current user's id
-            .execute()
-        )
-        if not profile_response_validator.data or not profile_response_validator.data[
-            0
-        ].get("company_id"):
-            raise HTTPException(
-                status_code=400,
-                detail="Validator does not have a company associated with their profile",
-            )
-        company_id = profile_response_validator.data[0]["company_id"]
+async def completed_documents(
+    user: UserResponse = Depends(verifytoken),
+) -> List[Dict[str, Any]]:
+    """
+    UI expects: an array: [{ id, title, author, status }]
+    """
+    token_uid = _uid(user)
+    companyid = _companyid_for_user(token_uid)
+    usermap = _profiles_map(companyid)
 
-        # Fetch profiles
-        profiles_result = supabase.table("profiles").select("id, full_name").execute()
-        user_map = {
-            profile["id"]: profile["full_name"] for profile in profiles_result.data
+    docs = (
+        supabase.table("documents")
+        .select("docid, title, authorid, status")
+        .eq("companyid", companyid)
+        .eq("responsible", token_uid)
+        .in_("status", ["Rejected", "Validated - Stored"])
+        .execute()
+    ).data or []
+
+    return [
+        {
+            "id": d.get("docid"),
+            "title": d.get("title") or "Untitled",
+            "author": usermap.get(str(d.get("authorid")), "NA"),
+            "status": d.get("status") or "NA",
         }
+        for d in docs
+    ]
 
-        # Fetch documents filtered by status and responsible
-        documents_result = (
-            supabase.table("documents")
-            .select("doc_id, title, author_id, status")
-            .in_("status", ["Rejected", "Validated - Stored"])
-            .eq("responsible", user.user.id)
-            .eq("company_id", company_id)  # Filter by validator's company_id
-            .execute()
+
+@router.post("/fetchdocumentbyid")
+async def fetch_document_by_id(
+    payload: DocumentFetchRequest,
+    user: UserResponse = Depends(verifytoken),
+) -> Dict[str, Any]:
+    """
+    UI expects: { document: { ... } }
+    """
+    token_uid = _uid(user)
+    companyid = _companyid_for_user(token_uid)
+
+    doc = (
+        supabase.table("documents")
+        .select("*")
+        .eq("companyid", companyid)
+        .eq("docid", str(payload.documentid))
+        .maybe_single()
+        .execute()
+    ).data
+
+    if not doc:
+        raise HTTPException(status_code=404, detail="Document not found")
+
+    # Optional: enforce validator owns it OR it is part of their workflow
+    # (responsible == validator OR status is review/completed and responsible == validator)
+    if str(doc.get("responsible")) != token_uid:
+        raise HTTPException(
+            status_code=403, detail="Not allowed to access this document"
         )
 
-        documents = documents_result.data
-        document_rows = [
-            {
-                "id": doc["doc_id"],
-                "title": doc.get("title", "Untitled"),
-                "author": user_map.get(doc["author_id"], "N/A"),
-                "status": doc.get("status", "N/A"),
-            }
-            for doc in documents_result.data
+    return {"document": doc}
+
+
+@router.post("/accept-document")
+async def accept_document(
+    payload: AcceptDocumentRequest,
+    user: UserResponse = Depends(verifytoken),
+) -> Dict[str, Any]:
+    token_uid = _uid(user)
+    companyid = _companyid_for_user(token_uid)
+
+    updatedata: Dict[str, Any] = {
+        "status": payload.status or "Validated - Stored",
+    }
+    if payload.comment is not None:
+        updatedata["comment"] = payload.comment
+    if payload.summary is not None:
+        updatedata["summary"] = payload.summary
+    if payload.severitylevels:
+        updatedata["severitylevels"] = payload.severitylevels
+
+    resp = (
+        supabase.table("documents")
+        .update(updatedata)
+        .eq("companyid", companyid)
+        .eq("docid", payload.docid)
+        .eq("responsible", token_uid)
+        .execute()
+    )
+
+    if resp.data is None:
+        raise HTTPException(status_code=500, detail="Failed to update document")
+
+    return {"message": "Document updated successfully", "data": resp.data}
+
+
+@router.post("/reject-document")
+async def reject_document(
+    payload: RejectDocumentRequest,
+    user: UserResponse = Depends(verifytoken),
+) -> Dict[str, Any]:
+    token_uid = _uid(user)
+    companyid = _companyid_for_user(token_uid)
+
+    updatefields: Dict[str, Any] = {
+        "comment": payload.comment,
+        "summary": payload.summary,
+        "status": "Rejected",
+    }
+    if payload.reviewer:
+        updatefields["reviewer"] = payload.reviewer
+    if payload.severitylevels:
+        updatefields["severitylevels"] = payload.severitylevels
+
+    resp = (
+        supabase.table("documents")
+        .update(updatefields)
+        .eq("companyid", companyid)
+        .eq("docid", payload.docid)
+        .eq("responsible", token_uid)
+        .execute()
+    )
+
+    if resp.data is None:
+        raise HTTPException(status_code=500, detail="Failed to reject document")
+
+    return {"message": "Document successfully rejected", "data": resp.data}
+
+
+@router.post("/delegate-document")
+async def delegate_document(
+    payload: DelegateRequest,
+    user: UserResponse = Depends(verifytoken),
+) -> Dict[str, Any]:
+    """
+    Delegate to an expert:
+      - keep 'responsible' as the validator (so it returns to them)
+      - set 'reviewer' to the expert (expert router filters reviewer + On Review)
+      - set status to On Review
+    """
+    token_uid = _uid(user)
+    companyid = _companyid_for_user(token_uid)
+
+    if payload.delegatorid != token_uid:
+        raise HTTPException(
+            status_code=403, detail="delegatorid does not match token user"
+        )
+
+    updatefields: Dict[str, Any] = {
+        "comment": payload.comment,
+        "summary": payload.summary,
+        "status": payload.status or "On Review",
+        "reviewer": payload.assigneeid,
+        # responsible remains token_uid
+    }
+    if payload.severitylevels:
+        updatefields["severitylevels"] = payload.severitylevels
+
+    resp = (
+        supabase.table("documents")
+        .update(updatefields)
+        .eq("companyid", companyid)
+        .eq("docid", payload.docid)
+        .eq("responsible", token_uid)
+        .execute()
+    )
+
+    if resp.data is None:
+        raise HTTPException(status_code=500, detail="Failed to delegate document")
+
+    return {"message": "Document successfully delegated!", "data": resp.data}
+
+
+@router.post("/fetchdelegators")
+async def fetch_delegators(
+    data: Dict[str, Any],
+    user: UserResponse = Depends(verifytoken),
+) -> Dict[str, Any]:
+    """
+    UI expects: { delegators: [{ id, fullName }] }
+    """
+    token_uid = _uid(user)
+    userid = data.get("userid")
+    if not userid or userid != token_uid:
+        raise HTTPException(status_code=403, detail="userid does not match token user")
+
+    companyid = _companyid_for_user(token_uid)
+
+    # Prefer "isExpert" (if column exists), else fallback to all profiles in company except self.
+    delegators: List[Dict[str, Any]] = []
+    try:
+        resp = (
+            supabase.table("profiles")
+            .select("id, fullname")
+            .eq("companyid", companyid)
+            .eq("isExpert", True)
+            .execute()
+        )
+        rows = resp.data or []
+        delegators = [
+            {"id": r["id"], "fullName": r.get("fullname") or "NA"}
+            for r in rows
+            if r.get("id") and str(r["id"]) != token_uid
+        ]
+    except Exception:
+        resp = (
+            supabase.table("profiles")
+            .select("id, fullname")
+            .eq("companyid", companyid)
+            .execute()
+        )
+        rows = resp.data or []
+        delegators = [
+            {"id": r["id"], "fullName": r.get("fullname") or "NA"}
+            for r in rows
+            if r.get("id") and str(r["id"]) != token_uid
         ]
 
-        return document_rows
+    return {"delegators": delegators}
 
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+
+@router.post("/fetchassigneddocuments")
+async def fetch_assigned_documents(
+    data: Dict[str, Any],
+    user: UserResponse = Depends(verifytoken),
+) -> Dict[str, Any]:
+    """
+    Validator summary page expects: { documents: [{ id, title, status }] }
+    """
+    token_uid = _uid(user)
+    validatorid = data.get("validatorid")
+    if not validatorid or validatorid != token_uid:
+        raise HTTPException(
+            status_code=403, detail="validatorid does not match token user"
+        )
+
+    companyid = _companyid_for_user(token_uid)
+
+    docs = (
+        supabase.table("documents")
+        .select("docid, title, status")
+        .eq("companyid", companyid)
+        .eq("responsible", token_uid)
+        .in_("status", ["Pending", "On Review", "Validated - Awaiting Approval"])
+        .execute()
+    ).data or []
+
+    return {
+        "documents": [
+            {
+                "id": d.get("docid"),
+                "title": d.get("title") or "Untitled",
+                "status": d.get("status") or "NA",
+            }
+            for d in docs
+        ]
+    }
+
+
+@router.get("/getstats")
+async def get_stats(user: UserResponse = Depends(verifytoken)) -> Dict[str, Any]:
+    """
+    UI expects snakecase keys:
+      { totalassigned, totalcompleted, averagereviewtime }
+    """
+    token_uid = _uid(user)
+    companyid = _companyid_for_user(token_uid)
+
+    docs = (
+        supabase.table("documents")
+        .select("status, createdat, updatedat")
+        .eq("companyid", companyid)
+        .eq("responsible", token_uid)
+        .execute()
+    ).data or []
+
+    total_assigned = 0
+    total_completed = 0
+    durations_hours: List[float] = []
+
+    for d in docs:
+        st = d.get("status") or ""
+        if st in ("Pending", "On Review", "Validated - Awaiting Approval"):
+            total_assigned += 1
+        if st in ("Rejected", "Validated - Stored"):
+            total_completed += 1
+            c = _parse_dt(d.get("createdat"))
+            u = _parse_dt(d.get("updatedat"))
+            if c and u and u >= c:
+                durations_hours.append((u - c).total_seconds() / 3600.0)
+
+    avg = (sum(durations_hours) / len(durations_hours)) if durations_hours else 0.0
+
+    return {
+        "totalassigned": total_assigned,
+        "totalcompleted": total_completed,
+        "averagereviewtime": round(avg, 2),
+    }
