@@ -30,7 +30,7 @@ services:
     networks:
       - vault-network
 
-  # FastAPI Backend - DEVELOPMENT MODE with hot reload
+  # FastAPI Backend - DEVELOPMENT MODE with Docker Compose Watch
   backend:
     build:
       context: .
@@ -50,10 +50,7 @@ services:
       - qdrant
       - postgres
     volumes:
-      # Mount source code for hot reload
-      - ./app:/app/app
-      - ./main.py:/app/main.py
-      # Mount these as writable
+      # Writable directories
       - ./uploads:/app/uploads
       - ./logs:/app/logs
     restart: unless-stopped
@@ -61,8 +58,50 @@ services:
       - vault-network
     extra_hosts:
       - "host.docker.internal:host-gateway"
-    # Use full path to uvicorn in .venv
-    command: ["/app/.venv/bin/uvicorn", "main:app", "--host", "0.0.0.0", "--port", "7860", "--reload"]
+    command:
+      [
+        "/app/.venv/bin/uvicorn",
+        "main:app",
+        "--host",
+        "0.0.0.0",
+        "--port",
+        "7860",
+        "--reload",
+      ]
+
+    # Docker Compose Watch configuration
+    develop:
+      # Enable watch mode for this service
+      watch:
+        # Sync Python source files - triggers uvicorn hot reload
+        - action: sync
+          path: ./app
+          target: /app/app
+          ignore:
+            - __pycache__/
+            - "*.pyc"
+            - "*.pyo"
+            - "*.pyd"
+            - ".pytest_cache/"
+            - "*.egg-info/"
+
+        # Sync main.py - triggers uvicorn hot reload
+        - action: sync
+          path: ./main.py
+          target: /app/main.py
+
+        # Sync config files - requires container restart
+        - action: sync+restart
+          path: ./pyproject.toml
+          target: /app/pyproject.toml
+
+        - action: sync+restart
+          path: ./uv.lock
+          target: /app/uv.lock
+
+        # Rebuild if Dockerfile changes
+        - action: rebuild
+          path: ./Dockerfile.dev
 
 networks:
   vault-network:

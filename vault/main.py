@@ -5,7 +5,6 @@ Local-first architecture for knowledge management
 Migration completed: December 2025
 """
 
-import logging
 import base64
 import logging
 import os
@@ -15,28 +14,8 @@ from contextlib import asynccontextmanager
 from datetime import datetime
 from typing import List, Optional, Union
 
-import uvicorn
-from fastapi import (
-    APIRouter,
-    FastAPI,
-    HTTPException,
-    WebSocket,
-    WebSocketDisconnect,
-    status,
-    Depends,
-    BackgroundTasks,
-    UploadFile,
-    File,
-    Form,
-)
-from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import FileResponse
-from pydantic import BaseModel
-from pydantic import EmailStr
-from fastapi.staticfiles import StaticFiles
-from gotrue.types import UserResponse
-
 import app.email_service as email_service
+import uvicorn
 from app.api.auth import router as auth_router
 from app.api.collector import router as collector_router
 from app.api.expert import router as expert_router
@@ -44,14 +23,22 @@ from app.api.helper import router as helper_router
 from app.api.validator import router as validator_router
 from app.connection_manager import connection_manager
 from app.connectors.store_data_in_kb import store_in_kb
+from app.constants.constants import SEVERITY_LEVEL_MAP
 from app.database import supabase, supabase_admin
 from app.email_service import send_welcome_email
 from app.ldap import router as ldap_router
 from app.logger_config import setup_logging  # Import the logging setup
-from app.services.auth_service import get_current_user
-from app.constants.constants import SEVERITY_LEVEL_MAP
 from app.middleware.auth import verify_token, verify_token_with_tenant
+from app.services.auth_service import get_current_user
 from app.services.tenant_service import TenantService
+from fastapi import (APIRouter, BackgroundTasks, Depends, FastAPI, File, Form,
+                     HTTPException, UploadFile, WebSocket, WebSocketDisconnect,
+                     status)
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import FileResponse
+from fastapi.staticfiles import StaticFiles
+from gotrue.types import UserResponse
+from pydantic import BaseModel, EmailStr
 
 # from app.schemas.user import UserBase
 

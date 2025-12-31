@@ -1,10 +1,10 @@
 from __future__ import annotations
 
-from typing import Any, Dict, List, Tuple
 import json
 import re
+from typing import Any, Dict, List, Tuple
 
-from app.integrations.ollamaclient import chat
+from app.integrations.ollama_client import chat
 
 
 def _clean_lines(items: List[str]) -> List[str]:

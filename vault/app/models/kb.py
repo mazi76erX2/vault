@@ -1,14 +1,13 @@
 import os
 from typing import Generator, Optional
 
-from sqlalchemy import create_engine
-from sqlalchemy.orm import sessionmaker, Session
-
 from app.core.config import settings
 from app.db.baseclass import Base
+from sqlalchemy import create_engine
+from sqlalchemy.orm import Session, sessionmaker
 
 try:
-    from supabase import create_client, Client  # type: ignore
+    from supabase import Client, create_client  # type: ignore
 except Exception:  # pragma: no cover
     Client = object  # type: ignore
     create_client = None  # type: ignore
