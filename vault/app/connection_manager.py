@@ -8,6 +8,7 @@ from starlette.websockets import WebSocketDisconnect
 
 logger = logging.getLogger(__name__)
 
+
 class ConnectionManager:
     def __init__(self):
         self.active_connections = defaultdict(set)
@@ -40,6 +41,7 @@ class ConnectionManager:
         async with self.lock:
             for client_id in list(self.active_connections.keys()):
                 await self.send_personal_message(client_id, message)
+
 
 def connection_manager():
     return ConnectionManager()

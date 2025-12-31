@@ -1,13 +1,8 @@
-import json
 import logging
-from typing import Any, Dict, List, Optional, Union
-from uuid import UUID
 
-from app.database import supabase
-from app.services.auth_service import get_current_user, require_roles
-from fastapi import (APIRouter, Depends, File, Form, HTTPException, UploadFile,
-                     status)
-from fastapi.responses import JSONResponse
+from fastapi import APIRouter, Depends
+
+from app.services.auth_service import require_roles
 
 router = APIRouter(prefix="/api/v1/helper", tags=["helper"])
 
@@ -23,7 +18,7 @@ async def helper_health_check():
 
 
 @router.post("/questions", dependencies=[Depends(require_roles(["Helper"]))])
-async def get_helper_questions(data: Dict):
+async def get_helper_questions(data: dict):
     """
     Endpoint to get helper questions from the database.
     """

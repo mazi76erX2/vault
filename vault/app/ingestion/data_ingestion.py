@@ -6,10 +6,11 @@ import uuid
 from datetime import datetime
 from pathlib import Path
 
-# Qdrant / Ollama utilities
-from app.connectors.qdrant_utils import recreate_collection, upsert_documents
 from dotenv import load_dotenv
 from langchain.text_splitter import CharacterTextSplitter
+
+# Qdrant / Ollama utilities
+from app.connectors.qdrant_utils import recreate_collection, upsert_documents
 
 # Load .env from current directory
 env_path = Path(__file__).parent / ".env"
@@ -24,7 +25,7 @@ def load_text_files_from_folder(folder_path):
     for file_name in os.listdir(folder_path):
         if file_name.endswith(".txt"):
             file_path = os.path.join(folder_path, file_name)
-            with open(file_path, "r", encoding="utf-8") as file:
+            with open(file_path, encoding="utf-8") as file:
                 content = file.read()
                 title_match = re.search(r"- Title:\s*(.*)", content)
 
@@ -90,9 +91,7 @@ def main(args):
     # Optionally recreate collection (use with caution - drops existing data)
     collection_name = os.getenv("QDRANT_COLLECTION", "vault")
     if recreate:
-        logging.info(
-            f"Recreating Qdrant collection '{collection_name}' as requested..."
-        )
+        logging.info(f"Recreating Qdrant collection '{collection_name}' as requested...")
         recreate_collection(collection_name)
 
     # Upsert in batches to avoid large payloads

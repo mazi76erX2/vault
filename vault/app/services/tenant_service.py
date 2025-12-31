@@ -1,8 +1,9 @@
 import logging
-from typing import Any, Dict, List, Optional
+from typing import Any
+
+from fastapi import HTTPException, status
 
 from app.database import supabase
-from fastapi import HTTPException, status
 
 logger = logging.getLogger(__name__)
 
@@ -11,7 +12,7 @@ class TenantService:
     """Service for tenant-aware database operations."""
 
     @staticmethod
-    def get_tenant_profiles(company_reg_no: str) -> List[Dict[str, Any]]:
+    def get_tenant_profiles(company_reg_no: str) -> list[dict[str, Any]]:
         """Get all profiles for a specific tenant."""
         try:
             response = (
@@ -29,9 +30,7 @@ class TenantService:
             )
 
     @staticmethod
-    def get_tenant_profile(
-        user_id: str, company_reg_no: str
-    ) -> Optional[Dict[str, Any]]:
+    def get_tenant_profile(user_id: str, company_reg_no: str) -> dict[str, Any] | None:
         """Get a specific profile ensuring it belongs to the tenant."""
         try:
             response = (
@@ -44,13 +43,11 @@ class TenantService:
             )
             return response.data
         except Exception as e:
-            logger.error(
-                f"Error fetching tenant profile {user_id} for {company_reg_no}: {e}"
-            )
+            logger.error(f"Error fetching tenant profile {user_id} for {company_reg_no}: {e}")
             return None
 
     @staticmethod
-    def get_tenant_documents(company_reg_no: str) -> List[Dict[str, Any]]:
+    def get_tenant_documents(company_reg_no: str) -> list[dict[str, Any]]:
         """Get all documents for a specific tenant."""
         try:
             response = (
@@ -68,7 +65,7 @@ class TenantService:
             )
 
     @staticmethod
-    def get_tenant_user_roles(company_reg_no: str) -> List[Dict[str, Any]]:
+    def get_tenant_user_roles(company_reg_no: str) -> list[dict[str, Any]]:
         """Get all user roles for a specific tenant."""
         try:
             response = (
@@ -86,7 +83,7 @@ class TenantService:
             )
 
     @staticmethod
-    def get_tenant_sessions(company_reg_no: str) -> List[Dict[str, Any]]:
+    def get_tenant_sessions(company_reg_no: str) -> list[dict[str, Any]]:
         """Get all sessions for a specific tenant."""
         try:
             response = (
@@ -104,9 +101,7 @@ class TenantService:
             )
 
     @staticmethod
-    def create_tenant_profile(
-        profile_data: Dict[str, Any], company_reg_no: str
-    ) -> Dict[str, Any]:
+    def create_tenant_profile(profile_data: dict[str, Any], company_reg_no: str) -> dict[str, Any]:
         """Create a new profile for a specific tenant."""
         try:
             # Ensure the company_reg_no is set
@@ -130,8 +125,8 @@ class TenantService:
 
     @staticmethod
     def update_tenant_profile(
-        user_id: str, profile_data: Dict[str, Any], company_reg_no: str
-    ) -> Dict[str, Any]:
+        user_id: str, profile_data: dict[str, Any], company_reg_no: str
+    ) -> dict[str, Any]:
         """Update a profile ensuring it belongs to the tenant."""
         try:
             # Remove company_reg_no from update data to prevent modification
@@ -153,9 +148,7 @@ class TenantService:
                     detail="Profile not found or access denied",
                 )
         except Exception as e:
-            logger.error(
-                f"Error updating tenant profile {user_id} for {company_reg_no}: {e}"
-            )
+            logger.error(f"Error updating tenant profile {user_id} for {company_reg_no}: {e}")
             raise HTTPException(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
                 detail="Error updating tenant profile",
@@ -175,18 +168,14 @@ class TenantService:
 
             return len(response.data or []) > 0
         except Exception as e:
-            logger.error(
-                f"Error deleting tenant profile {user_id} for {company_reg_no}: {e}"
-            )
+            logger.error(f"Error deleting tenant profile {user_id} for {company_reg_no}: {e}")
             raise HTTPException(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
                 detail="Error deleting tenant profile",
             )
 
     @staticmethod
-    def assign_tenant_user_role(
-        user_id: str, role_id: str, company_reg_no: str
-    ) -> Dict[str, Any]:
+    def assign_tenant_user_role(user_id: str, role_id: str, company_reg_no: str) -> dict[str, Any]:
         """Assign a role to a user within a tenant."""
         try:
             # First verify the user belongs to the tenant
@@ -213,18 +202,14 @@ class TenantService:
                     detail="Failed to assign role",
                 )
         except Exception as e:
-            logger.error(
-                f"Error assigning role for user {user_id} in tenant {company_reg_no}: {e}"
-            )
+            logger.error(f"Error assigning role for user {user_id} in tenant {company_reg_no}: {e}")
             raise HTTPException(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
                 detail="Error assigning tenant user role",
             )
 
     @staticmethod
-    def remove_tenant_user_role(
-        user_id: str, role_id: str, company_reg_no: str
-    ) -> bool:
+    def remove_tenant_user_role(user_id: str, role_id: str, company_reg_no: str) -> bool:
         """Remove a role from a user within a tenant."""
         try:
             response = (
@@ -238,9 +223,7 @@ class TenantService:
 
             return len(response.data or []) > 0
         except Exception as e:
-            logger.error(
-                f"Error removing role for user {user_id} in tenant {company_reg_no}: {e}"
-            )
+            logger.error(f"Error removing role for user {user_id} in tenant {company_reg_no}: {e}")
             raise HTTPException(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
                 detail="Error removing tenant user role",

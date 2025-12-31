@@ -117,9 +117,7 @@ class MockConnection:
         self.bound = True
         return (97, [])
 
-    def search_s(
-        self, base, scope, filterstr="(objectClass=*)", attrlist=None, attrsonly=0
-    ):
+    def search_s(self, base, scope, filterstr="(objectClass=*)", attrlist=None, attrsonly=0):
         """Synchronous search operation."""
         print(f"[MOCK LDAP] Searching: base={base}, filter={filterstr}, scope={scope}")
 

@@ -1,5 +1,4 @@
 from enum import Enum
-from typing import Any, Callable, Dict
 
 import ldap
 
@@ -27,9 +26,7 @@ class LDAPStatusText(str, Enum):
 class LDAPError(Exception):
     """Custom LDAP error with additional info"""
 
-    def __init__(
-        self, errno: int, code: str, syscall: str, hostname: str, message: str = None
-    ):
+    def __init__(self, errno: int, code: str, syscall: str, hostname: str, message: str = None):
         self.errno = errno
         self.code = code
         self.syscall = syscall
@@ -78,7 +75,7 @@ def map_ldap_error(error: ldap.LDAPError) -> str:
     try:
         error_dict = error.args[0]
         if isinstance(error_dict, dict):
-            errno = error_dict.get("errno", 0)
+            error_dict.get("errno", 0)
             code = error_dict.get("desc", "Unknown")
             hostname = error_dict.get("info", "Unknown hostname")
 

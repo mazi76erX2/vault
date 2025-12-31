@@ -3,10 +3,11 @@ import os
 from pathlib import Path
 
 import requests
-from app.connectors.store_data_in_kb import store_in_qdrant
+
 # Remove Azure Search & AzureOpenAI dependencies; route to Qdrant
 from dotenv import load_dotenv
-from langchain.text_splitter import CharacterTextSplitter
+
+from app.connectors.store_data_in_kb import store_in_qdrant
 
 # Load .env from current directory
 env_path = Path(__file__).parent.parent / ".env"
@@ -38,9 +39,7 @@ class SharePointClient:
         self.index = index
         self.client_secret = client_secret
         self.resource_url = resource_url
-        self.base_url = (
-            f"https://login.microsoftonline.com/{tenant_id}/oauth2/v2.0/token"
-        )
+        self.base_url = f"https://login.microsoftonline.com/{tenant_id}/oauth2/v2.0/token"
         self.headers = {"Content-Type": "application/x-www-form-urlencoded"}
         self.access_token = self.get_access_token()
 
@@ -58,9 +57,7 @@ class SharePointClient:
     def get_site_id(self, site_url):
         # Build URL to request site ID
         full_url = f"https://graph.microsoft.com/v1.0/sites/{site_url}"
-        response = requests.get(
-            full_url, headers={"Authorization": f"Bearer {self.access_token}"}
-        )
+        response = requests.get(full_url, headers={"Authorization": f"Bearer {self.access_token}"})
         return response.json().get("id")  # Return the site ID
 
     def get_drive_id(self, site_id):
@@ -87,7 +84,9 @@ class SharePointClient:
         Get the contents of a folder and return a dictionary with folder names as keys and IDs as values.
         """
         # URL to fetch folder content
-        folder_url = f"https://graph.microsoft.com/v1.0/sites/{site_id}/drives/{drive_id}/root/children"
+        folder_url = (
+            f"https://graph.microsoft.com/v1.0/sites/{site_id}/drives/{drive_id}/root/children"
+        )
         # Make the API request
         response = requests.get(
             folder_url, headers={"Authorization": f"Bearer {self.access_token}"}
@@ -100,16 +99,12 @@ class SharePointClient:
         # Process items in the response
         if "value" in items_data:
             for item in items_data["value"]:
-                folder_dict[item["name"]] = item[
-                    "id"
-                ]  # Add name as key and ID as value
+                folder_dict[item["name"]] = item["id"]  # Add name as key and ID as value
 
         return folder_dict
 
     # Recursive function to browse folders
-    def list_folder_contents(
-        self, site_id, drive_id, folder_id, current_path="", level=0
-    ):
+    def list_folder_contents(self, site_id, drive_id, folder_id, current_path="", level=0):
         folder_contents_url = f"https://graph.microsoft.com/v1.0/sites/{site_id}/drives/{drive_id}/items/{folder_id}/children"
         contents_headers = {"Authorization": f"Bearer {self.access_token}"}
         contents_response = requests.get(folder_contents_url, headers=contents_headers)
@@ -126,9 +121,7 @@ class SharePointClient:
                     "name": item_name,
                     "id": item["id"],
                     "full_path": file_path,
-                    "createdBy": item.get("createdBy", {})
-                    .get("user", {})
-                    .get("displayName"),
+                    "createdBy": item.get("createdBy", {}).get("user", {}).get("displayName"),
                     "lastModifiedBy": item.get("lastModifiedBy", {})
                     .get("user", {})
                     .get("displayName"),
@@ -162,9 +155,7 @@ class SharePointClient:
                 file.write(response.content)
             print(f"File downloaded: {full_path}")
         else:
-            print(
-                f"Failed to download {file_name}: {response.status_code} - {response.reason}"
-            )
+            print(f"Failed to download {file_name}: {response.status_code} - {response.reason}")
 
     def create_document(self, item, text_content):
         doc = {
@@ -176,9 +167,7 @@ class SharePointClient:
         }
         return doc
 
-    def download_folder_contents(
-        self, site_id, drive_id, folder_id, local_folder_path, level=0
-    ):
+    def download_folder_contents(self, site_id, drive_id, folder_id, local_folder_path, level=0):
         # Recursively download all contents from a folder
         folder_contents_url = f"https://graph.microsoft.com/v1.0/sites/{site_id}/drives/{drive_id}/items/{folder_id}/children"
         contents_headers = {"Authorization": f"Bearer {self.access_token}"}
@@ -196,7 +185,7 @@ class SharePointClient:
                     )  # Recursive call for subfolders
                 elif "file" in item:
                     file_name = item["name"]
-                    file_download_url = f"{self.resource_url}/v1.0/sites/{site_id}/drives/{drive_id}/items/{item['id']}/content"
+                    f"{self.resource_url}/v1.0/sites/{site_id}/drives/{drive_id}/items/{item['id']}/content"
                     self.download_file(local_path, file_name)
 
     def extract_file_content(self, download_url, local_path, file_name):
@@ -223,15 +212,11 @@ class SharePointClient:
 
             print(f"File procesed: {full_path}")
         else:
-            print(
-                f"Failed to process {file_name}: {response.status_code} - {response.reason}"
-            )
+            print(f"Failed to process {file_name}: {response.status_code} - {response.reason}")
 
         return text_content
 
-    def extract_folder_contents(
-        self, site_id, drive_id, folder_id, local_folder_path, level=0
-    ):
+    def extract_folder_contents(self, site_id, drive_id, folder_id, local_folder_path, level=0):
         # Recursively download all contents from a folder
         folder_contents_url = f"https://graph.microsoft.com/v1.0/sites/{site_id}/drives/{drive_id}/items/{folder_id}/children"
         contents_headers = {"Authorization": f"Bearer {self.access_token}"}
@@ -287,9 +272,7 @@ class SharePointClient:
                     "id": item["id"],
                     "full_path": file_path,
                     "web_url": item.get("webUrl"),
-                    "createdBy": item.get("createdBy", {})
-                    .get("user", {})
-                    .get("displayName"),
+                    "createdBy": item.get("createdBy", {}).get("user", {}).get("displayName"),
                     "lastModifiedBy": item.get("lastModifiedBy", {})
                     .get("user", {})
                     .get("displayName"),

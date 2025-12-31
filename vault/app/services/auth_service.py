@@ -4,12 +4,12 @@ Authentication service - handles JWT tokens, password hashing, and user authenti
 """
 import os
 from datetime import datetime, timedelta
-from typing import Optional, Dict, Any
-from fastapi import HTTPException, status, Depends, Header
-from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
+from typing import Any
+
+from fastapi import Header, HTTPException, status, Depends
+from fastapi.security import HTTPBearer
 from jose import JWTError, jwt
 from passlib.context import CryptContext
-from sqlalchemy.orm import Session
 
 # JWT settings from environment
 SECRET_KEY = os.getenv("SECRET_KEY", "your-secret-key-change-in-production")
@@ -27,6 +27,7 @@ security = HTTPBearer()
 # PASSWORD HASHING
 # ============================================================================
 
+
 def verify_password(plain_password: str, hashed_password: str) -> bool:
     """Verify a plain password against its hash."""
     return pwd_context.verify(plain_password, hashed_password)
@@ -41,7 +42,8 @@ def get_password_hash(password: str) -> str:
 # JWT TOKEN MANAGEMENT
 # ============================================================================
 
-def create_access_token(data: dict, expires_delta: Optional[timedelta] = None) -> str:
+
+def create_access_token(data: dict, expires_delta: timedelta | None = None) -> str:
     """
     Create a JWT access token.
 
@@ -64,7 +66,7 @@ def create_access_token(data: dict, expires_delta: Optional[timedelta] = None) -
     return encoded_jwt
 
 
-def decode_access_token(token: str) -> Optional[Dict[str, Any]]:
+def decode_access_token(token: str) -> dict[str, Any] | None:
     """
     Decode and verify a JWT token.
 
@@ -81,7 +83,7 @@ def decode_access_token(token: str) -> Optional[Dict[str, Any]]:
         return None
 
 
-def _extract_bearer_token(authorization: Optional[str] = Header(None)) -> str:
+def _extract_bearer_token(authorization: str | None = Header(None)) -> str:
     """
     Extract bearer token from Authorization header.
 
@@ -124,18 +126,20 @@ def _extract_bearer_token(authorization: Optional[str] = Header(None)) -> str:
 # USER AUTHENTICATION
 # ============================================================================
 
+
 class CurrentUser:
     """
     Current authenticated user model.
     Contains user information extracted from JWT token.
     """
+
     def __init__(
         self,
         user_id: str,
         email: str,
-        role: Optional[str] = None,
-        company_id: Optional[int] = None,
-        **kwargs
+        role: str | None = None,
+        company_id: int | None = None,
+        **kwargs,
     ):
         self.user_id = user_id
         self.id = user_id  # Alias for compatibility
@@ -150,7 +154,7 @@ class CurrentUser:
         return f"CurrentUser(user_id={self.user_id}, email={self.email}, role={self.role})"
 
 
-async def get_current_user(authorization: Optional[str] = Header(None)) -> CurrentUser:
+async def get_current_user(authorization: str | None = Header(None)) -> CurrentUser:
     """
     Get current authenticated user from JWT token.
 
@@ -197,42 +201,61 @@ async def get_current_user(authorization: Optional[str] = Header(None)) -> Curre
         role=payload.get("role"),
         company_id=payload.get("company_id"),
         # Include any other claims
-        **{k: v for k, v in payload.items() if k not in ["sub", "email", "role", "company_id", "exp", "iat"]}
+        **{
+            k: v
+            for k, v in payload.items()
+            if k not in ["sub", "email", "role", "company_id", "exp", "iat"]
+        },
     )
 
     return current_user
 
 
 # ============================================================================
-# OPTIONAL: Direct token verification (without FastAPI dependency)
+# ROLE-BASED ACCESS CONTROL
 # ============================================================================
 
-def verify_token(token: str) -> Optional[CurrentUser]:
+
+def require_roles(*allowed_roles: str):
     """
-    Verify a token and return user information.
-    This is a standalone function (not a FastAPI dependency).
+    Create a dependency that requires user to have one of the specified roles.
+
+    Usage:
+        @router.post("/endpoint", dependencies=[Depends(require_roles("Admin", "Manager"))])
+        async def my_endpoint():
+            ...
 
     Args:
-        token: JWT token string
+        *allowed_roles: One or more role names that are allowed to access the endpoint
 
     Returns:
-        CurrentUser object or None if invalid
+        FastAPI dependency function
     """
-    payload = decode_access_token(token)
 
-    if not payload:
-        return None
+    async def role_checker(current_user: CurrentUser = Depends(get_current_user)) -> CurrentUser:
+        """
+        Check if current user has required role.
 
-    user_id = payload.get("sub")
-    email = payload.get("email")
+        Args:
+            current_user: Current authenticated user
 
-    if not user_id or not email:
-        return None
+        Returns:
+            CurrentUser if authorized
 
-    return CurrentUser(
-        user_id=user_id,
-        email=email,
-        role=payload.get("role"),
-        company_id=payload.get("company_id"),
-        **{k: v for k, v in payload.items() if k not in ["sub", "email", "role", "company_id", "exp", "iat"]}
-    )
+        Raises:
+            HTTPException: If user doesn't have required role
+        """
+        if not current_user.role:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN, detail="User has no role assigned"
+            )
+
+        if current_user.role not in allowed_roles:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail=f"Required role: {', '.join(allowed_roles)}. Your role: {current_user.role}",
+            )
+
+        return current_user
+
+    return role_checker

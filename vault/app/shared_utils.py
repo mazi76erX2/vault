@@ -1,7 +1,4 @@
-import re
-import unicodedata
 from datetime import datetime
-from typing import List, Optional, Tuple
 
 import PyPDF2
 from docx import Document
@@ -114,7 +111,7 @@ def readpdf(file_path):
 def readtxt(file_path):
     # Open the file in read mode ('r') and read the content
     try:
-        with open(file_path, "r", encoding="utf-8") as file:
+        with open(file_path, encoding="utf-8") as file:
             text_content = file.read()
     except Exception as e:
         print(f"Error occurred: {e}")

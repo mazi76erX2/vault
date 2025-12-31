@@ -2,31 +2,31 @@ from __future__ import annotations
 
 import re
 from dataclasses import dataclass
-from typing import List, Optional, Tuple
+
+from sqlalchemy.orm import Session
 
 from app.core.config import settings
 from app.integrations.ollama_client import chat, embed
 from app.models.kb import KBChunk
-from sqlalchemy.orm import Session
 
 
 @dataclass
 class RetrievedChunk:
     doc_id: str
     chunk_index: int
-    title: Optional[str]
-    sourcefile: Optional[str]
+    title: str | None
+    sourcefile: str | None
     content: str
     accesslevel: int
     score: float  # smaller is better for L2 distance
 
 
-def chunk_text(text: str, chunk_size: int, overlap: int) -> List[str]:
+def chunk_text(text: str, chunk_size: int, overlap: int) -> list[str]:
     text = re.sub(r"\s+", " ", text).strip()
     if not text:
         return []
 
-    chunks: List[str] = []
+    chunks: list[str] = []
     start = 0
     while start < len(text):
         end = min(len(text), start + chunk_size)
@@ -37,17 +37,17 @@ def chunk_text(text: str, chunk_size: int, overlap: int) -> List[str]:
     return chunks
 
 
-def retrieve(db: Session, question: str, top_k: int) -> List[RetrievedChunk]:
+def retrieve(db: Session, question: str, top_k: int) -> list[RetrievedChunk]:
     q_emb = embed(question)
 
-    rows: List[Tuple[KBChunk, float]] = (
+    rows: list[tuple[KBChunk, float]] = (
         db.query(KBChunk, KBChunk.embedding.l2_distance(q_emb).label("distance"))
         .order_by("distance")
         .limit(top_k)
         .all()
     )
 
-    out: List[RetrievedChunk] = []
+    out: list[RetrievedChunk] = []
     for row, dist in rows:
         out.append(
             RetrievedChunk(
@@ -63,7 +63,7 @@ def retrieve(db: Session, question: str, top_k: int) -> List[RetrievedChunk]:
     return out
 
 
-def build_messages(question: str, chunks: List[RetrievedChunk]) -> List[dict]:
+def build_messages(question: str, chunks: list[RetrievedChunk]) -> list[dict]:
     context = "\n\n---\n\n".join(
         [
             f"TITLE: {c.title or ''}\nSOURCE: {c.sourcefile or ''}\nCONTENT:\n{c.content}"

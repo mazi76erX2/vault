@@ -7,7 +7,6 @@ points into Qdrant.
 Note: Keep this logic lightweight to avoid adding extra external dependencies.
 """
 
-import json
 import logging
 import os
 import uuid
@@ -74,7 +73,7 @@ def upsert_documents(collection_name: str, documents: list):
     texts = [d.get("content", "") for d in documents]
     embeddings = _ollama_embed(texts)
     points = []
-    for d, emb in zip(documents, embeddings):
+    for d, emb in zip(documents, embeddings, strict=False):
         point = {
             "id": d.get("id") or str(uuid.uuid4()),
             "vector": emb,

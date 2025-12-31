@@ -1,21 +1,20 @@
 import logging
 from datetime import datetime
-from typing import Any, Dict, List, Optional, Union
+from typing import Any
 
 import ldap
+
 from app.database import supabase
 
-from .connector import (authenticate_ldap, get_ldap_client,
-                        get_ldap_search_results)
+from .connector import authenticate_ldap, get_ldap_client
 from .errors import map_ldap_error
-from .models import (LDAPConnector, LDAPSearchInputModel, LDAPSearchResult,
-                     LoginModel)
+from .models import LDAPConnector, LDAPSearchInputModel, LDAPSearchResult, LoginModel
 
 # Configure logger
 logger = logging.getLogger(__name__)
 
 
-async def _get_password_from_vault(secret_name: str) -> Optional[str]:
+async def _get_password_from_vault(secret_name: str) -> str | None:
     """
     Retrieves a secret (LDAP password) from Supabase Vault.
     Assumes 'vault.decrypted_secrets' view is available and accessible.
@@ -43,16 +42,14 @@ async def _get_password_from_vault(secret_name: str) -> Optional[str]:
         if response.data and response.data.get("decrypted_secret"):
             return response.data["decrypted_secret"]
         else:
-            logger.error(
-                f"Secret '{secret_name}' not found in Vault or value is empty."
-            )
+            logger.error(f"Secret '{secret_name}' not found in Vault or value is empty.")
             return None
     except Exception as e:
         logger.error(f"Error fetching secret '{secret_name}' from Vault: {str(e)}")
         return None
 
 
-async def create_ldap_connector(connector_data: Dict[str, Any]) -> Dict[str, Any]:
+async def create_ldap_connector(connector_data: dict[str, Any]) -> dict[str, Any]:
     """
     Create a new LDAP connector
 
@@ -96,8 +93,8 @@ async def create_ldap_connector(connector_data: Dict[str, Any]) -> Dict[str, Any
 
 
 async def update_ldap_connector(
-    connector_id: str, connector_data: Dict[str, Any]
-) -> Dict[str, Any]:
+    connector_id: str, connector_data: dict[str, Any]
+) -> dict[str, Any]:
     """
     Update an LDAP connector
 
@@ -144,7 +141,7 @@ async def update_ldap_connector(
         return {"error": f"Error updating LDAP connector: {str(e)}"}
 
 
-async def delete_ldap_connector(connector_id: str) -> Dict[str, Any]:
+async def delete_ldap_connector(connector_id: str) -> dict[str, Any]:
     """
     Delete an LDAP connector
 
@@ -155,9 +152,7 @@ async def delete_ldap_connector(connector_id: str) -> Dict[str, Any]:
         Status message
     """
     try:
-        response = (
-            supabase.table("ldap_connectors").delete().eq("id", connector_id).execute()
-        )
+        response = supabase.table("ldap_connectors").delete().eq("id", connector_id).execute()
 
         # Check if response.data is not empty or if there's an error
         if (
@@ -189,7 +184,7 @@ async def delete_ldap_connector(connector_id: str) -> Dict[str, Any]:
         return {"error": f"Error deleting LDAP connector: {str(e)}"}
 
 
-async def get_ldap_connector(connector_id: str) -> Optional[LDAPConnector]:
+async def get_ldap_connector(connector_id: str) -> LDAPConnector | None:
     """
     Get an LDAP connector by ID
 
@@ -214,15 +209,10 @@ async def get_ldap_connector(connector_id: str) -> Optional[LDAPConnector]:
                 del response.data["password"]
 
             # Convert company_id to string to match LDAPConnector model expectations
-            if (
-                "company_id" in response.data
-                and response.data["company_id"] is not None
-            ):
+            if "company_id" in response.data and response.data["company_id"] is not None:
                 response.data["company_id"] = str(response.data["company_id"])
 
-            return LDAPConnector(
-                **response.data
-            )  # LDAPConnector model now has vault_secret_name
+            return LDAPConnector(**response.data)  # LDAPConnector model now has vault_secret_name
         else:
             logger.warning(f"LDAP connector not found: {connector_id}")
             return None
@@ -233,8 +223,8 @@ async def get_ldap_connector(connector_id: str) -> Optional[LDAPConnector]:
 
 
 async def get_ldap_connectors(
-    company_id: Optional[str] = None,
-) -> List[LDAPConnector]:
+    company_id: str | None = None,
+) -> list[LDAPConnector]:
     """
     Get all LDAP connectors, optionally filtered by company
 
@@ -242,7 +232,7 @@ async def get_ldap_connectors(
         company_id: Optional company ID
 
     Returns:
-        List of connectors
+        list of connectors
     """
     try:
         import os
@@ -277,18 +267,13 @@ async def get_ldap_connectors(
                         del conn_data["password"]
 
                     # Convert company_id to string to match LDAPConnector model expectations
-                    if (
-                        "company_id" in conn_data
-                        and conn_data["company_id"] is not None
-                    ):
+                    if "company_id" in conn_data and conn_data["company_id"] is not None:
                         conn_data["company_id"] = str(conn_data["company_id"])
 
                     connectors.append(LDAPConnector(**conn_data))
                 return connectors
             else:
-                logger.error(
-                    f"PostgREST request failed: {response.status_code} - {response.text}"
-                )
+                logger.error(f"PostgREST request failed: {response.status_code} - {response.text}")
                 return []
 
     except Exception as e:
@@ -296,7 +281,7 @@ async def get_ldap_connectors(
         return []
 
 
-async def test_ldap_connection(connector_data: Dict[str, Any]) -> Dict[str, Any]:
+async def test_ldap_connection(connector_data: dict[str, Any]) -> dict[str, Any]:
     """
     Test connection to an LDAP server
 
@@ -308,30 +293,20 @@ async def test_ldap_connection(connector_data: Dict[str, Any]) -> Dict[str, Any]
     """
     try:
         connector_id_val = connector_data.get("id")
-        direct_password = connector_data.get(
-            "password"
-        )  # Get password directly for testing
+        direct_password = connector_data.get("password")  # Get password directly for testing
 
-        if connector_id_val and not all(
-            k in connector_data for k in ["host", "port", "username"]
-        ):
-            logger.info(
-                f"Fetching full connector details for ID: {connector_id_val} for testing."
-            )
+        if connector_id_val and not all(k in connector_data for k in ["host", "port", "username"]):
+            logger.info(f"Fetching full connector details for ID: {connector_id_val} for testing.")
             connector_model = await get_ldap_connector(connector_id_val)
             if not connector_model:
-                return {
-                    "error": f"LDAP Connector with ID {connector_id_val} not found."
-                }
+                return {"error": f"LDAP Connector with ID {connector_id_val} not found."}
         elif (
             "host" in connector_data and "username" in connector_data
         ):  # If most data is provided directly
             # Explicitly construct the model to ensure correct fields and types
             connector_model = LDAPConnector(
                 name=connector_data.get("name", "Test Connection"),
-                company_id=str(
-                    connector_data.get("company_id")
-                ),  # Ensure company_id is string
+                company_id=str(connector_data.get("company_id")),  # Ensure company_id is string
                 domain=connector_data.get("domain", ""),
                 host=connector_data.get("host", ""),
                 port=connector_data.get("port", ""),
@@ -351,9 +326,7 @@ async def test_ldap_connection(connector_data: Dict[str, Any]) -> Dict[str, Any]
                 attribute_first_name=connector_data.get("attribute_first_name", ""),
                 attribute_last_name=connector_data.get("attribute_last_name", ""),
                 attribute_display_name=connector_data.get("attribute_display_name", ""),
-                attribute_principal_name=connector_data.get(
-                    "attribute_principal_name", ""
-                ),
+                attribute_principal_name=connector_data.get("attribute_principal_name", ""),
                 attribute_email=connector_data.get("attribute_email", ""),
                 attribute_user_guid=connector_data.get("attribute_user_guid", ""),
                 attribute_user_groups=connector_data.get("attribute_user_groups", ""),
@@ -362,12 +335,8 @@ async def test_ldap_connection(connector_data: Dict[str, Any]) -> Dict[str, Any]
                 group_recursive=connector_data.get("group_recursive", False),
                 attribute_group_guid=connector_data.get("attribute_group_guid", ""),
                 attribute_group_name=connector_data.get("attribute_group_name", ""),
-                attribute_group_description=connector_data.get(
-                    "attribute_group_description", ""
-                ),
-                attribute_group_members=connector_data.get(
-                    "attribute_group_members", ""
-                ),
+                attribute_group_description=connector_data.get("attribute_group_description", ""),
+                attribute_group_members=connector_data.get("attribute_group_members", ""),
                 status=connector_data.get("status", "inactive"),  # Include status field
                 # Note: id, vault_secret_name, status_message, error, last_sync, created_at, updated_at
                 # are either generated by DB or not needed for a *test* connection model instance
@@ -384,9 +353,7 @@ async def test_ldap_connection(connector_data: Dict[str, Any]) -> Dict[str, Any]
         # but for the test endpoint, we primarily expect the direct password.
         # The existing vault fetching logic can remain for other uses of this function.
         if not ldap_password and connector_model.vault_secret_name:
-            ldap_password = await _get_password_from_vault(
-                connector_model.vault_secret_name
-            )
+            ldap_password = await _get_password_from_vault(connector_model.vault_secret_name)
 
         if not ldap_password:
             # Check if 'active' field was provided and is True, indicating an attempt to test an *active* connector without password
@@ -404,9 +371,7 @@ async def test_ldap_connection(connector_data: Dict[str, Any]) -> Dict[str, Any]
         try:
             # Get bypass flag from input data, default to False if not present
             bypass_cert = connector_data.get("bypass_cert_verification", False)
-            client = get_ldap_client(
-                connector_model, bypass_cert_verification=bypass_cert
-            )
+            client = get_ldap_client(connector_model, bypass_cert_verification=bypass_cert)
             # Bind with string username and password
             client.simple_bind_s(connector_model.username, ldap_password)
             logger.info(
@@ -464,9 +429,7 @@ async def ldap_authenticate(connector_id: str, credentials: LoginModel) -> bool:
             )
             return False
 
-        service_account_password = await _get_password_from_vault(
-            connector.vault_secret_name
-        )
+        service_account_password = await _get_password_from_vault(connector.vault_secret_name)
         if service_account_password is None:
             logger.error(
                 f"Failed to retrieve service account password from Vault for LDAP connector {connector_id}. Secret: {connector.vault_secret_name}"
@@ -509,9 +472,7 @@ async def ldap_authenticate(connector_id: str, credentials: LoginModel) -> bool:
                     f"User '{credentials.email}' authentication failed via LDAP connector '{connector_id}'."
                 )
                 return False
-        except (
-            ldap.LDAPError
-        ) as e:  # Catch LDAP errors specifically from authenticate_ldap
+        except ldap.LDAPError as e:  # Catch LDAP errors specifically from authenticate_ldap
             logger.error(
                 f"LDAP authentication error during call to authenticate_ldap for user {credentials.email} with connector {connector_id}: {str(e)}"
             )
@@ -531,20 +492,18 @@ async def ldap_authenticate(connector_id: str, credentials: LoginModel) -> bool:
 
 async def ldap_search(
     search_data: LDAPSearchInputModel,
-) -> List[LDAPSearchResult]:
+) -> list[LDAPSearchResult]:
     """
     Perform a search on LDAP
     Args:
         search_data: Search parameters (query and connectorId)
     Returns:
-        List of search results
+        list of search results
     """
     try:
         connector = await get_ldap_connector(search_data.connectorId)
         if not connector:
-            logger.error(
-                f"LDAP connector not found for search: {search_data.connectorId}"
-            )
+            logger.error(f"LDAP connector not found for search: {search_data.connectorId}")
             return []
 
         if not connector.vault_secret_name:
@@ -576,7 +535,7 @@ async def ldap_search(
             client = get_ldap_client(connector, bypass_cert_verification=False)
             client.simple_bind_s(connector.username, ldap_password)
             connection_successful = True
-            logger.info(f"✅ Successfully bound to LDAP with certificate verification")
+            logger.info("✅ Successfully bound to LDAP with certificate verification")
         except Exception as cert_error:
             logger.warning(
                 f"LDAP connection with certificate verification failed: {str(cert_error)}"
@@ -594,9 +553,7 @@ async def ldap_search(
                 client = get_ldap_client(connector, bypass_cert_verification=True)
                 client.simple_bind_s(connector.username, ldap_password)
                 connection_successful = True
-                logger.info(
-                    f"✅ Successfully bound to LDAP without certificate verification"
-                )
+                logger.info("✅ Successfully bound to LDAP without certificate verification")
             except Exception as bypass_error:
                 logger.error(
                     f"LDAP connection failed even without certificate verification: {str(bypass_error)}"
@@ -610,8 +567,7 @@ async def ldap_search(
         try:
             # Construct proper LDAP filter based on query
             base_filter = (
-                connector.user_object_filter
-                or "(&(objectClass=user)(!(objectClass=computer)))"
+                connector.user_object_filter or "(&(objectClass=user)(!(objectClass=computer)))"
             )
 
             if search_data.query and search_data.query != "*":
@@ -694,9 +650,7 @@ async def ldap_search(
                     continue
 
                 if "user" not in object_class_str and "person" not in object_class_str:
-                    logger.debug(
-                        f"Skipping non-user object: {dn}, objectClass: {object_class_str}"
-                    )
+                    logger.debug(f"Skipping non-user object: {dn}, objectClass: {object_class_str}")
                     continue
 
                 display_name = get_attr_value(
@@ -705,9 +659,7 @@ async def ldap_search(
                 first_name = get_attr_value(
                     attrs.get(connector.attribute_first_name or "givenName")
                 )
-                last_name = get_attr_value(
-                    attrs.get(connector.attribute_last_name or "sn")
-                )
+                last_name = get_attr_value(attrs.get(connector.attribute_last_name or "sn"))
                 username = get_attr_value(
                     attrs.get(connector.attribute_username or "sAMAccountName")
                 )
@@ -715,17 +667,12 @@ async def ldap_search(
 
                 # Skip entries without essential information
                 if not username and not email and not display_name:
-                    logger.debug(
-                        f"Skipping entry without username, email, or display name: {dn}"
-                    )
+                    logger.debug(f"Skipping entry without username, email, or display name: {dn}")
                     continue
 
                 search_result = LDAPSearchResult(
                     type="user",
-                    name=display_name
-                    or f"{first_name} {last_name}".strip()
-                    or username
-                    or dn,
+                    name=display_name or f"{first_name} {last_name}".strip() or username or dn,
                     directoryId=dn,
                     username=username,
                     email=email,  # This can now be None
@@ -736,17 +683,13 @@ async def ldap_search(
                 )
 
                 search_results.append(search_result)
-                logger.debug(
-                    f"Added user: {search_result.name} ({search_result.email})"
-                )
+                logger.debug(f"Added user: {search_result.name} ({search_result.email})")
 
             logger.info(f"✅ LDAP search completed: {len(search_results)} users found")
             return search_results
 
         except ldap.LDAPError as e:
-            logger.error(
-                f"LDAP search error on connector {search_data.connectorId}: {str(e)}"
-            )
+            logger.error(f"LDAP search error on connector {search_data.connectorId}: {str(e)}")
             return []
         finally:
             if client:
@@ -761,7 +704,7 @@ async def ldap_search(
         return []
 
 
-async def sync_ldap_connector(connector_id: str) -> Dict[str, Any]:
+async def sync_ldap_connector(connector_id: str) -> dict[str, Any]:
     """
     Synchronize users and groups from an LDAP connector
     (This is a placeholder and needs full implementation)
@@ -776,9 +719,7 @@ async def sync_ldap_connector(connector_id: str) -> Dict[str, Any]:
         return {"error": f"LDAP connector {connector_id} not found for sync."}
 
     if not connector.vault_secret_name:
-        return {
-            "error": f"Vault secret name not configured for LDAP connector {connector_id}."
-        }
+        return {"error": f"Vault secret name not configured for LDAP connector {connector_id}."}
 
     ldap_password = await _get_password_from_vault(connector.vault_secret_name)
     if ldap_password is None:
@@ -850,7 +791,5 @@ async def sync_ldap_connector(connector_id: str) -> Dict[str, Any]:
                 "status_message": "Synchronization failed due to an unexpected error.",
             },
         )
-        logger.exception(
-            f"Unexpected error during sync for connector {connector_id}: {str(e)}"
-        )
+        logger.exception(f"Unexpected error during sync for connector {connector_id}: {str(e)}")
         return {"error": f"Unexpected error during sync: {str(e)}"}

@@ -8,7 +8,6 @@ import logging
 import os
 import uuid
 from datetime import datetime
-from typing import Dict, List, Optional
 
 import requests
 from qdrant_client import QdrantClient
@@ -27,7 +26,7 @@ QDRANT_COLLECTION = os.environ.get("QDRANT_COLLECTION", "vault")
 qdrant_client = QdrantClient(url=f"http://{QDRANT_HOST}:{QDRANT_PORT}")
 
 
-def _get_embedding(text: str) -> List[float]:
+def _get_embedding(text: str) -> list[float]:
     """
     Generate embedding for text using Ollama.
 
@@ -83,7 +82,7 @@ def ensure_collection_exists(collection_name: str = QDRANT_COLLECTION, vector_si
         raise
 
 
-def store_in_kb(doc: Dict) -> Dict:
+def store_in_kb(doc: dict) -> dict:
     """
     Store a document in the Qdrant knowledge base.
 
@@ -140,18 +139,11 @@ def store_in_kb(doc: Dict) -> Dict:
                 payload[key] = value
 
         # Create point for Qdrant
-        point = PointStruct(
-            id=doc_id,
-            vector=embedding,
-            payload=payload
-        )
+        point = PointStruct(id=doc_id, vector=embedding, payload=payload)
 
         # Upsert into Qdrant
         logger.info(f"Upserting document into Qdrant collection: {QDRANT_COLLECTION}")
-        qdrant_client.upsert(
-            collection_name=QDRANT_COLLECTION,
-            points=[point]
-        )
+        qdrant_client.upsert(collection_name=QDRANT_COLLECTION, points=[point])
 
         logger.info(f"Document stored successfully with ID: {doc_id}")
 
@@ -159,23 +151,20 @@ def store_in_kb(doc: Dict) -> Dict:
             "status": "success",
             "message": "Document stored in knowledge base",
             "doc_id": doc_id,
-            "collection": QDRANT_COLLECTION
+            "collection": QDRANT_COLLECTION,
         }
 
     except Exception as e:
         logger.error(f"Error storing document in knowledge base: {e}")
-        return {
-            "status": "error",
-            "message": f"Failed to store document: {str(e)}"
-        }
+        return {"status": "error", "message": f"Failed to store document: {str(e)}"}
 
 
-def store_bulk_in_kb(docs: List[Dict]) -> Dict:
+def store_bulk_in_kb(docs: list[dict]) -> dict:
     """
     Store multiple documents in the knowledge base in a batch.
 
     Args:
-        docs: List of document dictionaries (same format as store_in_kb)
+        docs: list of document dictionaries (same format as store_in_kb)
 
     Returns:
         Dictionary with status and count of stored documents
@@ -223,11 +212,7 @@ def store_bulk_in_kb(docs: List[Dict]) -> Dict:
                         payload[key] = value
 
                 # Create point
-                point = PointStruct(
-                    id=doc_id,
-                    vector=embedding,
-                    payload=payload
-                )
+                point = PointStruct(id=doc_id, vector=embedding, payload=payload)
                 points.append(point)
 
             except Exception as e:
@@ -235,17 +220,11 @@ def store_bulk_in_kb(docs: List[Dict]) -> Dict:
                 continue
 
         if not points:
-            return {
-                "status": "error",
-                "message": "No valid documents to store"
-            }
+            return {"status": "error", "message": "No valid documents to store"}
 
         # Batch upsert
         logger.info(f"Upserting {len(points)} documents into Qdrant")
-        qdrant_client.upsert(
-            collection_name=QDRANT_COLLECTION,
-            points=points
-        )
+        qdrant_client.upsert(collection_name=QDRANT_COLLECTION, points=points)
 
         logger.info(f"Bulk storage complete: {len(points)} documents stored")
 
@@ -253,18 +232,15 @@ def store_bulk_in_kb(docs: List[Dict]) -> Dict:
             "status": "success",
             "message": f"Stored {len(points)} documents in knowledge base",
             "doc_ids": doc_ids,
-            "collection": QDRANT_COLLECTION
+            "collection": QDRANT_COLLECTION,
         }
 
     except Exception as e:
         logger.error(f"Error in bulk storage: {e}")
-        return {
-            "status": "error",
-            "message": f"Bulk storage failed: {str(e)}"
-        }
+        return {"status": "error", "message": f"Bulk storage failed: {str(e)}"}
 
 
-def delete_from_kb(doc_id: str) -> Dict:
+def delete_from_kb(doc_id: str) -> dict:
     """
     Delete a document from the knowledge base.
 
@@ -277,27 +253,18 @@ def delete_from_kb(doc_id: str) -> Dict:
     try:
         logger.info(f"Deleting document: {doc_id}")
 
-        qdrant_client.delete(
-            collection_name=QDRANT_COLLECTION,
-            points_selector=[doc_id]
-        )
+        qdrant_client.delete(collection_name=QDRANT_COLLECTION, points_selector=[doc_id])
 
         logger.info(f"Document {doc_id} deleted successfully")
 
-        return {
-            "status": "success",
-            "message": "Document deleted from knowledge base"
-        }
+        return {"status": "success", "message": "Document deleted from knowledge base"}
 
     except Exception as e:
         logger.error(f"Error deleting document: {e}")
-        return {
-            "status": "error",
-            "message": f"Failed to delete document: {str(e)}"
-        }
+        return {"status": "error", "message": f"Failed to delete document: {str(e)}"}
 
 
-def search_kb(query: str, limit: int = 5, access_level: int = 1) -> List[Dict]:
+def search_kb(query: str, limit: int = 5, access_level: int = 1) -> list[dict]:
     """
     Search the knowledge base for similar documents.
 
@@ -307,7 +274,7 @@ def search_kb(query: str, limit: int = 5, access_level: int = 1) -> List[Dict]:
         access_level: User's access level for filtering
 
     Returns:
-        List of matching documents with scores
+        list of matching documents with scores
     """
     try:
         logger.info(f"Searching knowledge base for: {query}")
@@ -329,15 +296,17 @@ def search_kb(query: str, limit: int = 5, access_level: int = 1) -> List[Dict]:
             doc_access_level = payload.get("access_level", payload.get("access", 1))
 
             if doc_access_level <= access_level:
-                filtered_results.append({
-                    "id": result.id,
-                    "score": result.score,
-                    "content": payload.get("content", ""),
-                    "title": payload.get("title", payload.get("name", "")),
-                    "source": payload.get("sourcefile", payload.get("source", "")),
-                    "access_level": doc_access_level,
-                    "metadata": payload
-                })
+                filtered_results.append(
+                    {
+                        "id": result.id,
+                        "score": result.score,
+                        "content": payload.get("content", ""),
+                        "title": payload.get("title", payload.get("name", "")),
+                        "source": payload.get("sourcefile", payload.get("source", "")),
+                        "access_level": doc_access_level,
+                        "metadata": payload,
+                    }
+                )
 
             if len(filtered_results) >= limit:
                 break

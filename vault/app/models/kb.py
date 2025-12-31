@@ -1,10 +1,11 @@
 import os
-from typing import Generator, Optional
+from collections.abc import Generator
+
+from sqlalchemy import create_engine
+from sqlalchemy.orm import Session, sessionmaker
 
 from app.core.config import settings
 from app.db.baseclass import Base
-from sqlalchemy import create_engine
-from sqlalchemy.orm import Session, sessionmaker
 
 try:
     from supabase import Client, create_client  # type: ignore
@@ -17,7 +18,7 @@ DATABASE_URL = os.getenv("DATABASE_URL", settings.database_url)
 engine = create_engine(DATABASE_URL, pool_pre_ping=True)
 SessionLocal = sessionmaker(bind=engine, autocommit=False, autoflush=False)
 
-supabase: Optional["Client"] = None
+supabase: Client | None = None
 if (
     create_client
     and (settings.supabase_service_key or settings.supabase_key)
@@ -29,7 +30,7 @@ if (
     )
 
 
-def get_db() -> Generator[Session, None, None]:
+def get_db() -> Generator[Session]:
     db = SessionLocal()
     try:
         yield db

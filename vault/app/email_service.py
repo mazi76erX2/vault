@@ -4,7 +4,6 @@ import smtplib
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 from pathlib import Path
-from typing import Optional
 
 from dotenv import load_dotenv
 
@@ -23,11 +22,11 @@ COMPANY_NAME = os.getenv("COMPANY_NAME", "Vault")
 VAULT_URL = os.getenv("VAULT_URL", "https://vault.example.com")
 
 # Global to store the last email error for debugging
-LAST_EMAIL_ERROR: Optional[str] = None
+LAST_EMAIL_ERROR: str | None = None
 
 
 async def send_email(
-    to_email: str, subject: str, html_content: str, text_content: Optional[str] = None
+    to_email: str, subject: str, html_content: str, text_content: str | None = None
 ) -> bool:
     """
     Send an email using SMTP
@@ -67,20 +66,20 @@ async def send_email(
         # Connect to SMTP server and send
         with smtplib.SMTP(SMTP_SERVER, SMTP_PORT) as server:
             # Log connection info for debugging
-            logging.info("Connecting to SMTP server: %s:%s" % (SMTP_SERVER, SMTP_PORT))
+            logging.info(f"Connecting to SMTP server: {SMTP_SERVER}:{SMTP_PORT}")
 
             # Start TLS for security
             server.starttls()
 
             # Login with credentials
-            logging.info("Authenticating with username: %s" % SMTP_USERNAME)
+            logging.info(f"Authenticating with username: {SMTP_USERNAME}")
             server.login(SMTP_USERNAME, SMTP_PASSWORD)
 
             # Send email
-            logging.info("Sending email from %s to %s" % (EMAIL_FROM, to_email))
+            logging.info(f"Sending email from {EMAIL_FROM} to {to_email}")
             server.sendmail(EMAIL_FROM, to_email, msg.as_string())
 
-        logging.info("Email sent successfully to %s: %s" % (to_email, subject))
+        logging.info(f"Email sent successfully to {to_email}: {subject}")
         LAST_EMAIL_ERROR = None
         return True
 
@@ -148,24 +147,24 @@ async def send_welcome_email(to_email: str, password: str, username: str) -> boo
 
     text_content = f"""
     Welcome to {COMPANY_NAME} Vault
-    
+
     Hello,
-    
+
     Your account has been created in the {COMPANY_NAME} Vault system.
-    
+
     Here are your login credentials:
     Username: {username}
     Temporary Password: {password}
-    
+
     You will be prompted to change your password upon first login.
-    
+
     Login at: {VAULT_URL}
-    
+
     If you have any questions, please contact your administrator.
-    
+
     Thank you,
     The {COMPANY_NAME} Team
-    
+
     This is an automated message. Please do not reply to this email.
     © {COMPANY_NAME}. All rights reserved.
     """
@@ -225,21 +224,21 @@ async def send_password_reset_email(to_email: str, reset_link: str) -> bool:
 
     text_content = f"""
     Reset Your {COMPANY_NAME} Vault Password
-    
+
     Hello,
-    
+
     We received a request to reset your password for your {COMPANY_NAME} Vault account.
-    
+
     To reset your password, please visit the following link:
     {reset_link}
-    
+
     If you did not request a password reset, please ignore this email or contact your administrator if you have concerns.
-    
+
     This link will expire in 24 hours.
-    
+
     Thank you,
     The {COMPANY_NAME} Team
-    
+
     This is an automated message. Please do not reply to this email.
     © {COMPANY_NAME}. All rights reserved.
     """
@@ -248,7 +247,7 @@ async def send_password_reset_email(to_email: str, reset_link: str) -> bool:
 
 
 async def send_test_email(
-    email: str, subject: str, content: str, username: Optional[str] = None
+    email: str, subject: str, content: str, username: str | None = None
 ) -> bool:
     """
     Send a test email to verify email service functionality
@@ -298,18 +297,18 @@ async def send_test_email(
 
     text_content = f"""
     Test Email from {COMPANY_NAME}
-    
+
     {greeting}
-    
+
     {content}
-    
+
     This is a test email sent from the {COMPANY_NAME} Vault application to verify email functionality.
-    
+
     If you received this email, the email service is working correctly.
-    
+
     Thank you,
     The {COMPANY_NAME} Team
-    
+
     This is an automated test message. Please do not reply to this email.
     © {COMPANY_NAME}. All rights reserved.
     """

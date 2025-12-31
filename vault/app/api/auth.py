@@ -1,12 +1,10 @@
 from __future__ import annotations
 
-from typing import Optional
-
-from app.database import supabase
-from app.services.auth_service import (CurrentUser, _extract_bearer_token,
-                                      get_current_user)
 from fastapi import APIRouter, HTTPException, Request, status
 from pydantic import BaseModel, EmailStr
+
+from app.database import supabase
+from app.services.auth_service import CurrentUser, _extract_bearer_token, get_current_user
 
 router = APIRouter(prefix="/api/v1/auth", tags=["auth"])
 
@@ -18,13 +16,13 @@ class LoginRequest(BaseModel):
 
 class UserOut(BaseModel):
     id: str
-    email: Optional[str] = None
+    email: str | None = None
 
 
 class LoginResponse(BaseModel):
     user: UserOut
     token: str
-    refreshToken: Optional[str] = None
+    refreshToken: str | None = None
 
 
 class RefreshTokenRequest(BaseModel):
@@ -34,7 +32,7 @@ class RefreshTokenRequest(BaseModel):
 class RefreshTokenResponse(BaseModel):
     user: UserOut
     token: str
-    refreshToken: Optional[str] = None
+    refreshToken: str | None = None
 
 
 @router.post("/login", response_model=LoginResponse)
@@ -65,9 +63,7 @@ async def login(req: LoginRequest):
         msg = str(e)
         if "SSL" in msg or "connect" in msg.lower():
             msg = "Failed to connect to authentication service. Please try again."
-        raise HTTPException(
-            status_code=status.HTTP500_INTERNAL_SERVER_ERROR, detail=msg
-        ) from e
+        raise HTTPException(status_code=status.HTTP500_INTERNAL_SERVER_ERROR, detail=msg) from e
 
 
 @router.post("/refresh", response_model=RefreshTokenResponse)

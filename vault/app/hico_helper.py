@@ -2,7 +2,7 @@ import argparse
 import logging
 import os
 
-from chat import clientOpenAI, generate_response_helper
+from chat import generate_response_helper
 from feedback import fn_report, fn_save, fn_thumbs_down_rlhf, fn_thumbs_up_rlhf
 
 logging.basicConfig(level=logging.INFO)
@@ -31,9 +31,7 @@ def main(args):
                     We're here to assist you! 😊
                 """
             )
-            gr.HTML(
-                value="<img app='/file=images/_logo_1.png' style='width: 25%; float: right;' >"
-            )
+            gr.HTML(value="<img app='/file=images/_logo_1.png' style='width: 25%; float: right;' >")
         with gr.Row():
             with gr.Tabs(selected="login") as tabs:
                 tab_Login = gr.Tab("User Login", id="login")
@@ -42,9 +40,7 @@ def main(args):
                     login_password = gr.Textbox(label="Password", type="password")
                     login_button = gr.Button("Login")
 
-                tab_Login = gr.Tab(
-                    " VAULT ChatBot Helper", visible=False, id="chatbot"
-                )
+                tab_Login = gr.Tab(" VAULT ChatBot Helper", visible=False, id="chatbot")
                 with tab_Login:
                     with gr.Row():
                         with gr.Column():
@@ -54,7 +50,7 @@ def main(args):
                                 placeholder="What is meant by BPA in the Power BI scope?",
                             )
                             with gr.Row():
-                                clear = gr.ClearButton([msg, chatbot])
+                                gr.ClearButton([msg, chatbot])
                                 bt_thumbs_up = gr.Button("👍")
                                 bt_thumbs_down = gr.Button("👎")
                         with gr.Column():
@@ -113,18 +109,14 @@ def main(args):
                             )
                             with q_a_accordion:
                                 with gr.Column():
-                                    question = gr.Textbox(
-                                        label="Question", placeholder=""
-                                    )
+                                    question = gr.Textbox(label="Question", placeholder="")
                                     answer = gr.Textbox(label="answer", placeholder="")
                                     bt_save = gr.Button("🖹 Save")
 
         bt_report.click(fn_report, [report, chatbot], [report, rlhw_accordion])
         bt_save.click(fn_save, [question, answer], [question, answer, q_a_accordion])
 
-        bt_thumbs_down.click(
-            fn_thumbs_down_rlhf, [], [rlhw_accordion, as_accordion, sc_accordion]
-        )
+        bt_thumbs_down.click(fn_thumbs_down_rlhf, [], [rlhw_accordion, as_accordion, sc_accordion])
         bt_thumbs_up.click(
             fn_thumbs_up_rlhf,
             [chatbot],

@@ -1,5 +1,3 @@
-from typing import Any, Dict, List
-
 from pydantic import BaseModel
 
 
@@ -10,20 +8,24 @@ class ProfileUpdateRequest(BaseModel):
     field_of_expertise: str
     department: str
 
+
 class CollectorSummaryUpdateSummaryRequest(BaseModel):
     user_id: str
     session_id: int
     summary_text: str
+
 
 class CollectorSummaryContinueRequest(BaseModel):
     session_id: int
     summary_text: str
     is_resume: bool
 
+
 class CollectorSummaryContinueResponse(BaseModel):
     message: str
     next_page: str
     state: dict
+
 
 class StartChatRequest(BaseModel):
     id: int

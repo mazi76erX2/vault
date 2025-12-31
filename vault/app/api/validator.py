@@ -1,15 +1,20 @@
 from __future__ import annotations
 
 import logging
-from datetime import datetime, timezone
-from typing import Any, Dict, List, Optional
+from datetime import UTC, datetime
+from typing import Any
+
+from fastapi import APIRouter, Depends, HTTPException, Query
+from gotrue import UserResponse
 
 from app.database import supabase
-from app.dto.validator import (AcceptDocumentRequest, DelegateRequest,
-                               DocumentFetchRequest, RejectDocumentRequest)
+from app.dto.validator import (
+    AcceptDocumentRequest,
+    DelegateRequest,
+    DocumentFetchRequest,
+    RejectDocumentRequest,
+)
 from app.middleware.auth import verifytoken
-from fastapi import APIRouter, Depends, HTTPException, Query, status
-from gotrue import UserResponse
 
 logger = logging.getLogger(__name__)
 
@@ -24,13 +29,7 @@ def _uid(user: UserResponse) -> str:
 
 
 def _companyid_for_user(userid: str) -> int:
-    resp = (
-        supabase.table("profiles")
-        .select("companyid")
-        .eq("id", userid)
-        .maybe_single()
-        .execute()
-    )
+    resp = supabase.table("profiles").select("companyid").eq("id", userid).maybe_single().execute()
     data = resp.data or {}
     companyid = data.get("companyid")
     if not companyid:
@@ -41,15 +40,10 @@ def _companyid_for_user(userid: str) -> int:
     return int(companyid)
 
 
-def _profiles_map(companyid: int) -> Dict[str, str]:
+def _profiles_map(companyid: int) -> dict[str, str]:
     # Map userId -> fullname for display
-    resp = (
-        supabase.table("profiles")
-        .select("id, fullname")
-        .eq("companyid", companyid)
-        .execute()
-    )
-    m: Dict[str, str] = {}
+    resp = supabase.table("profiles").select("id, fullname").eq("companyid", companyid).execute()
+    m: dict[str, str] = {}
     for row in resp.data or []:
         pid = row.get("id")
         if pid:
@@ -57,7 +51,7 @@ def _profiles_map(companyid: int) -> Dict[str, str]:
     return m
 
 
-def _parse_dt(s: Optional[str]) -> Optional[datetime]:
+def _parse_dt(s: str | None) -> datetime | None:
     if not s:
         return None
     try:
@@ -65,7 +59,7 @@ def _parse_dt(s: Optional[str]) -> Optional[datetime]:
         s2 = s.replace("Z", "+00:00")
         dt = datetime.fromisoformat(s2)
         if dt.tzinfo is None:
-            dt = dt.replace(tzinfo=timezone.utc)
+            dt = dt.replace(tzinfo=UTC)
         return dt
     except Exception:
         return None
@@ -75,7 +69,7 @@ def _parse_dt(s: Optional[str]) -> Optional[datetime]:
 async def get_documents(
     userid: str = Query(...),
     user: UserResponse = Depends(verifytoken),
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """
     UI expects: { documents: [{ id, title, author, status }] }
     """
@@ -111,7 +105,7 @@ async def get_documents(
 @router.get("/completed-documents")
 async def completed_documents(
     user: UserResponse = Depends(verifytoken),
-) -> List[Dict[str, Any]]:
+) -> list[dict[str, Any]]:
     """
     UI expects: an array: [{ id, title, author, status }]
     """
@@ -143,7 +137,7 @@ async def completed_documents(
 async def fetch_document_by_id(
     payload: DocumentFetchRequest,
     user: UserResponse = Depends(verifytoken),
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """
     UI expects: { document: { ... } }
     """
@@ -165,9 +159,7 @@ async def fetch_document_by_id(
     # Optional: enforce validator owns it OR it is part of their workflow
     # (responsible == validator OR status is review/completed and responsible == validator)
     if str(doc.get("responsible")) != token_uid:
-        raise HTTPException(
-            status_code=403, detail="Not allowed to access this document"
-        )
+        raise HTTPException(status_code=403, detail="Not allowed to access this document")
 
     return {"document": doc}
 
@@ -176,11 +168,11 @@ async def fetch_document_by_id(
 async def accept_document(
     payload: AcceptDocumentRequest,
     user: UserResponse = Depends(verifytoken),
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     token_uid = _uid(user)
     companyid = _companyid_for_user(token_uid)
 
-    updatedata: Dict[str, Any] = {
+    updatedata: dict[str, Any] = {
         "status": payload.status or "Validated - Stored",
     }
     if payload.comment is not None:
@@ -209,11 +201,11 @@ async def accept_document(
 async def reject_document(
     payload: RejectDocumentRequest,
     user: UserResponse = Depends(verifytoken),
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     token_uid = _uid(user)
     companyid = _companyid_for_user(token_uid)
 
-    updatefields: Dict[str, Any] = {
+    updatefields: dict[str, Any] = {
         "comment": payload.comment,
         "summary": payload.summary,
         "status": "Rejected",
@@ -242,7 +234,7 @@ async def reject_document(
 async def delegate_document(
     payload: DelegateRequest,
     user: UserResponse = Depends(verifytoken),
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """
     Delegate to an expert:
       - keep 'responsible' as the validator (so it returns to them)
@@ -253,11 +245,9 @@ async def delegate_document(
     companyid = _companyid_for_user(token_uid)
 
     if payload.delegatorid != token_uid:
-        raise HTTPException(
-            status_code=403, detail="delegatorid does not match token user"
-        )
+        raise HTTPException(status_code=403, detail="delegatorid does not match token user")
 
-    updatefields: Dict[str, Any] = {
+    updatefields: dict[str, Any] = {
         "comment": payload.comment,
         "summary": payload.summary,
         "status": payload.status or "On Review",
@@ -284,9 +274,9 @@ async def delegate_document(
 
 @router.post("/fetchdelegators")
 async def fetch_delegators(
-    data: Dict[str, Any],
+    data: dict[str, Any],
     user: UserResponse = Depends(verifytoken),
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """
     UI expects: { delegators: [{ id, fullName }] }
     """
@@ -298,7 +288,7 @@ async def fetch_delegators(
     companyid = _companyid_for_user(token_uid)
 
     # Prefer "isExpert" (if column exists), else fallback to all profiles in company except self.
-    delegators: List[Dict[str, Any]] = []
+    delegators: list[dict[str, Any]] = []
     try:
         resp = (
             supabase.table("profiles")
@@ -315,10 +305,7 @@ async def fetch_delegators(
         ]
     except Exception:
         resp = (
-            supabase.table("profiles")
-            .select("id, fullname")
-            .eq("companyid", companyid)
-            .execute()
+            supabase.table("profiles").select("id, fullname").eq("companyid", companyid).execute()
         )
         rows = resp.data or []
         delegators = [
@@ -332,18 +319,16 @@ async def fetch_delegators(
 
 @router.post("/fetchassigneddocuments")
 async def fetch_assigned_documents(
-    data: Dict[str, Any],
+    data: dict[str, Any],
     user: UserResponse = Depends(verifytoken),
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """
     Validator summary page expects: { documents: [{ id, title, status }] }
     """
     token_uid = _uid(user)
     validatorid = data.get("validatorid")
     if not validatorid or validatorid != token_uid:
-        raise HTTPException(
-            status_code=403, detail="validatorid does not match token user"
-        )
+        raise HTTPException(status_code=403, detail="validatorid does not match token user")
 
     companyid = _companyid_for_user(token_uid)
 
@@ -369,7 +354,7 @@ async def fetch_assigned_documents(
 
 
 @router.get("/getstats")
-async def get_stats(user: UserResponse = Depends(verifytoken)) -> Dict[str, Any]:
+async def get_stats(user: UserResponse = Depends(verifytoken)) -> dict[str, Any]:
     """
     UI expects snakecase keys:
       { totalassigned, totalcompleted, averagereviewtime }
@@ -387,7 +372,7 @@ async def get_stats(user: UserResponse = Depends(verifytoken)) -> Dict[str, Any]
 
     total_assigned = 0
     total_completed = 0
-    durations_hours: List[float] = []
+    durations_hours: list[float] = []
 
     for d in docs:
         st = d.get("status") or ""

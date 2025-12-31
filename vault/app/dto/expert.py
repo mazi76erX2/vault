@@ -1,7 +1,5 @@
 from __future__ import annotations
 
-from typing import Optional
-
 from pydantic import BaseModel
 
 
@@ -21,7 +19,7 @@ class DocumentRow(BaseModel):
 
 class AcceptDocumentRequest(BaseModel):
     docid: int
-    severitylevels: Optional[str] = None
+    severitylevels: str | None = None
     summary: str
     comment: str
 
@@ -30,5 +28,5 @@ class RejectRequest(BaseModel):
     docid: int
     comment: str
     summary: str
-    reviewer: Optional[str] = None
-    severitylevels: Optional[str] = None
+    reviewer: str | None = None
+    severitylevels: str | None = None

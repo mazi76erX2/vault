@@ -12,7 +12,7 @@ import random
 import string
 from contextlib import asynccontextmanager
 from datetime import datetime
-from typing import List, Optional, Union
+from typing import Optional, Union
 
 import app.email_service as email_service
 import uvicorn
@@ -70,25 +70,17 @@ def ensure_storage_bucket_exists(bucket_name: str) -> bool:
                 return True
         except Exception as e:
             # Bucket doesn't exist, we'll try to create it
-            logger.info(
-                f"Storage bucket '{bucket_name}' doesn't exist, will create it."
-            )
+            logger.info(f"Storage bucket '{bucket_name}' doesn't exist, will create it.")
 
         # Create the bucket
         try:
-            create_result = supabase_admin.storage.create_bucket(
-                bucket_name, {"public": True}
-            )
+            create_result = supabase_admin.storage.create_bucket(bucket_name, {"public": True})
             if create_result:
                 logger.info(f"Successfully created storage bucket '{bucket_name}'.")
                 return True
         except Exception as create_error:
             error_msg = str(create_error).lower()
-            if (
-                "409" in error_msg
-                or "duplicate" in error_msg
-                or "already exists" in error_msg
-            ):
+            if "409" in error_msg or "duplicate" in error_msg or "already exists" in error_msg:
                 logger.info(f"Bucket '{bucket_name}' already exists.")
                 return True
             else:
@@ -121,7 +113,7 @@ app.include_router(ldap_router)
 
 
 # Role-based access dependency
-def require_roles(roles: List[str]):
+def require_roles(roles: list[str]):
     """
     Decorator to check if the current user has the required roles.
     """
@@ -137,13 +129,9 @@ def require_roles(roles: List[str]):
     return role_checker
 
 
-app.include_router(
-    collector_router, dependencies=[Depends(require_roles(["Collector"]))]
-)
+app.include_router(collector_router, dependencies=[Depends(require_roles(["Collector"]))])
 app.include_router(helper_router, dependencies=[Depends(require_roles(["Helper"]))])
-app.include_router(
-    ldap_router, dependencies=[Depends(require_roles(["Administrator"]))]
-)
+app.include_router(ldap_router, dependencies=[Depends(require_roles(["Administrator"]))])
 
 
 origins = [
@@ -191,9 +179,7 @@ async def websocket_endpoint(websocket: WebSocket, client_id: str):
 def store_knowledge(data: dict):
     document_id = data.get("doc_id")
     logger.info("Received document id: %s", document_id)
-    response = (
-        supabase.table("documents").select("*").eq("doc_id", document_id).execute()
-    )
+    response = supabase.table("documents").select("*").eq("doc_id", document_id).execute()
     documents = response.data
     logger.info("Received document : %s", response.data)
 
@@ -289,9 +275,7 @@ def download_logs():
     """
     Endpoint to download the backend log file.
     """
-    return FileResponse(
-        "backend_logs.log", media_type="text/plain", filename="backend_logs.log"
-    )
+    return FileResponse("backend_logs.log", media_type="text/plain", filename="backend_logs.log")
 
 
 @app.get("/api/users/departments")
@@ -300,9 +284,7 @@ def get_departments():
     Endpoint to departments enumerated type from supabase.
     """
     logger.info("Getting departments from supabase")
-    departments_response = supabase.rpc(
-        "get_enum_values", {"enum_name": "department"}
-    ).execute()
+    departments_response = supabase.rpc("get_enum_values", {"enum_name": "department"}).execute()
     departments_data = departments_response.data
     logger.info("departments: %s", departments_data)
     return departments_data
@@ -326,25 +308,16 @@ async def console_main_get_user_info(user_id: str):
             .execute()
         )
     except Exception as e:
-        raise HTTPException(
-            status_code=500, detail=f"Error fetching validator flag: {str(e)}"
-        )
+        raise HTTPException(status_code=500, detail=f"Error fetching validator flag: {str(e)}")
 
     try:
         documents_response = (
-            supabase.from_("documents")
-            .select("doc_id")
-            .eq("reviewer", user_id)
-            .execute()
+            supabase.from_("documents").select("doc_id").eq("reviewer", user_id).execute()
         )
     except Exception as e:
-        raise HTTPException(
-            status_code=500, detail=f"Error fetching documents: {str(e)}"
-        )
+        raise HTTPException(status_code=500, detail=f"Error fetching documents: {str(e)}")
 
-    is_validator = (
-        validator_response.data["isValidator"] if validator_response.data else False
-    )
+    is_validator = validator_response.data["isValidator"] if validator_response.data else False
     is_expert = len(documents_response.data) > 0 if documents_response.data else False
 
     return UserInfo(user_id=user_id, is_validator=is_validator, is_expert=is_expert)
@@ -379,12 +352,8 @@ def admin_get_users(current_user=Depends(verify_token_with_tenant)):
         all_roles_map = {}
         role_name_to_id_map = {}
         if all_roles_response.data:
-            all_roles_map = {
-                role["id"]: role["name"] for role in all_roles_response.data
-            }
-            role_name_to_id_map = {
-                role["name"]: role["id"] for role in all_roles_response.data
-            }
+            all_roles_map = {role["id"]: role["name"] for role in all_roles_response.data}
+            role_name_to_id_map = {role["name"]: role["id"] for role in all_roles_response.data}
         else:
             logger.warning("No roles found in the roles table.")
 
@@ -411,21 +380,13 @@ def admin_get_users(current_user=Depends(verify_token_with_tenant)):
             user_id = profile["id"]
             assigned_role_ids = user_roles_assignments.get(user_id, [])
 
-            profile["is_admin"] = (
-                role_name_to_id_map.get("Administrator") in assigned_role_ids
-            )
+            profile["is_admin"] = role_name_to_id_map.get("Administrator") in assigned_role_ids
             profile["is_validator"] = profile.get("isValidator", False) or (
                 role_name_to_id_map.get("Validator") in assigned_role_ids
             )
-            profile["is_expert"] = (
-                role_name_to_id_map.get("Expert") in assigned_role_ids
-            )
-            profile["is_collector"] = (
-                role_name_to_id_map.get("Collector") in assigned_role_ids
-            )
-            profile["is_helper"] = (
-                role_name_to_id_map.get("Helper") in assigned_role_ids
-            )
+            profile["is_expert"] = role_name_to_id_map.get("Expert") in assigned_role_ids
+            profile["is_collector"] = role_name_to_id_map.get("Collector") in assigned_role_ids
+            profile["is_helper"] = role_name_to_id_map.get("Helper") in assigned_role_ids
 
             # Get registered_since from the profile
             profile["registered_since"] = profile.get("created_at")
@@ -433,9 +394,7 @@ def admin_get_users(current_user=Depends(verify_token_with_tenant)):
 
             augmented_users.append(profile)
 
-        logger.info(
-            f"Returning {len(augmented_users)} users for tenant {company_reg_no}"
-        )
+        logger.info(f"Returning {len(augmented_users)} users for tenant {company_reg_no}")
         return augmented_users
 
     except HTTPException:
@@ -480,9 +439,7 @@ async def get_user_profile(data: dict, current_user=Depends(verify_token_with_te
         raise
     except Exception as e:
         logging.error("Error fetching user profile: %s", str(e))
-        raise HTTPException(
-            status_code=500, detail=f"Error fetching user profile: {str(e)}"
-        ) from e
+        raise HTTPException(status_code=500, detail=f"Error fetching user profile: {str(e)}") from e
 
 
 class UserCompanyRequest(BaseModel):
@@ -534,9 +491,7 @@ async def get_user_company(
 
         company_id = profile.get("company_id")
         if not company_id:
-            raise HTTPException(
-                status_code=404, detail="User has no associated company"
-            )
+            raise HTTPException(status_code=404, detail="User has no associated company")
 
         company = (
             supabase.table("companies")
@@ -560,9 +515,7 @@ async def get_user_company(
                     {"company_name": name, "updated_at": datetime.now().isoformat()},
                     company_reg_no,
                 )
-                logger.info(
-                    "Updated profile for user %s with company name %s", user_id, name
-                )
+                logger.info("Updated profile for user %s with company name %s", user_id, name)
             except Exception as err:
                 logger.warning("Failed to update profile for user %s: %s", user_id, err)
 
@@ -574,9 +527,7 @@ async def get_user_company(
         raise
     except Exception as e:
         logger.error("Error fetching user company: %s", e)
-        raise HTTPException(
-            status_code=500, detail="Error fetching user company"
-        ) from e
+        raise HTTPException(status_code=500, detail="Error fetching user company") from e
 
 
 class OrganisationDetails(BaseModel):
@@ -602,7 +553,7 @@ class UpdateUserDetailsRequest(BaseModel):
     company: str
     user_id: Optional[str] = None
     username: Optional[str] = None
-    roles: Optional[List[str]] = None
+    roles: Optional[list[str]] = None
 
 
 @app.post("/api/user/update_user_details", response_model=OrganisationDetails)
@@ -639,10 +590,7 @@ async def update_user_details(
 
             # Get Administrator role ID
             admin_role_response = (
-                supabase.table("roles")
-                .select("id")
-                .eq("name", "Administrator")
-                .execute()
+                supabase.table("roles").select("id").eq("name", "Administrator").execute()
             )
 
             if not admin_role_response.data:
@@ -672,9 +620,7 @@ async def update_user_details(
             raise
         except Exception as role_check_error:
             logger.error(f"Error checking user roles: {role_check_error}")
-            raise HTTPException(
-                status_code=500, detail="Error verifying user permissions."
-            )
+            raise HTTPException(status_code=500, detail="Error verifying user permissions.")
         # --- End Admin Check ---
 
         current_date = datetime.now().isoformat()
@@ -719,9 +665,7 @@ async def update_user_details(
                             )
 
                 # Check username uniqueness within tenant
-                if requested_username and requested_username != existing_profile.get(
-                    "username"
-                ):
+                if requested_username and requested_username != existing_profile.get("username"):
                     for profile in tenant_profiles:
                         if (
                             profile.get("username") == requested_username
@@ -745,9 +689,7 @@ async def update_user_details(
                     db_user_id = profile["id"]
 
                     # Check username uniqueness within tenant
-                    if requested_username and requested_username != profile.get(
-                        "username"
-                    ):
+                    if requested_username and requested_username != profile.get("username"):
                         for other_profile in tenant_profiles:
                             if (
                                 other_profile.get("username") == requested_username
@@ -773,8 +715,7 @@ async def update_user_details(
                     base_username = f"{first_name.lower().replace(' ', '')}_{last_name.lower().replace(' ', '')}{random.randint(100,999)}"
                     requested_username = base_username
                     while any(
-                        profile.get("username") == requested_username
-                        for profile in tenant_profiles
+                        profile.get("username") == requested_username for profile in tenant_profiles
                     ):
                         requested_username = f"{first_name.lower().replace(' ', '')}_{last_name.lower().replace(' ', '')}{random.randint(100,999)}"
 
@@ -798,9 +739,7 @@ async def update_user_details(
             "company_name": profile_data_to_update["company_name"],
         }
         missing_fields = [
-            field_name
-            for field_name, value in required_fields_check.items()
-            if not value
+            field_name for field_name, value in required_fields_check.items() if not value
         ]
         if missing_fields:
             formatted_fields = [field.replace("_", " ") for field in missing_fields]
@@ -819,14 +758,10 @@ async def update_user_details(
             updated_profile = TenantService.update_tenant_profile(
                 db_user_id, profile_data_to_update, company_reg_no
             )
-            logger.info(
-                f"Profile updated for user ID: {db_user_id} in tenant {company_reg_no}"
-            )
+            logger.info(f"Profile updated for user ID: {db_user_id} in tenant {company_reg_no}")
         else:
             # Create new user with tenant association
-            password = "".join(
-                random.choices(string.ascii_letters + string.digits, k=12)
-            )
+            password = "".join(random.choices(string.ascii_letters + string.digits, k=12))
             if not profile_data_to_update.get("username"):
                 profile_data_to_update["username"] = requested_username
 
@@ -835,9 +770,7 @@ async def update_user_details(
                     {
                         "email": email,
                         "password": password,
-                        "user_metadata": {
-                            "full_name": profile_data_to_update["full_name"]
-                        },
+                        "user_metadata": {"full_name": profile_data_to_update["full_name"]},
                         "email_confirm": True,
                     }
                 )
@@ -855,9 +788,7 @@ async def update_user_details(
                 # Send welcome email
                 username_for_email = profile_data_to_update.get("username")
                 if not username_for_email:
-                    logger.error(
-                        f"Username is unexpectedly None for new user {db_user_id}"
-                    )
+                    logger.error(f"Username is unexpectedly None for new user {db_user_id}")
                     username_for_email = "User"
 
                 await send_welcome_email(email, password, username_for_email)
@@ -869,9 +800,7 @@ async def update_user_details(
                             f"Cleaned up auth user {db_user_id} due to profile creation failure."
                         )
                     except Exception as e_auth_delete:
-                        logger.error(
-                            f"Failed to clean up auth user {db_user_id}: {e_auth_delete}"
-                        )
+                        logger.error(f"Failed to clean up auth user {db_user_id}: {e_auth_delete}")
                 raise HTTPException(
                     status_code=500, detail=f"Error creating user account: {str(e)}"
                 )
@@ -887,9 +816,7 @@ async def update_user_details(
                     .execute()
                 )
                 if roles_from_db_response.data:
-                    role_map = {
-                        role["name"]: role["id"] for role in roles_from_db_response.data
-                    }
+                    role_map = {role["name"]: role["id"] for role in roles_from_db_response.data}
                     for role_name in requested_roles:
                         if role_name in role_map:
                             role_ids_to_assign.append(role_map[role_name])
@@ -960,12 +887,7 @@ async def admin_users_delete(user_id: str):
     """Deletes a user from the system."""
     try:
         has_session = bool(
-            supabase.from_("sessions")
-            .select("id")
-            .eq("user_id", user_id)
-            .limit(1)
-            .execute()
-            .data
+            supabase.from_("sessions").select("id").eq("user_id", user_id).limit(1).execute().data
         )
         if not has_session:
             # Hard delete
@@ -985,9 +907,7 @@ async def admin_users_delete(user_id: str):
             return {"message": f"User {user_id} permanently deleted."}
 
         # Soft delete
-        exists = bool(
-            supabase.from_("profiles").select("id").eq("id", user_id).execute().data
-        )
+        exists = bool(supabase.from_("profiles").select("id").eq("id", user_id).execute().data)
         if not exists:
             logger.warning("Profile not found for %s", user_id)
         action = "deactivated"
@@ -1007,16 +927,12 @@ async def admin_users_delete(user_id: str):
                 logger.warning("Auth user not found %s", user_id)
                 return {"message": f"User {user_id} was not found, considered deleted."}
             logger.error("Auth update error for %s: %s", user_id, err)
-            raise HTTPException(
-                status_code=500, detail=f"Failed auth update: {err}"
-            ) from err
+            raise HTTPException(status_code=500, detail=f"Failed auth update: {err}") from err
 
         try:
             res = (
                 supabase.from_("profiles")
-                .update(
-                    {"status": "inactive", "updated_at": datetime.now().isoformat()}
-                )
+                .update({"status": "inactive", "updated_at": datetime.now().isoformat()})
                 .eq("id", user_id)
                 .execute()
             )
@@ -1037,9 +953,7 @@ async def admin_users_delete(user_id: str):
         raise
     except Exception as err:
         logger.error("Unexpected error for %s: %s", user_id, err)
-        raise HTTPException(
-            status_code=500, detail=f"An unexpected error occurred: {err}"
-        ) from err
+        raise HTTPException(status_code=500, detail=f"An unexpected error occurred: {err}") from err
 
 
 class GetCompanyThemeSettingsRequest(BaseModel):
@@ -1077,9 +991,7 @@ def ensure_color_has_hash(color_value: str) -> str:
     if color_value.startswith("#"):
         return color_value
     # Add # prefix if it's a valid hex color (3 or 6 characters)
-    if len(color_value) in [3, 6] and all(
-        c in "0123456789ABCDEFabcdef" for c in color_value
-    ):
+    if len(color_value) in [3, 6] and all(c in "0123456789ABCDEFabcdef" for c in color_value):
         return f"#{color_value}"
     return color_value
 
@@ -1111,16 +1023,11 @@ async def get_company_theme_settings(request: GetCompanyThemeSettingsRequest):
         company_id = None  # Initialize company_id
         try:
             profile_response = (
-                supabase.table("profiles")
-                .select("company_id")
-                .eq("id", user_id)
-                .execute()
+                supabase.table("profiles").select("company_id").eq("id", user_id).execute()
             )
             logger.info(f"Profile response: {profile_response}")
 
-            if not profile_response.data or not profile_response.data[0].get(
-                "company_id"
-            ):
+            if not profile_response.data or not profile_response.data[0].get("company_id"):
                 logger.warning(
                     f"No profile or company ID found for user ID: {user_id}, returning defaults."
                 )
@@ -1195,9 +1102,9 @@ async def get_company_theme_settings(request: GetCompanyThemeSettingsRequest):
                     # Use "companies" bucket with folder structure
                     bucket_name = "companies"
                     company_folder = company_name.lower().replace(" ", "_")
-                    logo_response_url = supabase_admin.storage.from_(
-                        bucket_name
-                    ).get_public_url(f"{company_folder}/logo.png")
+                    logo_response_url = supabase_admin.storage.from_(bucket_name).get_public_url(
+                        f"{company_folder}/logo.png"
+                    )
                     if logo_response_url:
                         logo_url = logo_response_url
                         logger.info(f"Logo URL: {logo_url}")
@@ -1253,19 +1160,11 @@ async def get_company_theme_settings(request: GetCompanyThemeSettingsRequest):
             "userChatBubbleColor": ensure_color_has_hash(
                 company_data.get("user_chat_bubble_colour")
             ),
-            "botChatBubbleColor": ensure_color_has_hash(
-                company_data.get("bot_chat_bubble_colour")
-            ),
-            "sendButtonAndBox": ensure_color_has_hash(
-                company_data.get("send_button_and_box")
-            ),
+            "botChatBubbleColor": ensure_color_has_hash(company_data.get("bot_chat_bubble_colour")),
+            "sendButtonAndBox": ensure_color_has_hash(company_data.get("send_button_and_box")),
             "font": company_data.get("font"),
-            "userChatFontColor": ensure_color_has_hash(
-                company_data.get("user_chat_font_colour")
-            ),
-            "botChatFontColor": ensure_color_has_hash(
-                company_data.get("bot_chat_font_colour")
-            ),
+            "userChatFontColor": ensure_color_has_hash(company_data.get("user_chat_font_colour")),
+            "botChatFontColor": ensure_color_has_hash(company_data.get("bot_chat_font_colour")),
             "logo": company_data.get("logo"),
             "botProfilePicture": company_data.get("bot_profile_picture"),
         }
@@ -1339,9 +1238,7 @@ async def update_company_theme_settings(
 
         company_id = profile_response.data[0]["company_id"]
 
-        company_response = (
-            supabase.table("companies").select("name").eq("id", company_id).execute()
-        )
+        company_response = supabase.table("companies").select("name").eq("id", company_id).execute()
 
         if not company_response.data:
             raise HTTPException(status_code=404, detail="Company not found")
@@ -1366,9 +1263,7 @@ async def update_company_theme_settings(
         for key, value in text_settings_map.items():
             if key in theme_settings.model_fields_set and value is not None:
                 update_payload_for_db[key] = value
-            elif (
-                key in theme_settings.model_fields_set and value is None
-            ):  # Explicitly set to null
+            elif key in theme_settings.model_fields_set and value is None:  # Explicitly set to null
                 update_payload_for_db[key] = None
 
         # Handle Logo
@@ -1394,9 +1289,7 @@ async def update_company_theme_settings(
                         {"content-type": "image/png", "upsert": "true"},
                     )
                     update_payload_for_db["logo"] = storage_path
-                    logger.info(
-                        f"Logo uploaded successfully for company {company_name}"
-                    )
+                    logger.info(f"Logo uploaded successfully for company {company_name}")
                 except Exception as upload_error:
                     logger.error(f"Error uploading logo: {upload_error}")
                     raise HTTPException(
@@ -1451,9 +1344,7 @@ async def update_company_theme_settings(
                         detail=f"Error uploading bot profile picture: {str(upload_error)}",
                     )
             elif bot_pic_data is None:
-                logger.info(
-                    f"Bot profile picture set to None for company {company_name}"
-                )
+                logger.info(f"Bot profile picture set to None for company {company_name}")
                 update_payload_for_db["bot_profile_picture"] = None
             else:
                 logger.info(
@@ -1471,9 +1362,7 @@ async def update_company_theme_settings(
                 .eq("id", company_id)
                 .execute()
             )
-            logger.info(
-                f"Theme settings updated successfully for company {company_name}"
-            )
+            logger.info(f"Theme settings updated successfully for company {company_name}")
         else:
             logger.info(f"No changes to update for company {company_name}")
 
@@ -1511,11 +1400,7 @@ async def test_email(request: EmailTestRequest):
 
         success = await email_service.send_test_email(
             email=request.recipient_email,
-            subject=(
-                request.subject
-                if request.subject is not None
-                else "Test Email from Vault"
-            ),
+            subject=(request.subject if request.subject is not None else "Test Email from Vault"),
             content=email_content,  # Use the guaranteed string version
             username=request.username,
         )
@@ -1528,14 +1413,10 @@ async def test_email(request: EmailTestRequest):
                 "details": {
                     "recipient": request.recipient_email,
                     "subject": (
-                        request.subject
-                        if request.subject is not None
-                        else "Test Email from Vault"
+                        request.subject if request.subject is not None else "Test Email from Vault"
                     ),
                     "content": (
-                        email_content[:50] + "..."
-                        if len(email_content) > 50
-                        else email_content
+                        email_content[:50] + "..." if len(email_content) > 50 else email_content
                     ),
                 },
             }
@@ -1554,9 +1435,7 @@ async def test_email(request: EmailTestRequest):
 
     except Exception as e:
         logger.error("Error in test-email endpoint: %s", str(e))
-        raise HTTPException(
-            status_code=500, detail=f"Error sending test email: {str(e)}"
-        ) from e
+        raise HTTPException(status_code=500, detail=f"Error sending test email: {str(e)}") from e
 
 
 class PasswordResetRequestModel(BaseModel):
@@ -1577,11 +1456,7 @@ async def request_password_reset(request: PasswordResetRequestModel):
     """Production-ready password reset endpoint using Supabase recovery link."""
     try:
         profile_resp = (
-            supabase.from_("profiles")
-            .select("id")
-            .eq("email", request.email)
-            .single()
-            .execute()
+            supabase.from_("profiles").select("id").eq("email", request.email).single().execute()
         )
         if not profile_resp.data:
             return {
@@ -1597,18 +1472,14 @@ async def request_password_reset(request: PasswordResetRequestModel):
         }
         link_resp = supabase_admin.auth.admin.generate_link(params)
         if getattr(link_resp, "error", None):
-            logger.error(
-                "Error generating reset link for %s: %s", request.email, link_resp.error
-            )
+            logger.error("Error generating reset link for %s: %s", request.email, link_resp.error)
             raise HTTPException(
                 status_code=500, detail="Failed to generate password reset link"
             ) from link_resp.error
         action_link = link_resp.data.get("action_link") if link_resp.data else None
         if not action_link:
             logger.error("No action link returned for %s", request.email)
-            raise HTTPException(
-                status_code=500, detail="Failed to generate password reset link"
-            )
+            raise HTTPException(status_code=500, detail="Failed to generate password reset link")
 
         await email_service.send_password_reset_email(request.email, action_link)
         logger.info("Sent password reset link to %s", request.email)
@@ -1647,17 +1518,13 @@ async def change_password(request: ChangePasswordModel):
             .data
         )
         if not profile or not profile.get("email"):
-            raise HTTPException(
-                status_code=404, detail="User not found for password change"
-            )
+            raise HTTPException(status_code=404, detail="User not found for password change")
         email = profile["email"]
         auth_resp = supabase.auth.sign_in_with_password(
             {"email": email, "password": request.current_password}
         )
         if getattr(auth_resp, "error", None):
-            logger.error(
-                "Authentication failed for %s: %s", request.user_id, auth_resp.error
-            )
+            logger.error("Authentication failed for %s: %s", request.user_id, auth_resp.error)
             raise HTTPException(
                 status_code=401, detail="Current password is incorrect"
             ) from auth_resp.error
@@ -1731,9 +1598,7 @@ async def check_first_login(request: CheckFirstLoginModel):
 
     except Exception as e:
         logger.error("Error checking first login status: %s", str(e))
-        raise HTTPException(
-            status_code=500, detail=f"Error checking login status: {str(e)}"
-        ) from e
+        raise HTTPException(status_code=500, detail=f"Error checking login status: {str(e)}") from e
 
 
 # app.mount("/", StaticFiles(directory="frontend/assets", html=True), name="static")
@@ -1788,9 +1653,7 @@ async def get_company_contact_details(
         )
 
         if not profile or not profile.get("company_id"):
-            raise HTTPException(
-                status_code=404, detail="User has no associated company"
-            )
+            raise HTTPException(status_code=404, detail="User has no associated company")
 
         company_id = profile["company_id"]
 
@@ -1828,9 +1691,7 @@ async def get_company_contact_details(
         raise
     except Exception as e:
         logger.error("Error fetching company contact details: %s", e)
-        raise HTTPException(
-            status_code=500, detail="Error fetching company contact details"
-        ) from e
+        raise HTTPException(status_code=500, detail="Error fetching company contact details") from e
 
 
 @app.post("/api/company/update_contact_details", response_model=CompanyContactDetails)
@@ -1858,10 +1719,7 @@ async def update_company_contact_details(
 
             # Get Administrator role ID
             admin_role_response = (
-                supabase.table("roles")
-                .select("id")
-                .eq("name", "Administrator")
-                .execute()
+                supabase.table("roles").select("id").eq("name", "Administrator").execute()
             )
 
             if not admin_role_response.data:
@@ -1884,16 +1742,12 @@ async def update_company_contact_details(
                     detail="User does not have permission to perform this action. Administrator role required.",
                 )
 
-            logger.info(
-                f"Admin user {current_user.user.email} updating company contact details."
-            )
+            logger.info(f"Admin user {current_user.user.email} updating company contact details.")
         except HTTPException:
             raise
         except Exception as role_check_error:
             logger.error(f"Error checking user roles: {role_check_error}")
-            raise HTTPException(
-                status_code=500, detail="Error verifying user permissions."
-            )
+            raise HTTPException(status_code=500, detail="Error verifying user permissions.")
 
         user_id = request.user_id
         if not user_id:
@@ -1910,9 +1764,7 @@ async def update_company_contact_details(
         )
 
         if not profile or not profile.get("company_id"):
-            raise HTTPException(
-                status_code=404, detail="User has no associated company"
-            )
+            raise HTTPException(status_code=404, detail="User has no associated company")
 
         company_id = profile["company_id"]
 
@@ -1945,9 +1797,7 @@ async def update_company_contact_details(
         )
 
         if not company:
-            raise HTTPException(
-                status_code=404, detail="Company not found after update"
-            )
+            raise HTTPException(status_code=404, detail="Company not found after update")
 
         logger.info(f"Company contact details updated for company ID: {company_id}")
 
@@ -1964,9 +1814,7 @@ async def update_company_contact_details(
         raise
     except Exception as e:
         logger.error("Error updating company contact details: %s", e)
-        raise HTTPException(
-            status_code=500, detail="Error updating company contact details"
-        ) from e
+        raise HTTPException(status_code=500, detail="Error updating company contact details") from e
 
 
 if __name__ == "__main__":

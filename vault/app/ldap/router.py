@@ -1,18 +1,23 @@
 import logging
-from typing import Any, Dict, List, Optional
+from typing import Any
 
-import httpx
+from fastapi import APIRouter, HTTPException, status
+
 # Import supabase for database access
 from app.database import supabase
-from fastapi import APIRouter, Depends, HTTPException, status
-from fastapi.responses import JSONResponse
 
-from .models import (LDAPConnector, LDAPSearchInputModel, LDAPSearchResult,
-                     LoginModel)
-from .service import (create_ldap_connector, delete_ldap_connector,
-                      get_ldap_connector, get_ldap_connectors,
-                      ldap_authenticate, ldap_search, sync_ldap_connector,
-                      test_ldap_connection, update_ldap_connector)
+from .models import LDAPConnector, LDAPSearchInputModel, LDAPSearchResult, LoginModel
+from .service import (
+    create_ldap_connector,
+    delete_ldap_connector,
+    get_ldap_connector,
+    get_ldap_connectors,
+    ldap_authenticate,
+    ldap_search,
+    sync_ldap_connector,
+    test_ldap_connection,
+    update_ldap_connector,
+)
 
 # Create router
 router = APIRouter(
@@ -22,39 +27,33 @@ router = APIRouter(
 )
 
 
-@router.post(
-    "/connectors", status_code=status.HTTP_201_CREATED, response_model=Dict[str, Any]
-)
-async def create_connector(connector_data: Dict[str, Any]):
+@router.post("/connectors", status_code=status.HTTP_201_CREATED, response_model=dict[str, Any])
+async def create_connector(connector_data: dict[str, Any]):
     """
     Create a new LDAP connector
     """
     result = await create_ldap_connector(connector_data)
 
     if "error" in result:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST, detail=result["error"]
-        )
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=result["error"])
 
     return result
 
 
-@router.put("/connectors/{connector_id}", response_model=Dict[str, Any])
-async def update_connector(connector_id: str, connector_data: Dict[str, Any]):
+@router.put("/connectors/{connector_id}", response_model=dict[str, Any])
+async def update_connector(connector_id: str, connector_data: dict[str, Any]):
     """
     Update an existing LDAP connector
     """
     result = await update_ldap_connector(connector_id, connector_data)
 
     if "error" in result:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST, detail=result["error"]
-        )
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=result["error"])
 
     return result
 
 
-@router.delete("/connectors/{connector_id}", response_model=Dict[str, Any])
+@router.delete("/connectors/{connector_id}", response_model=dict[str, Any])
 async def delete_connector(connector_id: str):
     """
     Delete an LDAP connector
@@ -62,9 +61,7 @@ async def delete_connector(connector_id: str):
     result = await delete_ldap_connector(connector_id)
 
     if "error" in result:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST, detail=result["error"]
-        )
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=result["error"])
 
     return result
 
@@ -85,31 +82,29 @@ async def get_connector(connector_id: str):
     return connector
 
 
-@router.get("/connectors", response_model=List[LDAPConnector])
-async def list_connectors(company_reg_no: Optional[str] = None):
+@router.get("/connectors", response_model=list[LDAPConnector])
+async def list_connectors(company_reg_no: str | None = None):
     """
-    List all LDAP connectors, optionally filtered by company
+    list all LDAP connectors, optionally filtered by company
     """
     connectors = await get_ldap_connectors(company_reg_no)
     return connectors
 
 
-@router.post("/test-connection", response_model=Dict[str, Any])
-async def test_connection(connector_data: Dict[str, Any]):
+@router.post("/test-connection", response_model=dict[str, Any])
+async def test_connection(connector_data: dict[str, Any]):
     """
     Test connection to an LDAP server
     """
     result = await test_ldap_connection(connector_data)
 
     if "error" in result:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST, detail=result["error"]
-        )
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=result["error"])
 
     return result
 
 
-@router.post("/search", response_model=List[LDAPSearchResult])
+@router.post("/search", response_model=list[LDAPSearchResult])
 async def search(search_data: LDAPSearchInputModel):
     """
     Search LDAP directory
@@ -118,7 +113,7 @@ async def search(search_data: LDAPSearchInputModel):
     return results
 
 
-@router.post("/authenticate", response_model=Dict[str, Any])
+@router.post("/authenticate", response_model=dict[str, Any])
 async def authenticate(connector_id: str, credentials: LoginModel):
     """
     Authenticate a user against LDAP
@@ -127,13 +122,11 @@ async def authenticate(connector_id: str, credentials: LoginModel):
 
     return {
         "authenticated": auth_result,
-        "message": (
-            "Authentication successful" if auth_result else "Authentication failed"
-        ),
+        "message": ("Authentication successful" if auth_result else "Authentication failed"),
     }
 
 
-@router.post("/sync/{connector_id}", response_model=Dict[str, Any])
+@router.post("/sync/{connector_id}", response_model=dict[str, Any])
 async def sync_connector(connector_id: str):
     """
     Synchronize users and groups with LDAP directory
@@ -141,16 +134,14 @@ async def sync_connector(connector_id: str):
     result = await sync_ldap_connector(connector_id)
 
     if "error" in result:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST, detail=result["error"]
-        )
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=result["error"])
 
     return result
 
 
 # Directory-specific endpoints
-@router.post("/directory/config", response_model=Dict[str, Any])
-async def create_directory_config(directory_data: Dict[str, Any]):
+@router.post("/directory/config", response_model=dict[str, Any])
+async def create_directory_config(directory_data: dict[str, Any]):
     """
     Create or update LDAP directory configuration
     """
@@ -201,10 +192,7 @@ async def create_directory_config(directory_data: Dict[str, Any]):
         # Get the user's company_id
         if user_id:
             profile_response = (
-                supabase.table("profiles")
-                .select("company_id")
-                .eq("id", user_id)
-                .execute()
+                supabase.table("profiles").select("company_id").eq("id", user_id).execute()
             )
 
             if profile_response.data and profile_response.data[0].get("company_id"):
@@ -235,12 +223,10 @@ async def create_directory_config(directory_data: Dict[str, Any]):
 
     except Exception as e:
         logging.error(f"Error configuring LDAP directory: {str(e)}")
-        raise HTTPException(
-            status_code=500, detail=f"Error configuring LDAP directory: {str(e)}"
-        )
+        raise HTTPException(status_code=500, detail=f"Error configuring LDAP directory: {str(e)}")
 
 
-@router.get("/directory/config/{company_id}", response_model=Dict[str, Any])
+@router.get("/directory/config/{company_id}", response_model=dict[str, Any])
 async def get_directory_config(company_id: int):
     """
     Get LDAP directory configuration for a company
@@ -248,10 +234,7 @@ async def get_directory_config(company_id: int):
     try:
         # Fetch the connector configuration
         response = (
-            supabase.table("ldap_connectors")
-            .select("*")
-            .eq("company_id", company_id)
-            .execute()
+            supabase.table("ldap_connectors").select("*").eq("company_id", company_id).execute()
         )
 
         if not response.data:
@@ -306,8 +289,8 @@ async def get_directory_config(company_id: int):
         )
 
 
-@router.post("/directory/test-connection", response_model=Dict[str, Any])
-async def test_directory_connection(directory_data: Dict[str, Any]):
+@router.post("/directory/test-connection", response_model=dict[str, Any])
+async def test_directory_connection(directory_data: dict[str, Any]):
     """
     Test connection to an LDAP directory
     """
@@ -342,9 +325,7 @@ async def test_directory_connection(directory_data: Dict[str, Any]):
             "group_object_filter": directory_data.get("group_object_filter"),
             "attribute_group_guid": directory_data.get("attribute_group_guid"),
             "attribute_group_name": directory_data.get("attribute_group_name"),
-            "attribute_group_description": directory_data.get(
-                "attribute_group_description"
-            ),
+            "attribute_group_description": directory_data.get("attribute_group_description"),
             "attribute_group_members": directory_data.get("attribute_group_members"),
             "group_recursive": directory_data.get("group_recursive", False),
             "active": directory_data.get("active", False),
@@ -359,12 +340,10 @@ async def test_directory_connection(directory_data: Dict[str, Any]):
 
     except Exception as e:
         logging.error(f"Error testing LDAP connection: {str(e)}")
-        raise HTTPException(
-            status_code=500, detail=f"Error testing LDAP connection: {str(e)}"
-        )
+        raise HTTPException(status_code=500, detail=f"Error testing LDAP connection: {str(e)}")
 
 
-@router.post("/directory/sync/{company_id}", response_model=Dict[str, Any])
+@router.post("/directory/sync/{company_id}", response_model=dict[str, Any])
 async def sync_directory(company_id: int):
     """
     Synchronize users and groups from LDAP directory
@@ -372,16 +351,11 @@ async def sync_directory(company_id: int):
     try:
         # Get the connector for this company
         response = (
-            supabase.table("ldap_connectors")
-            .select("id")
-            .eq("company_id", company_id)
-            .execute()
+            supabase.table("ldap_connectors").select("id").eq("company_id", company_id).execute()
         )
 
         if not response.data:
-            raise HTTPException(
-                status_code=404, detail="No LDAP connector found for this company"
-            )
+            raise HTTPException(status_code=404, detail="No LDAP connector found for this company")
 
         connector_id = response.data[0]["id"]
 
@@ -391,29 +365,22 @@ async def sync_directory(company_id: int):
 
     except Exception as e:
         logging.error(f"Error syncing LDAP directory: {str(e)}")
-        raise HTTPException(
-            status_code=500, detail=f"Error syncing LDAP directory: {str(e)}"
-        )
+        raise HTTPException(status_code=500, detail=f"Error syncing LDAP directory: {str(e)}")
 
 
-@router.get("/directory/users/{company_id}", response_model=List[Dict[str, Any]])
-async def get_directory_users(company_id: int, query: Optional[str] = None):
+@router.get("/directory/users/{company_id}", response_model=list[dict[str, Any]])
+async def get_directory_users(company_id: int, query: str | None = None):
     """
     Get users from LDAP directory, optionally filtered by search query
     """
     try:
         # Get the connector for this company
         response = (
-            supabase.table("ldap_connectors")
-            .select("*")
-            .eq("company_id", company_id)
-            .execute()
+            supabase.table("ldap_connectors").select("*").eq("company_id", company_id).execute()
         )
 
         if not response.data:
-            raise HTTPException(
-                status_code=404, detail="No LDAP connector found for this company"
-            )
+            raise HTTPException(status_code=404, detail="No LDAP connector found for this company")
 
         # Convert company_id to string for LDAPConnector model
         connector_data = response.data[0].copy()
@@ -421,9 +388,7 @@ async def get_directory_users(company_id: int, query: Optional[str] = None):
         connector = LDAPConnector(**connector_data)
 
         # Search LDAP for users
-        search_input = LDAPSearchInputModel(
-            query=query or "*", connectorId=connector.id
-        )
+        search_input = LDAPSearchInputModel(query=query or "*", connectorId=connector.id)
 
         results = await ldap_search(search_input)
 
@@ -434,13 +399,11 @@ async def get_directory_users(company_id: int, query: Optional[str] = None):
 
     except Exception as e:
         logging.error(f"Error fetching LDAP users: {str(e)}")
-        raise HTTPException(
-            status_code=500, detail=f"Error fetching LDAP users: {str(e)}"
-        )
+        raise HTTPException(status_code=500, detail=f"Error fetching LDAP users: {str(e)}")
 
 
-@router.post("/directory/import-user", response_model=Dict[str, Any])
-async def import_user_from_directory(data: Dict[str, Any]):
+@router.post("/directory/import-user", response_model=dict[str, Any])
+async def import_user_from_directory(data: dict[str, Any]):
     """
     Import a user from LDAP directory to Vault
     """
@@ -449,9 +412,7 @@ async def import_user_from_directory(data: Dict[str, Any]):
         ldap_data = data.get("ldapData")
 
         if not user_data or not ldap_data:
-            raise HTTPException(
-                status_code=400, detail="Missing user data or LDAP data"
-            )
+            raise HTTPException(status_code=400, detail="Missing user data or LDAP data")
 
         # Format the data for organization API
         org_data = {
@@ -467,10 +428,7 @@ async def import_user_from_directory(data: Dict[str, Any]):
         try:
             # Find the company by name
             company_response = (
-                supabase.from_("companies")
-                .select("id")
-                .eq("name", org_data["company"])
-                .execute()
+                supabase.from_("companies").select("id").eq("name", org_data["company"]).execute()
             )
 
             if not company_response.data:
@@ -512,27 +470,19 @@ async def import_user_from_directory(data: Dict[str, Any]):
                 "field_of_expertise": user_data.get("field_of_expertise", ""),
                 "years_of_experience": user_data.get("years_of_experience", ""),
                 "CV_text": user_data.get("CV_text", ""),
-                "user_type": user_data.get(
-                    "user_type", 2
-                ),  # Default to user_directory type (2)
+                "user_type": user_data.get("user_type", 2),  # Default to user_directory type (2)
             }
 
             # Check if user exists by email
             existing_user = (
-                supabase.from_("profiles")
-                .select("id")
-                .eq("email", profile_data["email"])
-                .execute()
+                supabase.from_("profiles").select("id").eq("email", profile_data["email"]).execute()
             )
 
             if existing_user.data:
                 # Update existing user
                 user_id = existing_user.data[0]["id"]
                 profile_response = (
-                    supabase.from_("profiles")
-                    .update(profile_data)
-                    .eq("id", user_id)
-                    .execute()
+                    supabase.from_("profiles").update(profile_data).eq("id", user_id).execute()
                 )
                 message = "User updated successfully"
             else:
@@ -542,9 +492,7 @@ async def import_user_from_directory(data: Dict[str, Any]):
 
                 from app.email_service import send_welcome_email
 
-                password = "".join(
-                    random.choices(string.ascii_letters + string.digits, k=12)
-                )
+                password = "".join(random.choices(string.ascii_letters + string.digits, k=12))
                 username = f"{org_data['firstName'].lower()[0]}{org_data['lastName'].lower()}{random.randint(1000, 9999)}"
 
                 # Create user in Supabase Auth
@@ -561,9 +509,7 @@ async def import_user_from_directory(data: Dict[str, Any]):
                 profile_data["id"] = user_id
                 profile_data["username"] = username
 
-                profile_response = (
-                    supabase.from_("profiles").insert(profile_data).execute()
-                )
+                profile_response = supabase.from_("profiles").insert(profile_data).execute()
 
                 # Send welcome email with temporary password
                 await send_welcome_email(profile_data["email"], password, username)
@@ -573,12 +519,8 @@ async def import_user_from_directory(data: Dict[str, Any]):
 
         except Exception as e:
             logging.error(f"Error in user import processing: {str(e)}")
-            raise HTTPException(
-                status_code=500, detail=f"Error creating/updating user: {str(e)}"
-            )
+            raise HTTPException(status_code=500, detail=f"Error creating/updating user: {str(e)}")
 
     except Exception as e:
         logging.error(f"Error importing LDAP user: {str(e)}")
-        raise HTTPException(
-            status_code=500, detail=f"Error importing LDAP user: {str(e)}"
-        )
+        raise HTTPException(status_code=500, detail=f"Error importing LDAP user: {str(e)}")

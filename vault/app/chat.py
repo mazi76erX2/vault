@@ -10,14 +10,14 @@ import os
 import re
 from pathlib import Path
 from types import SimpleNamespace
-from typing import List
 
 import requests
-from app.database import get_db, supabase
 from dotenv import load_dotenv
 from fastapi import APIRouter, WebSocket
 from qdrant_client import QdrantClient
 from sklearn.metrics.pairwise import cosine_similarity
+
+from app.database import supabase
 
 from .shared_utils import filter_by_severity, read_docx, readpdf, readtxt
 
@@ -43,16 +43,17 @@ ws_router = APIRouter()
 
 # Ollama helper functions for embeddings and completions
 
-def _ollama_embed(texts: List[str], model: str = None) -> List[List[float]]:
+
+def _ollama_embed(texts: list[str], model: str = None) -> list[list[float]]:
     """
     Generate embeddings for a list of texts via Ollama HTTP API.
 
     Args:
-        texts: List of text strings to embed
+        texts: list of text strings to embed
         model: Model to use (defaults to OLLAMA_EMBED_MODEL)
 
     Returns:
-        List of embedding vectors
+        list of embedding vectors
     """
     if model is None:
         model = OLLAMA_EMBED_MODEL
@@ -106,7 +107,7 @@ def _ollama_generate(
             "options": {
                 "num_predict": max_tokens,
                 "temperature": temperature,
-            }
+            },
         }
         resp = requests.post(url, json=payload, timeout=120)
         resp.raise_for_status()
@@ -138,11 +139,10 @@ class _ClientOpenAIShim:
     Provides OpenAI-compatible API interface using Ollama backend.
     Allows existing code to work without changes.
     """
+
     class _Chat:
         class _Completions:
-            def create(
-                self, model, messages, temperature=0.1, max_tokens=800, **kwargs
-            ):
+            def create(self, model, messages, temperature=0.1, max_tokens=800, **kwargs):
                 # Convert messages list into a single prompt for Ollama
                 prompt_parts = []
                 for m in messages:
@@ -151,9 +151,7 @@ class _ClientOpenAIShim:
                     prompt_parts.append(f"[{role}] {content}")
                 prompt = "\n".join(prompt_parts)
 
-                text = _ollama_generate(
-                    prompt, max_tokens=max_tokens, temperature=temperature
-                )
+                text = _ollama_generate(prompt, max_tokens=max_tokens, temperature=temperature)
 
                 return SimpleNamespace(
                     model_dump=lambda: {"choices": [{"message": {"content": text}}]}
@@ -183,19 +181,19 @@ async def chat_endpoint(websocket: WebSocket):
 
 def validate_retrieved_docs(
     query_embedding,
-    docs: List[dict],
+    docs: list[dict],
     similarity_threshold: float = RETRIEVAL_SIMILARITY_THRESHOLD,
-) -> List[dict]:
+) -> list[dict]:
     """
     Validate retrieved documents by comparing their embeddings to the query embedding.
 
     Args:
         query_embedding: Query vector (list or object with .value attribute)
-        docs: List of document dictionaries to validate
+        docs: list of document dictionaries to validate
         similarity_threshold: Minimum cosine similarity to accept
 
     Returns:
-        List of validated documents with similarity scores
+        list of validated documents with similarity scores
     """
     try:
         valid_docs = []
@@ -262,10 +260,7 @@ def generate_response_helper(user_id, user_question, history):
     try:
         # Get user access level from Supabase
         access_level_response = (
-            supabase.table("profiles")
-            .select("user_access")
-            .eq("id", user_id)
-            .execute()
+            supabase.table("profiles").select("user_access").eq("id", user_id).execute()
         )
 
         if not access_level_response.data:
@@ -336,14 +331,16 @@ def generate_response_helper(user_id, user_question, history):
         else:
             # Build context from valid documents
             for doc in valid_docs:
-                docs_list.append((
-                    doc["content"],
-                    doc["sourcefile"],
-                    doc["title"],
-                    doc["last_modified_date"],
-                    doc["@search.score"],
-                    doc["access_level"],
-                ))
+                docs_list.append(
+                    (
+                        doc["content"],
+                        doc["sourcefile"],
+                        doc["title"],
+                        doc["last_modified_date"],
+                        doc["@search.score"],
+                        doc["access_level"],
+                    )
+                )
                 context_list.append(doc["content"])
 
             context = "\n".join(context_list)
@@ -568,13 +565,13 @@ def generate_initial_questions(user_id):
 
     except Exception as e:
         logger.error(f"Error occurred during question generation: {e}")
-        chatbot_questions = "I'm sorry, I couldn't generate the initial questions. Please try again."
+        chatbot_questions = (
+            "I'm sorry, I couldn't generate the initial questions. Please try again."
+        )
 
     # Parse questions
     questions_string = chatbot_questions.strip()
-    questions_list = [
-        q.strip() for q in re.split(r"NewQuestion:", questions_string) if q.strip()
-    ]
+    questions_list = [q.strip() for q in re.split(r"NewQuestion:", questions_string) if q.strip()]
     cleaned_questions = [q if q.endswith("?") else q + "?" for q in questions_list]
 
     return cleaned_questions, conversation_history
@@ -683,7 +680,9 @@ def generate_summary_chat(chat_prompt_id):
 
     for i in range(0, len(chat), 2):
         if i + 1 < len(chat):
-            qa_pair = f"Collector assistant:\n{chat[i]['content']}\nYou:\n{chat[i + 1]['content']}\n\n"
+            qa_pair = (
+                f"Collector assistant:\n{chat[i]['content']}\nYou:\n{chat[i + 1]['content']}\n\n"
+            )
         else:
             qa_pair = f"Collector assistant:\n{chat[i]['content']}\n\n"
 
@@ -744,7 +743,9 @@ def generate_summary_chat(chat_prompt_id):
 
         except Exception as e:
             logger.error(f"Error occurred while processing chunk: {e}")
-            final_summary += "I'm sorry, I couldn't generate a response for this part. Please try again.\n\n"
+            final_summary += (
+                "I'm sorry, I couldn't generate a response for this part. Please try again.\n\n"
+            )
 
     return final_summary
 

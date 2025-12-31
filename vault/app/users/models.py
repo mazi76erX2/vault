@@ -1,14 +1,9 @@
-import uuid
-
-from sqlalchemy import BigInteger, Boolean, Column, DateTime
+from sqlalchemy import BigInteger, Boolean, Column, DateTime, ForeignKey, String, Text, func
 from sqlalchemy import Enum as SAEnum
-from sqlalchemy import ForeignKey, String, Text, func
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import relationship
-
 from vault.app.db.base_class import Base
-from vault.app.db.enums import (DepartmentEnum,  # Import necessary enums
-                                UserAccessLevelsEnum)
+from vault.app.db.enums import DepartmentEnum, UserAccessLevelsEnum  # Import necessary enums
 
 # Define your User-related SQLAlchemy models here
 # For example:
@@ -43,12 +38,8 @@ class Profile(Base):
     years_of_experience = Column(
         String, nullable=True
     )  # Kept as String as per SQL, consider Integer if appropriate
-    cv_text = Column(
-        "CV_text", Text, nullable=True
-    )  # Explicit column name due to SQL quotes
-    is_validator = Column(
-        "isValidator", Boolean, nullable=False, server_default="false"
-    )
+    cv_text = Column("CV_text", Text, nullable=True)  # Explicit column name due to SQL quotes
+    is_validator = Column("isValidator", Boolean, nullable=False, server_default="false")
     user_access = Column(
         SAEnum(
             UserAccessLevelsEnum,
@@ -72,9 +63,7 @@ class Profile(Base):
         "user_type", BigInteger, ForeignKey("user_types.id"), nullable=True
     )  # Using original column name "user_type"
 
-    created_at = Column(
-        DateTime(timezone=True), nullable=False, server_default=func.now()
-    )
+    created_at = Column(DateTime(timezone=True), nullable=False, server_default=func.now())
 
     # Relationship to Role (many-to-many)
     roles = relationship("Role", secondary="user_roles", back_populates="profiles")

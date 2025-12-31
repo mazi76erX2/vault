@@ -1,10 +1,10 @@
 import logging
-import os
 
 import uvicorn
-from app.database import supabase
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
+
+from app.database import supabase
 
 # Initialize logging
 logging.basicConfig(level=logging.INFO)
@@ -52,9 +52,7 @@ def get_departments():
         return departments_data
     except Exception as e:
         logger.error(f"Error fetching departments: {str(e)}")
-        raise HTTPException(
-            status_code=500, detail=f"Error fetching departments: {str(e)}"
-        )
+        raise HTTPException(status_code=500, detail=f"Error fetching departments: {str(e)}")
 
 
 @app.get("/api/admin/users")

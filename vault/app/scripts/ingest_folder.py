@@ -1,13 +1,13 @@
 import argparse
 from pathlib import Path
-from typing import List
+
+from sqlalchemy.orm import Session
 
 from app.core.config import settings
 from app.database import SessionLocal, init_db
 from app.integrations.ollama_client import embed
 from app.models.kb import KBChunk
 from app.services.rag_service import chunk_text
-from sqlalchemy.orm import Session
 
 
 def read_txt(path: Path) -> str:
@@ -42,12 +42,10 @@ def extract_text(path: Path) -> str:
     return ""
 
 
-def upsert_doc(
-    db: Session, doc_id: str, title: str, sourcefile: str, chunks: List[str]
-) -> None:
+def upsert_doc(db: Session, doc_id: str, title: str, sourcefile: str, chunks: list[str]) -> None:
     db.query(KBChunk).filter(KBChunk.doc_id == doc_id).delete()
 
-    rows: List[KBChunk] = []
+    rows: list[KBChunk] = []
     for i, ch in enumerate(chunks, start=1):
         rows.append(
             KBChunk(
@@ -67,9 +65,7 @@ def upsert_doc(
 
 def main() -> None:
     parser = argparse.ArgumentParser()
-    parser.add_argument(
-        "--folder", required=True, help="Folder with .txt/.pdf/.docx files"
-    )
+    parser.add_argument("--folder", required=True, help="Folder with .txt/.pdf/.docx files")
     parser.add_argument("--chunk-size", type=int, default=settings.kb_chunk_size)
     parser.add_argument("--chunk-overlap", type=int, default=settings.kb_chunk_overlap)
     args = parser.parse_args()
@@ -92,9 +88,7 @@ def main() -> None:
             if not text:
                 continue
 
-            chunks = chunk_text(
-                text, chunk_size=args.chunk_size, overlap=args.chunk_overlap
-            )
+            chunks = chunk_text(text, chunk_size=args.chunk_size, overlap=args.chunk_overlap)
             if not chunks:
                 continue
 
@@ -102,9 +96,7 @@ def main() -> None:
             title = path.name
             sourcefile = str(path)
 
-            upsert_doc(
-                db, doc_id=doc_id, title=title, sourcefile=sourcefile, chunks=chunks
-            )
+            upsert_doc(db, doc_id=doc_id, title=title, sourcefile=sourcefile, chunks=chunks)
             print(f"Ingested {path} ({len(chunks)} chunks)")
 
     finally:

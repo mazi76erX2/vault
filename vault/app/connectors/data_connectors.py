@@ -1,14 +1,11 @@
 import argparse
 import os
-from logging import config
-from typing import Dict, List
 
 import gradio as gr
-from app.connectors.store_data_in_kb import (store_confluence_in_qdrant,
-                                             store_in_qdrant)
-from atlassian import Confluence, Jira
-from langchain.text_splitter import RecursiveCharacterTextSplitter
+from atlassian import Confluence
 from langchain_community.document_loaders import ConfluenceLoader
+
+from app.connectors.store_data_in_kb import store_confluence_in_qdrant
 
 
 def fn_connect_confluence(url, user, api, keyspace, index):
@@ -24,7 +21,6 @@ def fn_connect_confluence(url, user, api, keyspace, index):
 
 
 def fn_connect_sharepoint(hostname, sitepath, index):
-    from app.connectors.store_data_in_kb import store_in_qdrant as _s
 
     gr.Info("SharePoint Documents stored in the Knowledge Base")
     return gr.Textbox(""), gr.Textbox(""), gr.Textbox("")
@@ -39,8 +35,8 @@ def load_from_confluence_loader(confluence_url, username, api_key, space_key):
 
 
 def get_all_parent_titles_dict(
-    confluence_url: str, username: str, api_token: str, page_ids: List
-) -> Dict:
+    confluence_url: str, username: str, api_token: str, page_ids: list
+) -> dict:
     """
     Retrieve and store all parent page titles in a dictionary with page IDs.
     """

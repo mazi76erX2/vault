@@ -1,5 +1,3 @@
-from typing import Optional, Union
-
 from pydantic import BaseModel
 
 
@@ -7,16 +5,16 @@ class RejectDocumentRequest(BaseModel):
     docid: int
     comment: str
     summary: str
-    reviewer: Optional[str] = None
-    severitylevels: Optional[str] = None
+    reviewer: str | None = None
+    severitylevels: str | None = None
 
 
 class AcceptDocumentRequest(BaseModel):
     docid: int
-    comment: Optional[str] = None
-    summary: Optional[str] = None
-    status: Optional[str] = None
-    severitylevels: Optional[str] = None
+    comment: str | None = None
+    summary: str | None = None
+    status: str | None = None
+    severitylevels: str | None = None
 
 
 class DelegateRequest(BaseModel):
@@ -25,9 +23,9 @@ class DelegateRequest(BaseModel):
     summary: str
     delegatorid: str
     assigneeid: str
-    status: Optional[str] = None
-    severitylevels: Optional[str] = None
+    status: str | None = None
+    severitylevels: str | None = None
 
 
 class DocumentFetchRequest(BaseModel):
-    documentid: Union[int, str]
+    documentid: int | str

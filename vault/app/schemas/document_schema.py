@@ -1,23 +1,21 @@
-from enum import Enum
-from typing import Optional
+from pydantic import BaseModel
 
 from app.models.document_model import StatusEnum
-from pydantic import BaseModel
 
 
 # Base schema for a document (shared fields for all models)
 class DocumentBase(BaseModel):
-    summary: Optional[str] = None
-    tags: Optional[str] = None
-    employee_contact: Optional[str] = None
-    link: Optional[str] = None
-    title: Optional[str] = None
-    responsible: Optional[str] = None
-    level: Optional[int] = None
+    summary: str | None = None
+    tags: str | None = None
+    employee_contact: str | None = None
+    link: str | None = None
+    title: str | None = None
+    responsible: str | None = None
+    level: int | None = None
     status: StatusEnum = StatusEnum.PENDING  # Default to "PENDING"
-    reviewer: Optional[str] = None
-    comment: Optional[str] = None
-    company_id: Optional[str] = None  # Add company_id for multi-tenancy
+    reviewer: str | None = None
+    comment: str | None = None
+    company_id: str | None = None  # Add company_id for multi-tenancy
 
     class Config:
         orm_mode = True  # Tells Pydantic to treat ORM objects like dictionaries
@@ -31,16 +29,16 @@ class DocumentCreate(DocumentBase):
 # Schema for updating an existing document
 class DocumentUpdate(DocumentBase):
     # All fields are optional for partial updates
-    summary: Optional[str] = None
-    tags: Optional[str] = None
-    employee_contact: Optional[str] = None
-    link: Optional[str] = None
-    title: Optional[str] = None
-    responsible: Optional[str] = None
-    level: Optional[int] = None
-    status: Optional[StatusEnum] = None
-    reviewer: Optional[str] = None
-    comment: Optional[str] = None
+    summary: str | None = None
+    tags: str | None = None
+    employee_contact: str | None = None
+    link: str | None = None
+    title: str | None = None
+    responsible: str | None = None
+    level: int | None = None
+    status: StatusEnum | None = None
+    reviewer: str | None = None
+    comment: str | None = None
 
 
 # Schema for reading a document (including doc_id)

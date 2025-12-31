@@ -5,6 +5,7 @@ class LoginRequest(BaseModel):
     email: str
     password: str
 
+
 class User(BaseModel):
     id: str
     username: str

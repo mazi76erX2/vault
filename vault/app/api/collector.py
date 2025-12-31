@@ -6,21 +6,28 @@ import os
 import shutil
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any
+
+from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
+from gotrue import UserResponse
 
 from app.database import supabase
-from app.dto.collector import (CollectorSummaryContinueRequest,
-                               CollectorSummaryContinueResponse,
-                               CollectorSummaryUpdateSummaryRequest,
-                               ProfileUpdateRequest, StartChatRequest)
+from app.dto.collector import (
+    CollectorSummaryContinueRequest,
+    CollectorSummaryContinueResponse,
+    CollectorSummaryUpdateSummaryRequest,
+    ProfileUpdateRequest,
+    StartChatRequest,
+)
 from app.middleware.auth import verifytoken
-from app.services.collector_llm import (generate_follow_up_question,
-                                        generate_initial_questions,
-                                        generate_summary, generate_tags,
-                                        generate_topic_from_question)
+from app.services.collector_llm import (
+    generate_follow_up_question,
+    generate_initial_questions,
+    generate_summary,
+    generate_tags,
+    generate_topic_from_question,
+)
 from app.services.file_extract import extract_text
-from fastapi import APIRouter, Depends, File, HTTPException, UploadFile, status
-from gotrue import UserResponse
 
 router = APIRouter(prefix="/api/v1/collector", tags=["collector"])
 logger = logging.getLogger(__name__)
@@ -39,7 +46,7 @@ def _must_userid(user: UserResponse) -> str:
 @router.post("/updatecvtext")
 def updatecvtext(
     file: UploadFile = File(...), user: UserResponse = Depends(verifytoken)
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     userid = _must_userid(user)
 
     filepath = os.path.join(UPLOADDIR, file.filename)
@@ -49,20 +56,11 @@ def updatecvtext(
 
         cvtext = extract_text(Path(filepath)).strip()
         if not cvtext:
-            raise HTTPException(
-                status_code=400, detail="Could not extract CV text from file"
-            )
+            raise HTTPException(status_code=400, detail="Could not extract CV text from file")
 
-        resp = (
-            supabase.table("profiles")
-            .update({"CVtext": cvtext})
-            .eq("id", userid)
-            .execute()
-        )
+        resp = supabase.table("profiles").update({"CVtext": cvtext}).eq("id", userid).execute()
         if not resp.data:
-            raise HTTPException(
-                status_code=404, detail="User profile not found or no changes made"
-            )
+            raise HTTPException(status_code=404, detail="User profile not found or no changes made")
 
         return {"cvtext": cvtext}
     except HTTPException:
@@ -77,7 +75,7 @@ def updatecvtext(
 
 
 @router.post("/fetchresumesessions")
-def fetchresumesessions(user: UserResponse = Depends(verifytoken)) -> Dict[str, Any]:
+def fetchresumesessions(user: UserResponse = Depends(verifytoken)) -> dict[str, Any]:
     userid = _must_userid(user)
     try:
         resp = (
@@ -93,7 +91,7 @@ def fetchresumesessions(user: UserResponse = Depends(verifytoken)) -> Dict[str, 
 
 
 @router.post("/fetchuserprofile")
-async def fetchuserprofile(user: UserResponse = Depends(verifytoken)) -> Dict[str, Any]:
+async def fetchuserprofile(user: UserResponse = Depends(verifytoken)) -> dict[str, Any]:
     userid = _must_userid(user)
     try:
         resp = (
@@ -121,7 +119,7 @@ async def fetchuserprofile(user: UserResponse = Depends(verifytoken)) -> Dict[st
 @router.post("/updateprofile")
 def updateprofile(
     request: ProfileUpdateRequest, user: UserResponse = Depends(verifytoken)
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     _ = _must_userid(user)
     try:
         resp = (
@@ -145,8 +143,8 @@ def updateprofile(
 
 @router.post("/fetchchatconversation")
 def fetchchatconversation(
-    data: Dict[str, Any], user: UserResponse = Depends(verifytoken)
-) -> Dict[str, Any]:
+    data: dict[str, Any], user: UserResponse = Depends(verifytoken)
+) -> dict[str, Any]:
     _ = _must_userid(user)
     sessionid = data.get("sessionid")
     chatmessagesid = data.get("chatmessagesid")
@@ -178,13 +176,11 @@ def fetchchatconversation(
         cdata = cresp.data or {}
         return {"chatmessagesid": chatmessagesid, "messages": cdata.get("messages")}
     except Exception as e:
-        raise HTTPException(
-            status_code=500, detail=f"Failed to fetch chat conversation: {str(e)}"
-        )
+        raise HTTPException(status_code=500, detail=f"Failed to fetch chat conversation: {str(e)}")
 
 
 @router.get("/fetchdocumentsstatus")
-def fetchdocumentsstatus(user: UserResponse = Depends(verifytoken)) -> Dict[str, Any]:
+def fetchdocumentsstatus(user: UserResponse = Depends(verifytoken)) -> dict[str, Any]:
     userid = _must_userid(user)
     try:
         profileresp = supabase.table("profiles").select("id, fullname").execute()
@@ -220,7 +216,7 @@ def fetchdocumentsstatus(user: UserResponse = Depends(verifytoken)) -> Dict[str,
 
 
 @router.get("/getvalidators")
-def getvalidators(user: UserResponse = Depends(verifytoken)) -> Dict[str, Any]:
+def getvalidators(user: UserResponse = Depends(verifytoken)) -> dict[str, Any]:
     _ = _must_userid(user)
     try:
         profileresp = supabase.table("profiles").select("id, fullname").execute()
@@ -237,8 +233,8 @@ def getvalidators(user: UserResponse = Depends(verifytoken)) -> Dict[str, Any]:
 
 @router.post("/get-questions")
 async def getquestions(
-    request: Dict[str, Any], user: UserResponse = Depends(verifytoken)
-) -> Dict[str, Any]:
+    request: dict[str, Any], user: UserResponse = Depends(verifytoken)
+) -> dict[str, Any]:
     _ = _must_userid(user)
     userid = request.get("userid")
     if not userid:
@@ -284,15 +280,13 @@ async def getquestions(
     except HTTPException:
         raise
     except Exception as e:
-        raise HTTPException(
-            status_code=500, detail=f"Error fetching questions: {str(e)}"
-        )
+        raise HTTPException(status_code=500, detail=f"Error fetching questions: {str(e)}")
 
 
 @router.post("/generatequestions")
 def generatequestions(
-    data: Dict[str, Any], user: UserResponse = Depends(verifytoken)
-) -> Dict[str, Any]:
+    data: dict[str, Any], user: UserResponse = Depends(verifytoken)
+) -> dict[str, Any]:
     _ = _must_userid(user)
     userid = data.get("userid")
     if not userid:
@@ -308,7 +302,7 @@ def generatequestions(
         ).data or {}
 
         questions, _seed = generate_initial_questions(prof, n=8)
-        topics: List[str] = [generate_topic_from_question(q) for q in questions]
+        topics: list[str] = [generate_topic_from_question(q) for q in questions]
         status_list = ["Not Started" for _ in questions]
 
         upsertdata = {
@@ -327,8 +321,8 @@ def generatequestions(
 
 @router.post("/initquestions")
 def initquestionsfromupload(
-    data: Dict[str, Any], user: UserResponse = Depends(verifytoken)
-) -> Dict[str, Any]:
+    data: dict[str, Any], user: UserResponse = Depends(verifytoken)
+) -> dict[str, Any]:
     _ = _must_userid(user)
     userid = data.get("userid")
     questionslist = data.get("questions")
@@ -336,7 +330,7 @@ def initquestionsfromupload(
         raise HTTPException(status_code=400, detail="Missing userid or questions list")
 
     try:
-        topics: List[str] = [generate_topic_from_question(q) for q in questionslist]
+        topics: list[str] = [generate_topic_from_question(q) for q in questionslist]
         status_list = ["Not Started" for _ in questionslist]
 
         upsertdata = {
@@ -360,7 +354,7 @@ def initquestionsfromupload(
 @router.post("/start-chat")
 async def start_chat(
     request: StartChatRequest, user: UserResponse = Depends(verifytoken)
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     userid = _must_userid(user)
 
     try:
@@ -396,9 +390,7 @@ async def start_chat(
             .execute()
         )
         if not docins.data or not docins.data[0].get("docid"):
-            raise HTTPException(
-                status_code=500, detail="Failed to create initial document record"
-            )
+            raise HTTPException(status_code=500, detail="Failed to create initial document record")
         docid = docins.data[0]["docid"]
 
         # 2) create session
@@ -417,9 +409,7 @@ async def start_chat(
             .execute()
         )
         if not sins.data or not sins.data[0].get("id"):
-            raise HTTPException(
-                status_code=500, detail="Failed to create session record"
-            )
+            raise HTTPException(status_code=500, detail="Failed to create session record")
         sessionid = sins.data[0]["id"]
 
         # 3) create chatmessagescollector with system+initial assistant message
@@ -445,9 +435,7 @@ async def start_chat(
             .execute()
         )
         if not cins.data or not cins.data[0].get("id"):
-            raise HTTPException(
-                status_code=500, detail="Failed to insert chatmessagecollector"
-            )
+            raise HTTPException(status_code=500, detail="Failed to insert chatmessagecollector")
         chatmsgid = cins.data[0]["id"]
 
         # 4) update session with chatmessagesid
@@ -490,8 +478,8 @@ async def start_chat(
 
 @router.post("/generatequestionresponse")
 def generatequestionresponse(
-    data: Dict[str, Any], user: UserResponse = Depends(verifytoken)
-) -> Dict[str, Any]:
+    data: dict[str, Any], user: UserResponse = Depends(verifytoken)
+) -> dict[str, Any]:
     _ = _must_userid(user)
     chatpromptid = data.get("chatpromptid")
     usertext = data.get("usertext")
@@ -514,9 +502,9 @@ def generatequestionresponse(
         messages = chatrow.get("messages") or []
         followup, updated_messages = generate_follow_up_question(messages, usertext)
 
-        supabase.table("chatmessagescollector").update(
-            {"messages": updated_messages}
-        ).eq("id", chatpromptid).execute()
+        supabase.table("chatmessagescollector").update({"messages": updated_messages}).eq(
+            "id", chatpromptid
+        ).execute()
         return {"followupquestion": followup}
     except HTTPException:
         raise
@@ -526,8 +514,8 @@ def generatequestionresponse(
 
 @router.post("/generatesummary")
 def generatesummary(
-    data: Dict[str, Any], user: UserResponse = Depends(verifytoken)
-) -> Dict[str, Any]:
+    data: dict[str, Any], user: UserResponse = Depends(verifytoken)
+) -> dict[str, Any]:
     _ = _must_userid(user)
     chatpromptid = data.get("chatpromptid")
     if not chatpromptid:
@@ -551,8 +539,8 @@ def generatesummary(
 
 @router.post("/generatetags")
 def generatetags_endpoint(
-    data: Dict[str, Any], user: UserResponse = Depends(verifytoken)
-) -> Dict[str, Any]:
+    data: dict[str, Any], user: UserResponse = Depends(verifytoken)
+) -> dict[str, Any]:
     _ = _must_userid(user)
     text = data.get("text") or ""
     if not text.strip():
@@ -568,7 +556,7 @@ def generatetags_endpoint(
 def updatesummary(
     request: CollectorSummaryUpdateSummaryRequest,
     user: UserResponse = Depends(verifytoken),
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     _ = _must_userid(user)
 
     try:
@@ -581,9 +569,7 @@ def updatesummary(
         ).data or {}
         docid = srow.get("docid")
         if not docid:
-            raise HTTPException(
-                status_code=404, detail="Session not found or missing docid"
-            )
+            raise HTTPException(status_code=404, detail="Session not found or missing docid")
 
         # Persist summary on document
         supabase.table("documents").update({"summary": request.summarytext}).eq(
@@ -615,8 +601,8 @@ def continuesession(
 
 @router.post("/fetchexistingdoc")
 def fetchexistingdoc(
-    data: Dict[str, Any], user: UserResponse = Depends(verifytoken)
-) -> Dict[str, Any]:
+    data: dict[str, Any], user: UserResponse = Depends(verifytoken)
+) -> dict[str, Any]:
     _ = _must_userid(user)
     sessionid = data.get("sessionid")
     if not sessionid:
@@ -634,17 +620,10 @@ def fetchexistingdoc(
         )
         docid = srow.get("docid")
         if not docid:
-            raise HTTPException(
-                status_code=404, detail="Session not found or missing docid"
-            )
+            raise HTTPException(status_code=404, detail="Session not found or missing docid")
 
         doc = (
-            supabase.table("documents")
-            .select("*")
-            .eq("docid", docid)
-            .maybe_single()
-            .execute()
-            .data
+            supabase.table("documents").select("*").eq("docid", docid).maybe_single().execute().data
         )
         return {"document": doc}
     except HTTPException:
@@ -655,8 +634,8 @@ def fetchexistingdoc(
 
 @router.post("/updatesessionanddocument")
 def updatesessionanddocument(
-    data: Dict[str, Any], user: UserResponse = Depends(verifytoken)
-) -> Dict[str, Any]:
+    data: dict[str, Any], user: UserResponse = Depends(verifytoken)
+) -> dict[str, Any]:
     _ = _must_userid(user)
 
     sessionid = data.get("sessionid")
@@ -682,11 +661,9 @@ def updatesessionanddocument(
         )
         docid = srow.get("docid")
         if not docid:
-            raise HTTPException(
-                status_code=404, detail="Session not found or missing docid"
-            )
+            raise HTTPException(status_code=404, detail="Session not found or missing docid")
 
-        upd: Dict[str, Any] = {
+        upd: dict[str, Any] = {
             "tags": tags,
             "employeecontact": contact,
             "link": sourcelink,
@@ -698,9 +675,7 @@ def updatesessionanddocument(
             upd["title"] = documenttitle
 
         supabase.table("documents").update(upd).eq("docid", docid).execute()
-        supabase.table("sessions").update({"status": "Completed"}).eq(
-            "id", sessionid
-        ).execute()
+        supabase.table("sessions").update({"status": "Completed"}).eq("id", sessionid).execute()
 
         return {"message": "Document stored successfully"}
     except HTTPException:

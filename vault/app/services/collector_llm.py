@@ -2,13 +2,13 @@ from __future__ import annotations
 
 import json
 import re
-from typing import Any, Dict, List, Tuple
+from typing import Any
 
 from app.integrations.ollama_client import chat
 
 
-def _clean_lines(items: List[str]) -> List[str]:
-    out: List[str] = []
+def _clean_lines(items: list[str]) -> list[str]:
+    out: list[str] = []
     for x in items:
         x = re.sub(r"\s+", " ", x).strip()
         if x:
@@ -33,8 +33,8 @@ def generate_topic_from_question(question: str) -> str:
 
 
 def generate_initial_questions(
-    profile: Dict[str, Any], n: int = 8
-) -> Tuple[List[str], List[Dict[str, str]]]:
+    profile: dict[str, Any], n: int = 8
+) -> tuple[list[str], list[dict[str, str]]]:
     fullname = profile.get("fullname") or ""
     dept = profile.get("department") or ""
     field = profile.get("fieldofexpertise") or ""
@@ -65,15 +65,13 @@ Rules:
     raw = chat(messages)
     questions = _clean_lines(raw.splitlines())
     questions = questions[:n] if questions else []
-    conversation_seed = [
-        {"role": "system", "content": "Collector interview session initialized."}
-    ]
+    conversation_seed = [{"role": "system", "content": "Collector interview session initialized."}]
     return questions, conversation_seed
 
 
 def generate_follow_up_question(
-    existing_messages: List[Dict[str, str]], user_text: str
-) -> Tuple[str, List[Dict[str, str]]]:
+    existing_messages: list[dict[str, str]], user_text: str
+) -> tuple[str, list[dict[str, str]]]:
     system = {
         "role": "system",
         "content": (
@@ -101,7 +99,7 @@ def generate_follow_up_question(
     return follow_up, updated
 
 
-def generate_summary(existing_messages: List[Dict[str, str]]) -> str:
+def generate_summary(existing_messages: list[dict[str, str]]) -> str:
     prompt = (
         "Write a concise, structured knowledge article summary (bullets allowed). "
         "Include key steps, best practices, pitfalls, and examples mentioned. "
@@ -122,7 +120,7 @@ def generate_summary(existing_messages: List[Dict[str, str]]) -> str:
     return chat(msgs).strip()
 
 
-def generate_tags(summary_text: str, max_tags: int = 10) -> List[str]:
+def generate_tags(summary_text: str, max_tags: int = 10) -> list[str]:
     prompt = f"""
 Generate up to {max_tags} short tags (1-3 words each) for the text below.
 Return ONLY a JSON array of strings.

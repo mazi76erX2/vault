@@ -1,14 +1,14 @@
 from __future__ import annotations
 
 import logging
-from typing import Any, Dict, List
+from typing import Any
 
-from app.database import supabase
-from app.dto.expert import (AcceptDocumentRequest, Document, DocumentRow,
-                            RejectRequest)
-from app.middleware.auth import verifytoken
 from fastapi import APIRouter, Depends, HTTPException
 from gotrue import UserResponse
+
+from app.database import supabase
+from app.dto.expert import AcceptDocumentRequest, Document, DocumentRow, RejectRequest
+from app.middleware.auth import verifytoken
 
 router = APIRouter(prefix="/api/v1/expert", tags=["expert"])
 logger = logging.getLogger(__name__)
@@ -22,13 +22,7 @@ def _uid(user: UserResponse) -> str:
 
 
 def _companyid_for_user(userid: str) -> int:
-    resp = (
-        supabase.table("profiles")
-        .select("companyid")
-        .eq("id", userid)
-        .maybe_single()
-        .execute()
-    )
+    resp = supabase.table("profiles").select("companyid").eq("id", userid).maybe_single().execute()
     data = resp.data or {}
     companyid = data.get("companyid")
     if not companyid:
@@ -39,14 +33,9 @@ def _companyid_for_user(userid: str) -> int:
     return int(companyid)
 
 
-def _profiles_map(companyid: int) -> Dict[str, str]:
-    resp = (
-        supabase.table("profiles")
-        .select("id, fullname")
-        .eq("companyid", companyid)
-        .execute()
-    )
-    m: Dict[str, str] = {}
+def _profiles_map(companyid: int) -> dict[str, str]:
+    resp = supabase.table("profiles").select("id, fullname").eq("companyid", companyid).execute()
+    m: dict[str, str] = {}
     for p in resp.data or []:
         pid = p.get("id")
         if pid:
@@ -54,10 +43,10 @@ def _profiles_map(companyid: int) -> Dict[str, str]:
     return m
 
 
-@router.get("/get-documents", response_model=List[Document])
+@router.get("/get-documents", response_model=list[Document])
 async def expertstartgetdocuments(
     user: UserResponse = Depends(verifytoken),
-) -> List[Document]:
+) -> list[Document]:
     """
     ExpertStartPage: documents assigned to expert for review (status On Review, reviewer == current user).
     """
@@ -88,7 +77,7 @@ async def expertstartgetdocuments(
 @router.get("/get-document/{documentid}")
 async def expertdocgetdocument(
     documentid: str, user: UserResponse = Depends(verifytoken)
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """
     ExpertDocPage: fetch full doc fields needed by UI.
     """
@@ -109,9 +98,7 @@ async def expertdocgetdocument(
 
     # Ensure expert is the reviewer for this doc
     if str(doc.get("reviewer")) != userid:
-        raise HTTPException(
-            status_code=403, detail="Not allowed to access this document"
-        )
+        raise HTTPException(status_code=403, detail="Not allowed to access this document")
 
     return {
         "tags": doc.get("tags"),
@@ -128,14 +115,14 @@ async def expertdocgetdocument(
 @router.post("/accept-document")
 async def expertdocacceptdocument(
     payload: AcceptDocumentRequest, user: UserResponse = Depends(verifytoken)
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """
     Expert accepts: move to 'Validated - Awaiting Approval' (per your existing dump).
     """
     userid = _uid(user)
     companyid = _companyid_for_user(userid)
 
-    updatedata: Dict[str, Any] = {
+    updatedata: dict[str, Any] = {
         "comment": payload.comment,
         "status": "Validated - Awaiting Approval",
         "summary": payload.summary,
@@ -161,14 +148,14 @@ async def expertdocacceptdocument(
 @router.put("/reject-document")
 async def expertdocrejectdocument(
     rejectrequest: RejectRequest, user: UserResponse = Depends(verifytoken)
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """
     Expert rejects: status = Rejected, keep summary/comment.
     """
     userid = _uid(user)
     companyid = _companyid_for_user(userid)
 
-    updatefields: Dict[str, Any] = {
+    updatefields: dict[str, Any] = {
         "comment": rejectrequest.comment,
         "status": "Rejected",
         "summary": rejectrequest.summary,
@@ -196,7 +183,7 @@ async def expertdocrejectdocument(
 @router.get("/completed-documents/{reviewerid}")
 async def expertdocpreviousreviewsdocuments(
     reviewerid: str, user: UserResponse = Depends(verifytoken)
-) -> List[Dict[str, Any]]:
+) -> list[dict[str, Any]]:
     """
     ExpertPreviousReviewsPage: completed docs for an expert reviewer (from your dump).
     Returns array: [{ id, title, author, status }]
@@ -228,10 +215,10 @@ async def expertdocpreviousreviewsdocuments(
     ]
 
 
-@router.get("/review-documents", response_model=List[DocumentRow])
+@router.get("/review-documents", response_model=list[DocumentRow])
 async def validatorstartexpertreviewdocuments(
     user: UserResponse = Depends(verifytoken),
-) -> List[DocumentRow]:
+) -> list[DocumentRow]:
     """
     ValidatorStartExpertReviewPage: show documents currently On Review where this validator is responsible.
     (This endpoint exists in your dump under the expert router.)
