@@ -1,0 +1,85 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+*.egg-info/
+dist/
+build/
+*.egg
+
+# Virtual environments
+venv/
+.venv/
+env/
+ENV/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Git
+.git/
+.gitignore
+
+# Documentation
+*.md
+!README.md
+
+# Logs
+*.log
+logs/
+
+# Data
+*.db
+*.sqlite
+postgres_data/
+qdrant_storage/
+uploads/
+
+# Backups
+*.backup
+*.bak
+
+# Test
+.pytest_cache/
+.coverage
+htmlcov/
+
+# UV cache (don't copy to image)
+.uv/
+
+# Keep these files - IMPORTANT!
+!pyproject.toml
+!uv.lock
+
+# Deployment
+docker-compose*.yml
+Dockerfile*
+.dockerignore
+Jenkinsfile
+k8s-*.yaml
+deploy.sh
+startup.sh
+build.xml
+
+# Scripts
+scripts/
+
+# Supabase
+supabase/
+
+# Development files
+*.backup
+*.bak
+simple_backend.py
+updated_*.py
+env.example

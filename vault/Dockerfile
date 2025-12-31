@@ -21,13 +21,16 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     && rm -rf /var/lib/apt/lists/*
 
 # Dependency layer (best cache hit rate)
-COPY pyproject.toml uv.lock* ./
+# Copy ONLY dependency files first for better caching
+COPY pyproject.toml ./
+# If you have uv.lock, uncomment:
+# COPY uv.lock ./
 
-RUN uv sync --frozen --no-dev || uv sync --no-dev
+# Sync dependencies (creates venv at /opt/venv)
+RUN uv sync --frozen --no-dev
 
 # Now copy the app (separate layer so deps cache properly)
 COPY . .
-
 
 # Stage 2: runtime
 FROM python:3.14-slim AS runtime
@@ -60,5 +63,5 @@ EXPOSE 7860
 HEALTHCHECK --interval=30s --timeout=10s --start-period=10s --retries=3 \
   CMD curl -fsS http://localhost:7860/health || exit 1
 
-# Prefer no --reload in containers unless dev
-CMD ["python", "-m", "uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "7860"]
+# Use main:app (not app.main:app) based on your structure
+CMD ["python", "-m", "uvicorn", "main:app", "--host", "0.0.0.0", "--port", "7860"]
