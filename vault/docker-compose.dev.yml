@@ -45,15 +45,14 @@ services:
       - DATABASE_URL=postgresql://postgres:postgres@postgres:5432/vault
       - LOG_LEVEL=DEBUG
       - PYTHONUNBUFFERED=1
-      - PATH=/opt/venv/bin:/usr/local/bin:/usr/bin:/bin
+      - PATH=/app/.venv/bin:/usr/local/bin:/usr/bin:/bin
     depends_on:
       - qdrant
       - postgres
     volumes:
       # Mount source code for hot reload
-      - ./app:/app/app:ro
-      - ./main.py:/app/main.py:ro
-      - ./pyproject.toml:/app/pyproject.toml:ro
+      - ./app:/app/app
+      - ./main.py:/app/main.py
       # Mount these as writable
       - ./uploads:/app/uploads
       - ./logs:/app/logs
@@ -62,8 +61,8 @@ services:
       - vault-network
     extra_hosts:
       - "host.docker.internal:host-gateway"
-    # Use full path to uvicorn
-    command: ["/opt/venv/bin/uvicorn", "main:app", "--host", "0.0.0.0", "--port", "7860", "--reload"]
+    # Use full path to uvicorn in .venv
+    command: ["/app/.venv/bin/uvicorn", "main:app", "--host", "0.0.0.0", "--port", "7860", "--reload"]
 
 networks:
   vault-network:

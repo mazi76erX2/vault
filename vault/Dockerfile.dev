@@ -1,16 +1,17 @@
-# Development Dockerfile - faster builds, hot reload
+# Development Dockerfile - UV-based with hot reload
 FROM python:3.14-slim
 
 ENV PYTHONUNBUFFERED=1 \
     PYTHONDONTWRITEBYTECODE=1 \
-    PYTHONPATH="/app"
+    PYTHONPATH="/app" \
+    PATH="/app/.venv/bin:$PATH"
 
 # Install UV
 COPY --from=ghcr.io/astral-sh/uv:latest /uv /usr/local/bin/uv
 
 WORKDIR /app
 
-# Install system dependencies (including build tools for dev)
+# Install system dependencies
 RUN apt-get update && apt-get install -y --no-install-recommends \
     curl \
     git \
@@ -29,26 +30,19 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     && rm -rf /var/lib/apt/lists/*
 
 # Copy dependency files
-COPY pyproject.toml ./
-COPY uv.lock ./
-COPY README.md ./
+COPY pyproject.toml uv.lock README.md ./
 
-# Create venv and install dependencies
-RUN python -m venv /opt/venv && \
-    /opt/venv/bin/pip install --upgrade pip && \
-    /opt/venv/bin/pip install uv && \
-    /opt/venv/bin/uv sync --all-extras
+# Create venv and sync dependencies with UV
+RUN uv venv /app/.venv && \
+    uv sync --all-extras
 
 # Verify uvicorn is installed
-RUN /opt/venv/bin/uvicorn --version || echo "uvicorn not found!"
+RUN /app/.venv/bin/uvicorn --version
 
-# Copy application code (will be overridden by volume mount)
+# Copy application code (will be overridden by volume mounts)
 COPY . .
-
-# Set PATH to include venv
-ENV PATH="/opt/venv/bin:$PATH"
 
 EXPOSE 7860
 
-# Development command with auto-reload (use full path as fallback)
-CMD ["/opt/venv/bin/uvicorn", "main:app", "--host", "0.0.0.0", "--port", "7860", "--reload"]
+# Use full path to uvicorn from .venv
+CMD ["/app/.venv/bin/uvicorn", "main:app", "--host", "0.0.0.0", "--port", "7860", "--reload"]
