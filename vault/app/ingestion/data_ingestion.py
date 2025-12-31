@@ -88,7 +88,7 @@ def main(args):
     logging.info(f"Prepared {len(docs_to_upsert)} chunks for upsert into Qdrant.")
 
     # Optionally recreate collection (use with caution - drops existing data)
-    collection_name = os.getenv("QDRANT_COLLECTION", "hicovault")
+    collection_name = os.getenv("QDRANT_COLLECTION", "vault")
     if recreate:
         logging.info(
             f"Recreating Qdrant collection '{collection_name}' as requested..."

@@ -1,0 +1,74 @@
+services:
+  # Qdrant Vector Database
+  qdrant:
+    image: qdrant/qdrant:latest
+    container_name: vault-qdrant-dev
+    ports:
+      - "6333:6333"
+      - "6334:6334"
+    volumes:
+      - ./qdrant_storage:/qdrant/storage
+    environment:
+      - QDRANT__SERVICE__GRPC_PORT=6334
+    restart: unless-stopped
+    networks:
+      - vault-network
+
+  # PostgreSQL with pgvector extension
+  postgres:
+    image: ankane/pgvector:latest
+    container_name: vault-postgres-dev
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: vault
+    ports:
+      - "5432:5432"
+    volumes:
+      - ./postgres_data:/var/lib/postgresql/data
+    restart: unless-stopped
+    networks:
+      - vault-network
+
+  # FastAPI Backend - DEVELOPMENT MODE with hot reload
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile.dev
+    container_name: vault-backend-dev
+    ports:
+      - "7860:7860"
+    environment:
+      - OLLAMA_HOST=http://host.docker.internal:11434
+      - QDRANT_HOST=qdrant
+      - QDRANT_PORT=6333
+      - DATABASE_URL=postgresql://postgres:postgres@postgres:5432/vault
+      - LOG_LEVEL=DEBUG
+      - PYTHONUNBUFFERED=1
+      - PATH=/opt/venv/bin:/usr/local/bin:/usr/bin:/bin
+    depends_on:
+      - qdrant
+      - postgres
+    volumes:
+      # Mount source code for hot reload
+      - ./app:/app/app:ro
+      - ./main.py:/app/main.py:ro
+      - ./pyproject.toml:/app/pyproject.toml:ro
+      # Mount these as writable
+      - ./uploads:/app/uploads
+      - ./logs:/app/logs
+    restart: unless-stopped
+    networks:
+      - vault-network
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    # Use full path to uvicorn
+    command: ["/opt/venv/bin/uvicorn", "main:app", "--host", "0.0.0.0", "--port", "7860", "--reload"]
+
+networks:
+  vault-network:
+    driver: bridge
+
+volumes:
+  qdrant_storage:
+  postgres_data:

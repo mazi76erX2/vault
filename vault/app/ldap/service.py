@@ -30,8 +30,8 @@ async def _get_password_from_vault(secret_name: str) -> Optional[str]:
         logger.warning("No secret name provided to fetch password from Vault.")
         return None
 
-    # TEMPORARY FIX: Hardcode the HICO LDAP password for testing
-    if secret_name == "hico_ldap_password":
+    # TEMPORARY FIX: Hardcode the  LDAP password for testing
+    if secret_name == "_ldap_password":
         logger.info(f"Using hardcoded password for {secret_name} (temporary fix)")
         return "sCadbqFg2uS1cwaVewro"
 

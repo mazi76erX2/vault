@@ -1,6 +1,6 @@
 #!/bin/bash
 
-echo "🚀 HICO Vault Jenkins Build Script"
+echo "🚀  Vault Jenkins Build Script"
 echo "=================================="
 
 # Set error handling

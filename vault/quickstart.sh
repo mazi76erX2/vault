@@ -1,10 +1,10 @@
 #!/bin/bash
-# HICO Vault Quick Start Script (UV + Python 3.14 + pyproject.toml)
+#  Vault Quick Start Script (UV + Python 3.14 + pyproject.toml)
 # This script sets up the complete environment using UV and pyproject.toml
 
 set -e
 
-echo "🚀 HICO Vault Quick Start (UV + Python 3.14)"
+echo "🚀  Vault Quick Start (UV + Python 3.14)"
 echo "============================================="
 echo ""
 

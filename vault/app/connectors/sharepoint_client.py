@@ -15,7 +15,7 @@ env_path = Path(__file__).parent.parent / ".env"
 load_dotenv(env_path)
 
 # Qdrant collection setting (used when storing documents)
-QDRANT_COLLECTION = os.environ.get("QDRANT_COLLECTION", "hicovault")
+QDRANT_COLLECTION = os.environ.get("QDRANT_COLLECTION", "vault")
 
 
 def generate_doc_id(file_name, file_url):

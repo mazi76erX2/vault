@@ -164,8 +164,8 @@ origins = [
     "http://localhost:3000",  # Common React port
     "http://81.28.6.125:8000",
     "http://localhost:8082",
-    "https://hicovaulttesting.highcoordination.de",
-    "https://demohicovault.highcoordination.de",
+    "https://vaulttesting.highcoordination.de",
+    "https://demovault.highcoordination.de",
 ]
 app.add_middleware(
     CORSMiddleware,
@@ -1134,7 +1134,6 @@ async def get_company_theme_settings(request: GetCompanyThemeSettingsRequest):
             if not profile_response.data or not profile_response.data[0].get(
                 "company_id"
             ):
-                logger.warning(
                 logger.warning(
                     f"No profile or company ID found for user ID: {user_id}, returning defaults."
                 )

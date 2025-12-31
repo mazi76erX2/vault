@@ -1,3 +1,5 @@
+
+
 # Stage 1: builder
 FROM python:3.14-slim AS builder
 
@@ -17,14 +19,14 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     curl git pkg-config \
     libcairo2-dev \
     gcc build-essential \
-    libldap2-dev libsasl2-dev libssl-dev \
+    libldap-dev libsasl2-dev libssl-dev \
     && rm -rf /var/lib/apt/lists/*
 
 # Dependency layer (best cache hit rate)
 # Copy ONLY dependency files first for better caching
 COPY pyproject.toml ./
-# If you have uv.lock, uncomment:
-# COPY uv.lock ./
+COPY uv.lock ./
+COPY README.md ./
 
 # Sync dependencies (creates venv at /opt/venv)
 RUN uv sync --frozen --no-dev
@@ -43,13 +45,13 @@ ENV PYTHONUNBUFFERED=1 \
 
 WORKDIR /app
 
-# Runtime libs only
+# Runtime libs only - FIXED package names for Debian Trixie
 RUN apt-get update && apt-get install -y --no-install-recommends \
     curl \
     libcairo2 \
-    libldap-2.5-0 \
+    libldap-common \
     libsasl2-2 \
-    libssl3 \
+    libssl3t64 \
     && rm -rf /var/lib/apt/lists/*
 
 # Copy the virtualenv from builder
@@ -63,5 +65,5 @@ EXPOSE 7860
 HEALTHCHECK --interval=30s --timeout=10s --start-period=10s --retries=3 \
   CMD curl -fsS http://localhost:7860/health || exit 1
 
-# Use main:app (not app.main:app) based on your structure
+# Use main:app (your main.py is in root, not app/)
 CMD ["python", "-m", "uvicorn", "main:app", "--host", "0.0.0.0", "--port", "7860"]

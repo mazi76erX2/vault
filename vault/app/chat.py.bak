@@ -22,7 +22,7 @@ load_dotenv(env_path)
 # Make Azure env lookups safe (some parts of the project may still reference these vars)
 AZURE_SEARCH_ENDPOINT = os.environ.get("AZURE_SEARCH_ENDPOINT", "")
 AZURE_SEARCH_KEY = os.environ.get("AZURE_SEARCH_KEY", "")
-AZURE_SEARCH_INDEX_NAME = "hicovault"
+AZURE_SEARCH_INDEX_NAME = "vault"
 CLIENT_ID = os.environ.get("CLIENT_ID", "")
 CLIENT_SECRET = os.environ.get("CLIENT_SECRET", "")
 TENANT_ID = os.environ.get("TENANT_ID", "")
@@ -32,7 +32,7 @@ OLLAMA_HOST = os.environ.get("OLLAMA_HOST", "http://localhost:11434")
 OLLAMA_MODEL = os.environ.get("OLLAMA_MODEL", "llama2")
 QDRANT_HOST = os.environ.get("QDRANT_HOST", "localhost")
 QDRANT_PORT = int(os.environ.get("QDRANT_PORT", "6333"))
-QDRANT_COLLECTION = os.environ.get("QDRANT_COLLECTION", "hicovault")
+QDRANT_COLLECTION = os.environ.get("QDRANT_COLLECTION", "vault")
 
 RETRIEVAL_SIMILARITY_THRESHOLD = 0.5
 conversation_history = []

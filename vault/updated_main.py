@@ -164,8 +164,8 @@ origins = [
     "http://localhost:3000",  # Common React port
     "http://81.28.6.125:8000",
     "http://localhost:8082",
-    "https://hicovaulttesting.highcoordination.de",
-    "https://demohicovault.highcoordination.de",
+    "https://vaulttesting.highcoordination.de",
+    "https://demovault.highcoordination.de",
 ]
 app.add_middleware(
     CORSMiddleware,

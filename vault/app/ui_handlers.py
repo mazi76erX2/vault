@@ -209,7 +209,7 @@ def delegate_fn(comment, user):
     if len(mng_doc_ids_data) == 0:
         mng_doc_ids_data = pd.DataFrame([{"Documents": "No Documents Available" }])
     
-    subject = "HICO Vault Validation Process"
+    subject = " Vault Validation Process"
     body = "You have a new document to verify"
 
     send_email_graph(CLIENT_ID, CLIENT_SECRET, TENANT_ID, args.sender_email, users_dict[user]['mail'], subject, body)

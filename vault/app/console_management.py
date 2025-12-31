@@ -29,7 +29,7 @@ logging.basicConfig(
 
 def main(args):
     users = get_all_users()
-    with gr.Blocks(title="HICO VAULT Management Console",
+    with gr.Blocks(title=" VAULT Management Console",
                    theme=gr.themes.Default(primary_hue=gr.themes.colors.orange,
                                            secondary_hue=gr.themes.colors.orange), css="""
                 #scrollable_dataframe_mng {
@@ -45,14 +45,14 @@ def main(args):
         with gr.Row():
             gr.Markdown(
             """
-            ## Welcome to HICO Group's Knowledge Sharing Chatbot! 🤖
+            ## Welcome to  Group's Knowledge Sharing Chatbot! 🤖
 
             This chatbot is designed to help collect valuable information that will facilitate knowledge transfer between coworkers.
             By sharing your insights and experiences, you contribute to building a robust knowledge base that supports new and existing team members.
 
             We appreciate your contribution and are here to assist you! 😊
             """)
-            gr.HTML(value="<img app='/file=images/hico_logo_1.png' style='width: 25%; float: right;' >")
+            gr.HTML(value="<img app='/file=images/_logo_1.png' style='width: 25%; float: right;' >")
         with gr.Row():
             with gr.Tabs(selected="Login") as tabs:
                 tab_login = gr.Tab("Login", id = "Login")
@@ -111,7 +111,7 @@ def main(args):
                             accordion_sharepoint = gr.Accordion('SharePoint Access Data', visible= False)
                             with accordion_sharepoint:
                                 txt_hostname_sp = gr.Textbox(label="Hostname", placeholder="For example: highcoordinationde.sharepoint.com")
-                                txt_sitepath_sp = gr.Textbox(label="site path", placeholder="For example: Hicohome")
+                                txt_sitepath_sp = gr.Textbox(label="site path", placeholder="For example: home")
                                 btn_connect_sharepoint = gr.Button(value="Connect")
 
                             accordion_custom = gr.Accordion('Custom Access Data', visible= False)
@@ -141,9 +141,9 @@ def main(args):
         # TODO: Check ssl_verify as this should be removed later
         certFile = os.path.join('/app/ssl', 'private.crt')
         keyFile = os.path.join('/app/ssl', 'privatekeynew.pem')
-        demo.launch(share=False, allowed_paths=["images/hico_logo_1.png"], ssl_certfile=certFile, ssl_keyfile=keyFile, ssl_verify=False)
+        demo.launch(share=False, allowed_paths=["images/_logo_1.png"], ssl_certfile=certFile, ssl_keyfile=keyFile, ssl_verify=False)
     else:
-        demo.launch(share=True, allowed_paths=["images/hico_logo_1.png"])
+        demo.launch(share=True, allowed_paths=["images/_logo_1.png"])
 
 
 if __name__ == "__main__":

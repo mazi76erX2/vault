@@ -14,7 +14,7 @@ USE_SSL = os.environ.get("USE_SSL", "false").lower() in ["true", "1", "y", "yes"
 
 def main(args):
     with gr.Blocks(
-        title="HICO VAULT Helper",
+        title=" VAULT Helper",
         theme=gr.themes.Default(
             primary_hue=gr.themes.colors.orange, secondary_hue=gr.themes.colors.orange
         ),
@@ -33,7 +33,7 @@ def main(args):
                 """
             )
             gr.HTML(
-                value="<img app='/file=images/hico_logo_1.png' style='width: 25%; float: right;' >"
+                value="<img app='/file=images/_logo_1.png' style='width: 25%; float: right;' >"
             )
         with gr.Row():
             with gr.Tabs(selected="login") as tabs:
@@ -44,7 +44,7 @@ def main(args):
                     login_button = gr.Button("Login")
 
                 tab_Login = gr.Tab(
-                    "HICO VAULT ChatBot Helper", visible=False, id="chatbot"
+                    " VAULT ChatBot Helper", visible=False, id="chatbot"
                 )
                 with tab_Login:
                     with gr.Row():
@@ -151,13 +151,13 @@ def main(args):
         keyFile = os.path.join("/app/ssl", "privatekeynew.pem")
         demo.launch(
             share=False,
-            allowed_paths=["images/hico_logo_1.png"],
+            allowed_paths=["images/_logo_1.png"],
             ssl_certfile=certFile,
             ssl_keyfile=keyFile,
             ssl_verify=False,
         )
     else:
-        demo.launch(share=True, allowed_paths=["images/hico_logo_1.png"])
+        demo.launch(share=True, allowed_paths=["images/_logo_1.png"])
 
 
 if __name__ == "__main__":

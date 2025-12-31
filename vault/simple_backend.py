@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Simple backend server for testing HICO Vault
+Simple backend server for testing  Vault
 This is a minimal FastAPI server that provides basic endpoints on port 7860
 """
 
@@ -12,7 +12,7 @@ from typing import Dict, Any
 import json
 import os
 
-app = FastAPI(title="HICO Vault Backend (Simple)", version="1.0.0")
+app = FastAPI(title=" Vault Backend (Simple)", version="1.0.0")
 
 # CORS middleware to allow frontend connections
 origins = [
@@ -32,12 +32,12 @@ app.add_middleware(
 @app.get("/")
 async def root():
     """Root endpoint"""
-    return {"message": "HICO Vault Backend is running", "status": "ok", "port": 7860}
+    return {"message": " Vault Backend is running", "status": "ok", "port": 7860}
 
 @app.get("/health")
 async def health_check():
     """Health check endpoint"""
-    return {"status": "healthy", "service": "hico-vault-backend"}
+    return {"status": "healthy", "service": "-vault-backend"}
 
 @app.get("/api/status")
 async def api_status():
@@ -72,5 +72,5 @@ async def echo_message(request: EchoRequest):
     return {"echo": request.message, "received_at": "now"}
 
 if __name__ == "__main__":
-    print("🚀 Starting HICO Vault Backend (Simple) on port 7860...")
+    print("🚀 Starting  Vault Backend (Simple) on port 7860...")
     uvicorn.run(app, host="0.0.0.0", port=7860) 

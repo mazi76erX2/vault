@@ -100,11 +100,11 @@ def augment_content_with_hierarchy(content: str, hierarchy: str, date: str) -> s
 
 
 def main(args):
-    confluence_url = "https://hicogroupconfluence.atlassian.net"
+    confluence_url = "https://groupconfluence.atlassian.net"
     username = os.environ.get("CONFLUENCE_USER", "")
     api_key = os.environ.get("CONFLUENCE_API_KEY", "")
     space_key = args.confluence_space
-    collection_name = os.environ.get("QDRANT_COLLECTION", "hicovault")
+    collection_name = os.environ.get("QDRANT_COLLECTION", "vault")
 
     store_confluence_in_qdrant(
         confluence_url, username, api_key, space_key, collection_name=collection_name

@@ -1,6 +1,6 @@
 RUN printf '%s\n' \
 '#!/bin/sh' \
-'echo "Starting HICO Vault..."' \
+'echo "Starting  Vault..."' \
 'echo "Waiting for database..."' \
 'sleep 5' \
 'python scripts/setupsupabasedatabase.py --verify || echo "Database verification failed"' \

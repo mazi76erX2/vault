@@ -236,7 +236,7 @@ def ensure_collection_exists(collection_name: str):
 
 # New: ingest Confluence content directly into Qdrant using Ollama for embeddings
 def store_confluence_in_qdrant(
-    confluence_url, username, api_key, space_key, collection_name="hicovault"
+    confluence_url, username, api_key, space_key, collection_name="vault"
 ):
     docs = load_from_confluence_loader(confluence_url, username, api_key, space_key)
     page_tree = get_hiearchy_space(docs, confluence_url, username, api_key)
@@ -288,7 +288,7 @@ def store_confluence_in_qdrant(
 
 
 # Convenience wrapper for single-document ingestion
-def store_in_qdrant(doc, collection_name="hicovault"):
+def store_in_qdrant(doc, collection_name="vault"):
     # doc expected: {"file_name", "content", "file_title", "level"}
     point = {
         "id": doc.get("file_name") or str(uuid.uuid4()),
@@ -329,7 +329,7 @@ def store_confluence_in_azure_kb(confluence_url, username, api_key, space_key, i
 def store_in_azure_kb(doc):
     logging.warning("store_in_azure_kb is deprecated; routing to Qdrant ingestion.")
     return store_in_qdrant(
-        doc, collection_name=os.environ.get("QDRANT_COLLECTION", "hicovault")
+        doc, collection_name=os.environ.get("QDRANT_COLLECTION", "vault")
     )
 
 

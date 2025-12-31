@@ -16,25 +16,25 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 def main(args):
-    logger.info("Starting the HICO Confluence RAG BOT App ... ")
+    logger.info("Starting the  Confluence RAG BOT App ... ")
 
 
     # Initiate the first conversation
-    with gr.Blocks(title="HICO VAULT Collector",
+    with gr.Blocks(title=" VAULT Collector",
                    theme=gr.themes.Default(primary_hue=gr.themes.colors.orange,
                                            secondary_hue=gr.themes.colors.orange)) as demo:
         state = gr.State(state_manager.get_state())
         with gr.Row():
             gr.Markdown(
             """
-            ## Welcome to HICO Group's Knowledge Sharing Chatbot! 🤖
+            ## Welcome to  Group's Knowledge Sharing Chatbot! 🤖
 
             This chatbot is designed to help collect valuable information that will facilitate knowledge transfer between coworkers.
             By sharing your insights and experiences, you contribute to building a robust knowledge base that supports new and existing team members.
 
             We appreciate your contribution and are here to assist you! 😊
             """)
-            gr.HTML(value="<img app='/file=images/hico_logo_1.png' style='width: 25%; float: right;' >")
+            gr.HTML(value="<img app='/file=images/_logo_1.png' style='width: 25%; float: right;' >")
         with gr.Row():
             with gr.Tabs(selected="login") as tabs:
                 tab_Login = gr.Tab("User Login", id = "login")
@@ -197,10 +197,10 @@ def main(args):
         # TODO: Check ssl_verify as this should be removed later
         certFile = os.path.join('/app/ssl', 'private.crt')
         keyFile = os.path.join('/app/ssl', 'privatekeynew.pem')
-        demo.launch(share=False, allowed_paths=["images/hico_logo_1.png"], ssl_certfile=certFile, ssl_keyfile=keyFile, ssl_verify=False)
+        demo.launch(share=False, allowed_paths=["images/_logo_1.png"], ssl_certfile=certFile, ssl_keyfile=keyFile, ssl_verify=False)
     else:
         # Start up normally without SSL
-        demo.launch(share=True, allowed_paths=["images/hico_logo_1.png"])
+        demo.launch(share=True, allowed_paths=["images/_logo_1.png"])
 
 
 if __name__ == "__main__":

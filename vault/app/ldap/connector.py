@@ -67,7 +67,7 @@ def get_ldap_client(
     if connector.is_ssl:
         # Get certificate file path
         cert_dir = os.path.dirname(os.path.abspath(__file__))
-        cert_path = os.path.join(cert_dir, "CAhico-group.local.cer")
+        cert_path = os.path.join(cert_dir, "CA-group.local.cer")
 
         # --- Added for testing: Bypass cert verification if requested ---
         # Note: This should only be used for testing/debugging, NOT production connections

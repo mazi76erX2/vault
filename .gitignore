@@ -270,3 +270,10 @@ fabric.properties
 vault.iml
 supabase
 supabase/
+
+# Add to .gitignore
+postgres_data/
+qdrant_storage/
+uploads/
+logs/
+*.log

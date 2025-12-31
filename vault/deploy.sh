@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# HICO Vault Unified Deployment Script
+#  Vault Unified Deployment Script
 # Usage: ./deploy.sh [local|production]
 # Default: local
 
@@ -8,7 +8,7 @@ set -e
 
 # Configuration
 MODE=${1:-local}
-NAMESPACE="hico-vault"
+NAMESPACE="-vault"
 
 # Colors for output
 RED='\033[0;31m'
@@ -36,7 +36,7 @@ print_info() {
 
 # Show usage
 show_usage() {
-    echo "HICO Vault Deployment Script"
+    echo " Vault Deployment Script"
     echo ""
     echo "Usage: $0 [local|production]"
     echo ""
@@ -61,7 +61,7 @@ if [[ "$MODE" != "local" && "$MODE" != "production" ]]; then
     show_usage
 fi
 
-echo "🚀 Starting HICO Vault deployment in $MODE mode..."
+echo "🚀 Starting  Vault deployment in $MODE mode..."
 
 # Common checks
 if ! docker info > /dev/null 2>&1; then
@@ -87,9 +87,9 @@ if [[ "$MODE" == "local" ]]; then
     print_status "kind is available"
 
     # Delete existing cluster if it exists
-    if kind get clusters 2>/dev/null | grep -q "hico-vault"; then
-        echo "🗑️  Deleting existing hico-vault cluster..."
-        kind delete cluster --name hico-vault
+    if kind get clusters 2>/dev/null | grep -q "-vault"; then
+        echo "🗑️  Deleting existing -vault cluster..."
+        kind delete cluster --name -vault
     fi
 
     # Create kind cluster
@@ -108,16 +108,16 @@ if [[ "$MODE" == "local" ]]; then
 
     # Build and load image into kind
     echo "🔨 Building and loading Docker image..."
-    docker build -t hico-vault:local .
-    kind load docker-image hico-vault:local --name hico-vault
+    docker build -t -vault:local .
+    kind load docker-image -vault:local --name -vault
     print_status "Docker image loaded into kind cluster"
 
     # Use local image configuration
-    DOCKER_IMAGE="hico-vault:local"
+    DOCKER_IMAGE="-vault:local"
     DEPLOYMENT_FILE="k8s-deployment-local.yaml"
     
     # Create local deployment with Never pull policy
-    sed 's/hico-vault:latest/hico-vault:local/g; s/imagePullPolicy: Always/imagePullPolicy: Never/g' k8s-deployment.yaml > $DEPLOYMENT_FILE
+    sed 's/-vault:latest/-vault:local/g; s/imagePullPolicy: Always/imagePullPolicy: Never/g' k8s-deployment.yaml > $DEPLOYMENT_FILE
 
 else
     echo ""
@@ -137,7 +137,7 @@ else
 
     # Build production image
     echo "🔨 Building Docker image..."
-    if docker build -t hico-vault:latest .; then
+    if docker build -t -vault:latest .; then
         print_status "Docker image built successfully"
     else
         print_error "Failed to build Docker image"
@@ -145,7 +145,7 @@ else
     fi
 
     # Use production configuration
-    DOCKER_IMAGE="hico-vault:latest"
+    DOCKER_IMAGE="-vault:latest"
     DEPLOYMENT_FILE="k8s-deployment.yaml"
 fi
 
@@ -191,13 +191,13 @@ if [[ "$MODE" == "local" ]]; then
     kubectl patch service postgrest-service -n $NAMESPACE -p '{"spec":{"type":"NodePort","ports":[{"port":3000,"targetPort":3000,"nodePort":30001}]}}'
     
     ACCESS_INFO="🔗 Access Information:
-  - HICO Vault Backend: http://localhost:7860
+  -  Vault Backend: http://localhost:7860
   - PostgREST API: http://localhost:3000
 
 🔧 Useful Commands:
   - View logs: kubectl logs -f deployment/vault-backend -n $NAMESPACE
   - Access database: kubectl exec -it deployment/postgres -n $NAMESPACE -- psql -U postgres
-  - Stop cluster: kind delete cluster --name hico-vault"
+  - Stop cluster: kind delete cluster --name -vault"
 else
     ACCESS_INFO="🔗 Access Information:
 To access the application:
@@ -215,7 +215,7 @@ fi
 
 # Show final status
 echo ""
-echo "🎉 HICO Vault is now running in $MODE mode!"
+echo "🎉  Vault is now running in $MODE mode!"
 echo ""
 echo "📊 Service Information:"
 kubectl get services -n $NAMESPACE

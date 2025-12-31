@@ -1,4 +1,4 @@
-# 🏢 HICO VAULT - Knowledge Management System
+# 🏢  VAULT - Knowledge Management System
 ## Local-First Architecture with Ollama + Qdrant + pgvector
 
 **Version:** 2.0.0  
@@ -9,7 +9,7 @@
 
 ## 📖 Overview
 
-HICO Vault is an enterprise knowledge management system that uses RAG (Retrieval-Augmented Generation) to provide intelligent answers from your organization's documents. This version uses a completely local-first architecture for maximum privacy and control.
+ Vault is an enterprise knowledge management system that uses RAG (Retrieval-Augmented Generation) to provide intelligent answers from your organization's documents. This version uses a completely local-first architecture for maximum privacy and control.
 
 ### Key Features
 
@@ -67,7 +67,7 @@ HICO Vault is an enterprise knowledge management system that uses RAG (Retrieval
 ```bash
 # 1. Clone the repository
 git clone <your-repo>
-cd hicovault
+cd vault
 
 # 2. Start services with Docker Compose
 docker-compose up -d
@@ -103,7 +103,7 @@ Visit http://localhost:8000
 ## 📁 Project Structure
 
 ```
-hicovault/
+vault/
 ├── app/
 │   ├── api/                    # API route handlers
 │   │   ├── auth.py            # Authentication endpoints
@@ -147,10 +147,10 @@ OLLAMA_EMBED_MODEL=nomic-embed-text
 
 # Qdrant
 QDRANT_HOST=localhost
-QDRANT_COLLECTION=hicovault
+QDRANT_COLLECTION=vault
 
 # Database
-DATABASE_URL=postgresql://postgres:postgres@localhost:5432/hicovault
+DATABASE_URL=postgresql://postgres:postgres@localhost:5432/vault
 ```
 
 ### Model Selection
@@ -372,9 +372,9 @@ This project is licensed under the MIT License - see LICENSE file for details.
 
 ## 🆘 Support
 
-- 📧 Email: support@hico-group.com
+- 📧 Email: support@-group.com
 - 💬 Discord: [Join our community]()
-- 📚 Documentation: [docs.hicovault.com]()
+- 📚 Documentation: [docs.vault.com]()
 - 🐛 Issues: [GitHub Issues]()
 
 ---
@@ -388,4 +388,4 @@ This project is licensed under the MIT License - see LICENSE file for details.
 
 ---
 
-**Built with ❤️ by the HICO Group team**
+**Built with ❤️ by the  Group team**

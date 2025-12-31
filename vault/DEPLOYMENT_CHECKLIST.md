@@ -1,6 +1,6 @@
 # 🚀 DEPLOYMENT CHECKLIST
 
-Use this checklist to ensure a smooth deployment of HICO Vault.
+Use this checklist to ensure a smooth deployment of  Vault.
 
 ---
 
@@ -154,7 +154,7 @@ In case of critical issues:
 
 3. **Restore database backup** (if needed)
    ```bash
-   psql -U postgres -d hicovault < backup.sql
+   psql -U postgres -d vault < backup.sql
    ```
 
 4. **Restore Qdrant data** (if needed)

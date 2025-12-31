@@ -21,7 +21,7 @@ OLLAMA_HOST = os.environ.get("OLLAMA_HOST", "http://localhost:11434")
 OLLAMA_EMBED_MODEL = os.environ.get("OLLAMA_EMBED_MODEL", "nomic-embed-text")
 QDRANT_HOST = os.environ.get("QDRANT_HOST", "localhost")
 QDRANT_PORT = int(os.environ.get("QDRANT_PORT", "6333"))
-QDRANT_COLLECTION = os.environ.get("QDRANT_COLLECTION", "hicovault")
+QDRANT_COLLECTION = os.environ.get("QDRANT_COLLECTION", "vault")
 
 # Initialize Qdrant client
 qdrant_client = QdrantClient(url=f"http://{QDRANT_HOST}:{QDRANT_PORT}")
