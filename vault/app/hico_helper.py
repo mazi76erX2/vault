@@ -19,7 +19,6 @@ def main(args):
         ),
     ) as demo:
         with gr.Row():
-
             gr.Markdown(
                 """
                     ## Welcome to the AI Virtual Assistant! 🤖

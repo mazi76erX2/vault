@@ -228,7 +228,7 @@ def validate_retrieved_docs(
                 valid_docs.append(doc)
             else:
                 logger.info(
-                    f"Discarded irrelevant document: {doc.get('title','<no-title>')} "
+                    f"Discarded irrelevant document: {doc.get('title', '<no-title>')} "
                     f"(similarity: {similarity:.3f})"
                 )
 

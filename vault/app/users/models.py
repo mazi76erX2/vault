@@ -2,6 +2,7 @@ from sqlalchemy import BigInteger, Boolean, Column, DateTime, ForeignKey, String
 from sqlalchemy import Enum as SAEnum
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import relationship
+
 from vault.app.db.base_class import Base
 from vault.app.db.enums import DepartmentEnum, UserAccessLevelsEnum  # Import necessary enums
 

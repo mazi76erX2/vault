@@ -209,13 +209,13 @@ def generate_markdown_from_info(extracted_info):
         for manager in managers
     }
     markdown_content = f"""
-                            # Document Title: {extracted_info['title']}
-                            **Status**: {extracted_info['status']}
-                            **Document ID**: {extracted_info['doc_id']}
-                            **Designated Manager**: {managers_dict[int(extracted_info['mng_id'])]['manager_name']}
-                            **Comment**: {extracted_info['comment']}
-                            **Author**: {extracted_info['employee_contact']}
-                            **Security Level**: {levels_int_text_map[int(extracted_info['level'])]}
+                            # Document Title: {extracted_info["title"]}
+                            **Status**: {extracted_info["status"]}
+                            **Document ID**: {extracted_info["doc_id"]}
+                            **Designated Manager**: {managers_dict[int(extracted_info["mng_id"])]["manager_name"]}
+                            **Comment**: {extracted_info["comment"]}
+                            **Author**: {extracted_info["employee_contact"]}
+                            **Security Level**: {levels_int_text_map[int(extracted_info["level"])]}
                         """
 
     return markdown_content

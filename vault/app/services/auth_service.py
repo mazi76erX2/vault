@@ -2,11 +2,12 @@
 """
 Authentication service - handles JWT tokens, password hashing, and user authentication
 """
+
 import os
 from datetime import datetime, timedelta
 from typing import Any
 
-from fastapi import Header, HTTPException, status, Depends
+from fastapi import Depends, Header, HTTPException, status
 from fastapi.security import HTTPBearer
 from jose import JWTError, jwt
 from passlib.context import CryptContext

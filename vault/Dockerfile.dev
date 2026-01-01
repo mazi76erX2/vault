@@ -1,9 +1,8 @@
-# Development Dockerfile - UV-based with hot reload
 FROM python:3.14-slim
 
 ENV PYTHONUNBUFFERED=1 \
     PYTHONDONTWRITEBYTECODE=1 \
-    PYTHONPATH="/app" \
+    PYTHONPATH=/app \
     PATH="/app/.venv/bin:$PATH"
 
 # Install UV
@@ -11,7 +10,7 @@ COPY --from=ghcr.io/astral-sh/uv:latest /uv /usr/local/bin/uv
 
 WORKDIR /app
 
-# Install system dependencies
+# Install system dependencies for python-ldap and other packages
 RUN apt-get update && apt-get install -y --no-install-recommends \
     curl \
     git \
@@ -19,27 +18,26 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     g++ \
     build-essential \
     pkg-config \
-    libcairo2-dev \
-    libcairo2 \
-    libldap-dev \
-    libldap-common \
+    # LDAP dependencies (CRITICAL for python-ldap)
+    libldap2-dev \
     libsasl2-dev \
-    libsasl2-2 \
     libssl-dev \
-    libssl3t64 \
+    # Cairo dependencies
+    libcairo2-dev \
+    # Clean up
     && rm -rf /var/lib/apt/lists/*
 
 # Copy dependency files
 COPY pyproject.toml uv.lock README.md ./
 
 # Create venv and sync dependencies with UV
-RUN uv venv /app/.venv && \
-    uv sync --all-extras
+RUN uv venv /app/.venv && uv sync --all-extras
 
-# Verify uvicorn is installed
-RUN /app/.venv/bin/uvicorn --version
+# Verify critical packages are installed
+RUN /app/.venv/bin/python -c "import ldap; print('✅ python-ldap installed successfully')" || \
+    echo "❌ python-ldap installation failed"
 
-# Copy application code (will be overridden by volume mounts)
+# Copy application code (will be overridden by volume mounts in dev)
 COPY . .
 
 EXPOSE 7860

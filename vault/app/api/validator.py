@@ -14,7 +14,7 @@ from app.dto.validator import (
     DocumentFetchRequest,
     RejectDocumentRequest,
 )
-from app.middleware.auth import verifytoken
+from app.middleware.auth import verify_token
 
 logger = logging.getLogger(__name__)
 
@@ -68,7 +68,7 @@ def _parse_dt(s: str | None) -> datetime | None:
 @router.get("/get-documents")
 async def get_documents(
     userid: str = Query(...),
-    user: UserResponse = Depends(verifytoken),
+    user: UserResponse = Depends(verify_token),
 ) -> dict[str, Any]:
     """
     UI expects: { documents: [{ id, title, author, status }] }
@@ -104,7 +104,7 @@ async def get_documents(
 
 @router.get("/completed-documents")
 async def completed_documents(
-    user: UserResponse = Depends(verifytoken),
+    user: UserResponse = Depends(verify_token),
 ) -> list[dict[str, Any]]:
     """
     UI expects: an array: [{ id, title, author, status }]
@@ -136,7 +136,7 @@ async def completed_documents(
 @router.post("/fetchdocumentbyid")
 async def fetch_document_by_id(
     payload: DocumentFetchRequest,
-    user: UserResponse = Depends(verifytoken),
+    user: UserResponse = Depends(verify_token),
 ) -> dict[str, Any]:
     """
     UI expects: { document: { ... } }
@@ -167,7 +167,7 @@ async def fetch_document_by_id(
 @router.post("/accept-document")
 async def accept_document(
     payload: AcceptDocumentRequest,
-    user: UserResponse = Depends(verifytoken),
+    user: UserResponse = Depends(verify_token),
 ) -> dict[str, Any]:
     token_uid = _uid(user)
     companyid = _companyid_for_user(token_uid)
@@ -200,7 +200,7 @@ async def accept_document(
 @router.post("/reject-document")
 async def reject_document(
     payload: RejectDocumentRequest,
-    user: UserResponse = Depends(verifytoken),
+    user: UserResponse = Depends(verify_token),
 ) -> dict[str, Any]:
     token_uid = _uid(user)
     companyid = _companyid_for_user(token_uid)
@@ -233,7 +233,7 @@ async def reject_document(
 @router.post("/delegate-document")
 async def delegate_document(
     payload: DelegateRequest,
-    user: UserResponse = Depends(verifytoken),
+    user: UserResponse = Depends(verify_token),
 ) -> dict[str, Any]:
     """
     Delegate to an expert:
@@ -275,7 +275,7 @@ async def delegate_document(
 @router.post("/fetchdelegators")
 async def fetch_delegators(
     data: dict[str, Any],
-    user: UserResponse = Depends(verifytoken),
+    user: UserResponse = Depends(verify_token),
 ) -> dict[str, Any]:
     """
     UI expects: { delegators: [{ id, fullName }] }
@@ -320,7 +320,7 @@ async def fetch_delegators(
 @router.post("/fetchassigneddocuments")
 async def fetch_assigned_documents(
     data: dict[str, Any],
-    user: UserResponse = Depends(verifytoken),
+    user: UserResponse = Depends(verify_token),
 ) -> dict[str, Any]:
     """
     Validator summary page expects: { documents: [{ id, title, status }] }
@@ -354,7 +354,7 @@ async def fetch_assigned_documents(
 
 
 @router.get("/getstats")
-async def get_stats(user: UserResponse = Depends(verifytoken)) -> dict[str, Any]:
+async def get_stats(user: UserResponse = Depends(verify_token)) -> dict[str, Any]:
     """
     UI expects snakecase keys:
       { totalassigned, totalcompleted, averagereviewtime }

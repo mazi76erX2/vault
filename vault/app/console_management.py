@@ -58,7 +58,6 @@ def main(args):
                 }
                 """,
     ) as demo:
-
         with gr.Row():
             gr.Markdown(
                 """
@@ -276,7 +275,6 @@ def main(args):
 
 
 if __name__ == "__main__":
-
     parser = argparse.ArgumentParser()
     parser.add_argument(
         "--sender_email", type=str, default="aziz.raies@highcoordination.de", help="mailing system"

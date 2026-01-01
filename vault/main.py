@@ -12,10 +12,23 @@ import random
 import string
 from contextlib import asynccontextmanager
 from datetime import datetime
-from typing import Optional, Union
+
+import uvicorn
+from fastapi import (
+    APIRouter,
+    Depends,
+    FastAPI,
+    HTTPException,
+    WebSocket,
+    WebSocketDisconnect,
+    status,
+)
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import FileResponse
+from gotrue.types import UserResponse
+from pydantic import BaseModel, EmailStr
 
 import app.email_service as email_service
-import uvicorn
 from app.api.auth import router as auth_router
 from app.api.collector import router as collector_router
 from app.api.expert import router as expert_router
@@ -31,14 +44,6 @@ from app.logger_config import setup_logging  # Import the logging setup
 from app.middleware.auth import verify_token, verify_token_with_tenant
 from app.services.auth_service import get_current_user
 from app.services.tenant_service import TenantService
-from fastapi import (APIRouter, BackgroundTasks, Depends, FastAPI, File, Form,
-                     HTTPException, UploadFile, WebSocket, WebSocketDisconnect,
-                     status)
-from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import FileResponse
-from fastapi.staticfiles import StaticFiles
-from gotrue.types import UserResponse
-from pydantic import BaseModel, EmailStr
 
 # from app.schemas.user import UserBase
 
@@ -68,7 +73,7 @@ def ensure_storage_bucket_exists(bucket_name: str) -> bool:
             if bucket_info:
                 logger.info(f"Storage bucket '{bucket_name}' already exists.")
                 return True
-        except Exception as e:
+        except Exception:
             # Bucket doesn't exist, we'll try to create it
             logger.info(f"Storage bucket '{bucket_name}' doesn't exist, will create it.")
 
@@ -349,10 +354,9 @@ def admin_get_users(current_user=Depends(verify_token_with_tenant)):
 
         # 2. Fetch all roles defined in the system
         all_roles_response = supabase.table("roles").select("id, name").execute()
-        all_roles_map = {}
         role_name_to_id_map = {}
         if all_roles_response.data:
-            all_roles_map = {role["id"]: role["name"] for role in all_roles_response.data}
+            {role["id"]: role["name"] for role in all_roles_response.data}
             role_name_to_id_map = {role["name"]: role["id"] for role in all_roles_response.data}
         else:
             logger.warning("No roles found in the roles table.")
@@ -539,7 +543,7 @@ class OrganisationDetails(BaseModel):
     telephone: str
     company: str
     registeredSince: str
-    user_id: Optional[str] = None
+    user_id: str | None = None
 
 
 # Request schema for update_user_details
@@ -551,9 +555,9 @@ class UpdateUserDetailsRequest(BaseModel):
     email: EmailStr
     telephone: str
     company: str
-    user_id: Optional[str] = None
-    username: Optional[str] = None
-    roles: Optional[list[str]] = None
+    user_id: str | None = None
+    username: str | None = None
+    roles: list[str] | None = None
 
 
 @app.post("/api/user/update_user_details", response_model=OrganisationDetails)
@@ -712,12 +716,12 @@ async def update_user_details(
                                 detail=f"Username '{requested_username}' is already taken in your organization.",
                             )
                 else:
-                    base_username = f"{first_name.lower().replace(' ', '')}_{last_name.lower().replace(' ', '')}{random.randint(100,999)}"
+                    base_username = f"{first_name.lower().replace(' ', '')}_{last_name.lower().replace(' ', '')}{random.randint(100, 999)}"
                     requested_username = base_username
                     while any(
                         profile.get("username") == requested_username for profile in tenant_profiles
                     ):
-                        requested_username = f"{first_name.lower().replace(' ', '')}_{last_name.lower().replace(' ', '')}{random.randint(100,999)}"
+                        requested_username = f"{first_name.lower().replace(' ', '')}_{last_name.lower().replace(' ', '')}{random.randint(100, 999)}"
 
         profile_data_to_update = {
             "full_name": f"{first_name} {last_name}",
@@ -755,9 +759,7 @@ async def update_user_details(
                     status_code=500,
                     detail="User ID missing for existing profile update.",
                 )
-            updated_profile = TenantService.update_tenant_profile(
-                db_user_id, profile_data_to_update, company_reg_no
-            )
+            TenantService.update_tenant_profile(db_user_id, profile_data_to_update, company_reg_no)
             logger.info(f"Profile updated for user ID: {db_user_id} in tenant {company_reg_no}")
         else:
             # Create new user with tenant association
@@ -778,9 +780,7 @@ async def update_user_details(
                 profile_data_to_update["id"] = db_user_id
 
                 # Create profile with tenant association
-                created_profile = TenantService.create_tenant_profile(
-                    profile_data_to_update, company_reg_no
-                )
+                TenantService.create_tenant_profile(profile_data_to_update, company_reg_no)
                 logger.info(
                     f"Profile created for new user ID: {db_user_id} in tenant {company_reg_no}"
                 )
@@ -967,14 +967,14 @@ class CompanyThemeSettingsResponse(BaseModel):
 
     id: str
     name: str
-    user_chat_bubble_colour: Optional[str] = None
-    bot_chat_bubble_colour: Optional[str] = None
-    send_button_and_box: Optional[str] = None
-    font: Optional[str] = None
-    user_chat_font_colour: Optional[str] = None
-    bot_chat_font_colour: Optional[str] = None
-    logo: Optional[str] = None
-    bot_profile_picture: Optional[str] = None
+    user_chat_bubble_colour: str | None = None
+    bot_chat_bubble_colour: str | None = None
+    send_button_and_box: str | None = None
+    font: str | None = None
+    user_chat_font_colour: str | None = None
+    bot_chat_font_colour: str | None = None
+    logo: str | None = None
+    bot_profile_picture: str | None = None
 
 
 class GetCompanyThemeSettingsResponse(BaseModel):
@@ -1098,7 +1098,6 @@ async def get_company_theme_settings(request: GetCompanyThemeSettingsRequest):
             db_logo_path = company_data.get("logo")
             if db_logo_path and company_name:
                 try:
-                    actual_logo_storage_path = db_logo_path
                     # Use "companies" bucket with folder structure
                     bucket_name = "companies"
                     company_folder = company_name.lower().replace(" ", "_")
@@ -1116,7 +1115,6 @@ async def get_company_theme_settings(request: GetCompanyThemeSettingsRequest):
             db_bot_profile_path = company_data.get("bot_profile_picture")
             if db_bot_profile_path and company_name:
                 try:
-                    actual_bot_profile_storage_path = db_bot_profile_path
                     # Use "companies" bucket with folder structure
                     bucket_name = "companies"
                     company_folder = company_name.lower().replace(" ", "_")
@@ -1195,14 +1193,14 @@ async def get_company_theme_settings(request: GetCompanyThemeSettingsRequest):
 class CompanyThemeSettingsPayload(BaseModel):
     """Request schema for update_company_theme_settings"""
 
-    user_chat_bubble_colour: Optional[str] = None
-    bot_chat_bubble_colour: Optional[str] = None
-    send_button_and_box: Optional[str] = None
-    font: Optional[str] = None
-    user_chat_font_colour: Optional[str] = None
-    bot_chat_font_colour: Optional[str] = None
-    logo: Optional[str] = None
-    bot_profile_picture: Optional[str] = None
+    user_chat_bubble_colour: str | None = None
+    bot_chat_bubble_colour: str | None = None
+    send_button_and_box: str | None = None
+    font: str | None = None
+    user_chat_font_colour: str | None = None
+    bot_chat_font_colour: str | None = None
+    logo: str | None = None
+    bot_profile_picture: str | None = None
 
 
 class UpdateCompanyThemeSettingsRequest(BaseModel):
@@ -1381,9 +1379,9 @@ class EmailTestRequest(BaseModel):
     """Request schema for test-email endpoint"""
 
     recipient_email: str
-    subject: Optional[str] = "Test Email from Vault"
-    content: Optional[str] = "This is a test email from the Vault application."
-    username: Optional[str] = None
+    subject: str | None = "Test Email from Vault"
+    content: str | None = "This is a test email from the Vault application."
+    username: str | None = None
 
 
 @app.post("/api/utils/test-email")

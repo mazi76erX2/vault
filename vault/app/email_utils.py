@@ -8,7 +8,6 @@ logger = logging.getLogger(__name__)
 
 
 def send_email_graph(client_id, client_secret, tenant_id, sender, recipient_email, subject, body):
-
     # Authority URL
     authority_url = f"https://login.microsoftonline.com/{tenant_id}"
 

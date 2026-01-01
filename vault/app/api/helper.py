@@ -7,7 +7,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from gotrue import UserResponse
 
 from app.database import supabase
-from app.middleware.auth import verifytoken
+from app.middleware.auth import verify_token
 from app.services.auth_service import require_roles
 
 logger = logging.getLogger(__name__)
@@ -28,7 +28,7 @@ async def helper_healthcheck() -> dict[str, str]:
 
 @router.post("/addnewchatsession")
 async def addnewchatsession(
-    data: dict[str, Any], user: UserResponse = Depends(verifytoken)
+    data: dict[str, Any], user: UserResponse = Depends(verify_token)
 ) -> dict[str, Any]:
     userid = _require_key(data, "userid")
     if str(userid) != str(user.user.id):

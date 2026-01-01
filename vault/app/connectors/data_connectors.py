@@ -21,7 +21,6 @@ def fn_connect_confluence(url, user, api, keyspace, index):
 
 
 def fn_connect_sharepoint(hostname, sitepath, index):
-
     gr.Info("SharePoint Documents stored in the Knowledge Base")
     return gr.Textbox(""), gr.Textbox(""), gr.Textbox("")
 
@@ -48,7 +47,6 @@ def get_all_parent_titles_dict(
     )
     parent_titles = {}
     for page_id in page_ids:
-
         current_id = page_id
 
         # Fetch the current page details

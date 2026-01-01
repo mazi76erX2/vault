@@ -19,7 +19,7 @@ from app.dto.collector import (
     ProfileUpdateRequest,
     StartChatRequest,
 )
-from app.middleware.auth import verifytoken
+from app.middleware.auth import verify_token
 from app.services.collector_llm import (
     generate_follow_up_question,
     generate_initial_questions,
@@ -45,7 +45,7 @@ def _must_userid(user: UserResponse) -> str:
 
 @router.post("/updatecvtext")
 def updatecvtext(
-    file: UploadFile = File(...), user: UserResponse = Depends(verifytoken)
+    file: UploadFile = File(...), user: UserResponse = Depends(verify_token)
 ) -> dict[str, Any]:
     userid = _must_userid(user)
 
@@ -75,7 +75,7 @@ def updatecvtext(
 
 
 @router.post("/fetchresumesessions")
-def fetchresumesessions(user: UserResponse = Depends(verifytoken)) -> dict[str, Any]:
+def fetchresumesessions(user: UserResponse = Depends(verify_token)) -> dict[str, Any]:
     userid = _must_userid(user)
     try:
         resp = (
@@ -91,7 +91,7 @@ def fetchresumesessions(user: UserResponse = Depends(verifytoken)) -> dict[str, 
 
 
 @router.post("/fetchuserprofile")
-async def fetchuserprofile(user: UserResponse = Depends(verifytoken)) -> dict[str, Any]:
+async def fetchuserprofile(user: UserResponse = Depends(verify_token)) -> dict[str, Any]:
     userid = _must_userid(user)
     try:
         resp = (
@@ -118,7 +118,7 @@ async def fetchuserprofile(user: UserResponse = Depends(verifytoken)) -> dict[st
 
 @router.post("/updateprofile")
 def updateprofile(
-    request: ProfileUpdateRequest, user: UserResponse = Depends(verifytoken)
+    request: ProfileUpdateRequest, user: UserResponse = Depends(verify_token)
 ) -> dict[str, Any]:
     _ = _must_userid(user)
     try:
@@ -143,7 +143,7 @@ def updateprofile(
 
 @router.post("/fetchchatconversation")
 def fetchchatconversation(
-    data: dict[str, Any], user: UserResponse = Depends(verifytoken)
+    data: dict[str, Any], user: UserResponse = Depends(verify_token)
 ) -> dict[str, Any]:
     _ = _must_userid(user)
     sessionid = data.get("sessionid")
@@ -180,7 +180,7 @@ def fetchchatconversation(
 
 
 @router.get("/fetchdocumentsstatus")
-def fetchdocumentsstatus(user: UserResponse = Depends(verifytoken)) -> dict[str, Any]:
+def fetchdocumentsstatus(user: UserResponse = Depends(verify_token)) -> dict[str, Any]:
     userid = _must_userid(user)
     try:
         profileresp = supabase.table("profiles").select("id, fullname").execute()
@@ -216,7 +216,7 @@ def fetchdocumentsstatus(user: UserResponse = Depends(verifytoken)) -> dict[str,
 
 
 @router.get("/getvalidators")
-def getvalidators(user: UserResponse = Depends(verifytoken)) -> dict[str, Any]:
+def getvalidators(user: UserResponse = Depends(verify_token)) -> dict[str, Any]:
     _ = _must_userid(user)
     try:
         profileresp = supabase.table("profiles").select("id, fullname").execute()
@@ -233,7 +233,7 @@ def getvalidators(user: UserResponse = Depends(verifytoken)) -> dict[str, Any]:
 
 @router.post("/get-questions")
 async def getquestions(
-    request: dict[str, Any], user: UserResponse = Depends(verifytoken)
+    request: dict[str, Any], user: UserResponse = Depends(verify_token)
 ) -> dict[str, Any]:
     _ = _must_userid(user)
     userid = request.get("userid")
@@ -285,7 +285,7 @@ async def getquestions(
 
 @router.post("/generatequestions")
 def generatequestions(
-    data: dict[str, Any], user: UserResponse = Depends(verifytoken)
+    data: dict[str, Any], user: UserResponse = Depends(verify_token)
 ) -> dict[str, Any]:
     _ = _must_userid(user)
     userid = data.get("userid")
@@ -321,7 +321,7 @@ def generatequestions(
 
 @router.post("/initquestions")
 def initquestionsfromupload(
-    data: dict[str, Any], user: UserResponse = Depends(verifytoken)
+    data: dict[str, Any], user: UserResponse = Depends(verify_token)
 ) -> dict[str, Any]:
     _ = _must_userid(user)
     userid = data.get("userid")
@@ -353,7 +353,7 @@ def initquestionsfromupload(
 
 @router.post("/start-chat")
 async def start_chat(
-    request: StartChatRequest, user: UserResponse = Depends(verifytoken)
+    request: StartChatRequest, user: UserResponse = Depends(verify_token)
 ) -> dict[str, Any]:
     userid = _must_userid(user)
 
@@ -478,7 +478,7 @@ async def start_chat(
 
 @router.post("/generatequestionresponse")
 def generatequestionresponse(
-    data: dict[str, Any], user: UserResponse = Depends(verifytoken)
+    data: dict[str, Any], user: UserResponse = Depends(verify_token)
 ) -> dict[str, Any]:
     _ = _must_userid(user)
     chatpromptid = data.get("chatpromptid")
@@ -514,7 +514,7 @@ def generatequestionresponse(
 
 @router.post("/generatesummary")
 def generatesummary(
-    data: dict[str, Any], user: UserResponse = Depends(verifytoken)
+    data: dict[str, Any], user: UserResponse = Depends(verify_token)
 ) -> dict[str, Any]:
     _ = _must_userid(user)
     chatpromptid = data.get("chatpromptid")
@@ -539,7 +539,7 @@ def generatesummary(
 
 @router.post("/generatetags")
 def generatetags_endpoint(
-    data: dict[str, Any], user: UserResponse = Depends(verifytoken)
+    data: dict[str, Any], user: UserResponse = Depends(verify_token)
 ) -> dict[str, Any]:
     _ = _must_userid(user)
     text = data.get("text") or ""
@@ -555,7 +555,7 @@ def generatetags_endpoint(
 @router.post("/updatesummary")
 def updatesummary(
     request: CollectorSummaryUpdateSummaryRequest,
-    user: UserResponse = Depends(verifytoken),
+    user: UserResponse = Depends(verify_token),
 ) -> dict[str, Any]:
     _ = _must_userid(user)
 
@@ -584,7 +584,7 @@ def updatesummary(
 
 @router.post("/continuesession", response_model=CollectorSummaryContinueResponse)
 def continuesession(
-    request: CollectorSummaryContinueRequest, user: UserResponse = Depends(verifytoken)
+    request: CollectorSummaryContinueRequest, user: UserResponse = Depends(verify_token)
 ) -> CollectorSummaryContinueResponse:
     _ = _must_userid(user)
     # UI uses this only for navigation state
@@ -601,7 +601,7 @@ def continuesession(
 
 @router.post("/fetchexistingdoc")
 def fetchexistingdoc(
-    data: dict[str, Any], user: UserResponse = Depends(verifytoken)
+    data: dict[str, Any], user: UserResponse = Depends(verify_token)
 ) -> dict[str, Any]:
     _ = _must_userid(user)
     sessionid = data.get("sessionid")
@@ -634,7 +634,7 @@ def fetchexistingdoc(
 
 @router.post("/updatesessionanddocument")
 def updatesessionanddocument(
-    data: dict[str, Any], user: UserResponse = Depends(verifytoken)
+    data: dict[str, Any], user: UserResponse = Depends(verify_token)
 ) -> dict[str, Any]:
     _ = _must_userid(user)
 
