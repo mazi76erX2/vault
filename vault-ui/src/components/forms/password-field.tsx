@@ -1,12 +1,14 @@
 import * as React from "react";
+import { Eye, EyeOff } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
-import { Eye, EyeOff } from "lucide-react";
 import { cn } from "@/lib/utils";
 
-export interface PasswordFieldProps
-  extends Omit<React.InputHTMLAttributes<HTMLInputElement>, "type"> {
+export interface PasswordFieldProps extends Omit<
+  React.InputHTMLAttributes<HTMLInputElement>,
+  "type"
+> {
   label?: string;
   error?: string;
   helperText?: string;
@@ -29,7 +31,7 @@ export const PasswordField = React.forwardRef<
       id,
       ...props
     },
-    ref
+    ref,
   ) => {
     const [showPassword, setShowPassword] = React.useState(false);
     const inputId = id || "password";
@@ -41,7 +43,7 @@ export const PasswordField = React.forwardRef<
             htmlFor={inputId}
             className={cn(
               required &&
-                'after:content-["*"] after:ml-0.5 after:text-destructive'
+                'after:content-["*"] after:ml-0.5 after:text-destructive',
             )}
           >
             {label}
@@ -55,7 +57,7 @@ export const PasswordField = React.forwardRef<
             className={cn(
               error && "border-destructive",
               showToggle && "pr-10",
-              className
+              className,
             )}
             {...props}
           />
@@ -83,7 +85,7 @@ export const PasswordField = React.forwardRef<
           <p
             className={cn(
               "text-sm",
-              error ? "text-destructive" : "text-muted-foreground"
+              error ? "text-destructive" : "text-muted-foreground",
             )}
           >
             {error || helperText}
@@ -91,7 +93,7 @@ export const PasswordField = React.forwardRef<
         )}
       </div>
     );
-  }
+  },
 );
 
 PasswordField.displayName = "PasswordField";

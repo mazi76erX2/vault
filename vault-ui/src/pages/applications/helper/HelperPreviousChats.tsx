@@ -1,14 +1,14 @@
 import React, { useEffect, useState, useRef } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
+import { toast } from "sonner";
+import { AxiosError } from "axios";
+import { Send } from "lucide-react";
 import { useAuthContext } from "@/hooks/useAuthContext";
 import { DancingBot } from "@/components/media/dancing-bot";
 import { TextField } from "@/components/forms/text-field";
 import { Button } from "@/components/ui/button";
 import { Loader } from "@/components/feedback/loader";
-import { toast } from "sonner";
 import Api from "@/services/Instance";
-import { AxiosError } from "axios";
-import { Send } from "lucide-react";
 
 interface LocationState {
   chatId?: string;
@@ -71,7 +71,7 @@ const HelperChatPage: React.FC = () => {
       console.error("Error creating chat:", err);
       if (!(err instanceof AxiosError && err.response?.status === 401)) {
         toast.error(
-          err instanceof Error ? err.message : "Failed to create chat."
+          err instanceof Error ? err.message : "Failed to create chat.",
         );
       }
     } finally {
@@ -99,7 +99,7 @@ const HelperChatPage: React.FC = () => {
       console.error("Error fetching messages:", err);
       if (!(err instanceof AxiosError && err.response?.status === 401)) {
         toast.error(
-          err instanceof Error ? err.message : "Failed to fetch messages."
+          err instanceof Error ? err.message : "Failed to fetch messages.",
         );
       }
     } finally {
@@ -141,7 +141,7 @@ const HelperChatPage: React.FC = () => {
       console.error("Error sending message:", err);
       if (!(err instanceof AxiosError && err.response?.status === 401)) {
         toast.error(
-          err instanceof Error ? err.message : "Failed to send message."
+          err instanceof Error ? err.message : "Failed to send message.",
         );
       }
     } finally {

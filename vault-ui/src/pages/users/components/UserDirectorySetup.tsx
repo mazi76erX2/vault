@@ -1,13 +1,13 @@
 import React, { useState } from "react";
+import { toast } from "sonner";
+import { Info } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
 import { TextField } from "@/components/forms/text-field";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
-import { toast } from "sonner";
 import { useAuthContext } from "@/hooks/useAuthContext";
 import Api from "@/services/Instance";
-import { Info } from "lucide-react";
 
 interface DirectoryFormData {
   directoryType: string;
@@ -49,7 +49,7 @@ interface UserDirectorySetupProps {
 
 const UserDirectorySetup: React.FC<UserDirectorySetupProps> = ({ onBack }) => {
   const [activeTab, setActiveTab] = useState<"server" | "user" | "group">(
-    "server"
+    "server",
   );
   const authContext = useAuthContext();
 
@@ -116,7 +116,7 @@ const UserDirectorySetup: React.FC<UserDirectorySetupProps> = ({ onBack }) => {
 
       {/* Tabs */}
       <div className="flex gap-0.5 border border-[#e66334] rounded-t bg-[#d3d3d3]">
-        <button
+        <button type="button"
           className={`px-5 py-2.5 cursor-pointer rounded-t transition-colors ${
             activeTab === "server"
               ? "bg-[#e66334] text-white"
@@ -126,7 +126,7 @@ const UserDirectorySetup: React.FC<UserDirectorySetupProps> = ({ onBack }) => {
         >
           Server Settings
         </button>
-        <button
+        <button type="button"
           className={`px-5 py-2.5 cursor-pointer rounded-t transition-colors ${
             activeTab === "user"
               ? "bg-[#e66334] text-white"
@@ -136,7 +136,7 @@ const UserDirectorySetup: React.FC<UserDirectorySetupProps> = ({ onBack }) => {
         >
           User Schema
         </button>
-        <button
+        <button type="button"
           className={`px-5 py-2.5 cursor-pointer rounded-t transition-colors ${
             activeTab === "group"
               ? "bg-[#e66334] text-white"
@@ -159,7 +159,8 @@ const UserDirectorySetup: React.FC<UserDirectorySetupProps> = ({ onBack }) => {
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <Label className="font-bold">
-                  Name<span className="text-red-500">*</span>
+                  Name
+                  <span className="text-red-500">*</span>
                 </Label>
                 <TextField
                   value={formData.name}
@@ -171,7 +172,8 @@ const UserDirectorySetup: React.FC<UserDirectorySetupProps> = ({ onBack }) => {
 
               <div>
                 <Label className="font-bold">
-                  Domain<span className="text-red-500">*</span>
+                  Domain
+                  <span className="text-red-500">*</span>
                 </Label>
                 <TextField
                   value={formData.domain}
@@ -183,7 +185,8 @@ const UserDirectorySetup: React.FC<UserDirectorySetupProps> = ({ onBack }) => {
 
               <div>
                 <Label className="font-bold">
-                  Host<span className="text-red-500">*</span>
+                  Host
+                  <span className="text-red-500">*</span>
                 </Label>
                 <TextField
                   value={formData.host}
@@ -195,7 +198,8 @@ const UserDirectorySetup: React.FC<UserDirectorySetupProps> = ({ onBack }) => {
 
               <div>
                 <Label className="font-bold">
-                  Port<span className="text-red-500">*</span>
+                  Port
+                  <span className="text-red-500">*</span>
                 </Label>
                 <TextField
                   value={formData.port}
@@ -207,7 +211,8 @@ const UserDirectorySetup: React.FC<UserDirectorySetupProps> = ({ onBack }) => {
 
               <div>
                 <Label className="font-bold">
-                  Username<span className="text-red-500">*</span>
+                  Username
+                  <span className="text-red-500">*</span>
                 </Label>
                 <TextField
                   value={formData.username}
@@ -219,7 +224,8 @@ const UserDirectorySetup: React.FC<UserDirectorySetupProps> = ({ onBack }) => {
 
               <div>
                 <Label className="font-bold">
-                  Password<span className="text-red-500">*</span>
+                  Password
+                  <span className="text-red-500">*</span>
                 </Label>
                 <TextField
                   type="password"
@@ -232,7 +238,8 @@ const UserDirectorySetup: React.FC<UserDirectorySetupProps> = ({ onBack }) => {
 
               <div>
                 <Label className="font-bold">
-                  Sync interval (in min)<span className="text-red-500">*</span>
+                  Sync interval (in min)
+                  <span className="text-red-500">*</span>
                 </Label>
                 <TextField
                   value={formData.syncInterval}
@@ -244,7 +251,8 @@ const UserDirectorySetup: React.FC<UserDirectorySetupProps> = ({ onBack }) => {
 
               <div>
                 <Label className="font-bold">
-                  Search timeout (in sec)<span className="text-red-500">*</span>
+                  Search timeout (in sec)
+                  <span className="text-red-500">*</span>
                 </Label>
                 <TextField
                   value={formData.searchTimeout}
@@ -263,7 +271,8 @@ const UserDirectorySetup: React.FC<UserDirectorySetupProps> = ({ onBack }) => {
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <Label className="font-bold">
-                  Base DN<span className="text-red-500">*</span>
+                  Base DN
+                  <span className="text-red-500">*</span>
                 </Label>
                 <TextField
                   value={formData.baseDN}
@@ -320,7 +329,8 @@ const UserDirectorySetup: React.FC<UserDirectorySetupProps> = ({ onBack }) => {
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <Label className="font-bold">
-                  User Object<span className="text-red-500">*</span>
+                  User Object
+                  <span className="text-red-500">*</span>
                 </Label>
                 <TextField
                   value={formData.userObject}
@@ -332,7 +342,8 @@ const UserDirectorySetup: React.FC<UserDirectorySetupProps> = ({ onBack }) => {
 
               <div>
                 <Label className="font-bold">
-                  User Filter<span className="text-red-500">*</span>
+                  User Filter
+                  <span className="text-red-500">*</span>
                 </Label>
                 <TextField
                   value={formData.userFilter}
@@ -351,7 +362,8 @@ const UserDirectorySetup: React.FC<UserDirectorySetupProps> = ({ onBack }) => {
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <Label className="font-bold">
-                  User Name<span className="text-red-500">*</span>
+                  User Name
+                  <span className="text-red-500">*</span>
                 </Label>
                 <TextField
                   value={formData.userName}
@@ -363,7 +375,8 @@ const UserDirectorySetup: React.FC<UserDirectorySetupProps> = ({ onBack }) => {
 
               <div>
                 <Label className="font-bold">
-                  User Object RDN<span className="text-red-500">*</span>
+                  User Object RDN
+                  <span className="text-red-500">*</span>
                 </Label>
                 <TextField
                   value={formData.userObjectRDN}
@@ -375,7 +388,8 @@ const UserDirectorySetup: React.FC<UserDirectorySetupProps> = ({ onBack }) => {
 
               <div>
                 <Label className="font-bold">
-                  First Name<span className="text-red-500">*</span>
+                  First Name
+                  <span className="text-red-500">*</span>
                 </Label>
                 <TextField
                   value={formData.firstName}
@@ -387,7 +401,8 @@ const UserDirectorySetup: React.FC<UserDirectorySetupProps> = ({ onBack }) => {
 
               <div>
                 <Label className="font-bold">
-                  Last Name<span className="text-red-500">*</span>
+                  Last Name
+                  <span className="text-red-500">*</span>
                 </Label>
                 <TextField
                   value={formData.lastName}
@@ -399,7 +414,8 @@ const UserDirectorySetup: React.FC<UserDirectorySetupProps> = ({ onBack }) => {
 
               <div>
                 <Label className="font-bold">
-                  Display Name<span className="text-red-500">*</span>
+                  Display Name
+                  <span className="text-red-500">*</span>
                 </Label>
                 <TextField
                   value={formData.displayName}
@@ -411,7 +427,8 @@ const UserDirectorySetup: React.FC<UserDirectorySetupProps> = ({ onBack }) => {
 
               <div>
                 <Label className="font-bold">
-                  Principal Name<span className="text-red-500">*</span>
+                  Principal Name
+                  <span className="text-red-500">*</span>
                 </Label>
                 <TextField
                   value={formData.principalName}
@@ -423,7 +440,8 @@ const UserDirectorySetup: React.FC<UserDirectorySetupProps> = ({ onBack }) => {
 
               <div>
                 <Label className="font-bold">
-                  Email<span className="text-red-500">*</span>
+                  Email
+                  <span className="text-red-500">*</span>
                 </Label>
                 <TextField
                   value={formData.email}
@@ -435,7 +453,8 @@ const UserDirectorySetup: React.FC<UserDirectorySetupProps> = ({ onBack }) => {
 
               <div>
                 <Label className="font-bold">
-                  Unique ID<span className="text-red-500">*</span>
+                  Unique ID
+                  <span className="text-red-500">*</span>
                 </Label>
                 <TextField
                   value={formData.uniqueId}
@@ -447,7 +466,8 @@ const UserDirectorySetup: React.FC<UserDirectorySetupProps> = ({ onBack }) => {
 
               <div>
                 <Label className="font-bold">
-                  User Groups<span className="text-red-500">*</span>
+                  User Groups
+                  <span className="text-red-500">*</span>
                 </Label>
                 <TextField
                   value={formData.userGroups}
@@ -470,7 +490,8 @@ const UserDirectorySetup: React.FC<UserDirectorySetupProps> = ({ onBack }) => {
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <Label className="font-bold">
-                  Group Object<span className="text-red-500">*</span>
+                  Group Object
+                  <span className="text-red-500">*</span>
                 </Label>
                 <TextField
                   value={formData.groupObject}
@@ -482,7 +503,8 @@ const UserDirectorySetup: React.FC<UserDirectorySetupProps> = ({ onBack }) => {
 
               <div>
                 <Label className="font-bold">
-                  Group Filter<span className="text-red-500">*</span>
+                  Group Filter
+                  <span className="text-red-500">*</span>
                 </Label>
                 <TextField
                   value={formData.groupFilter}
@@ -517,7 +539,8 @@ const UserDirectorySetup: React.FC<UserDirectorySetupProps> = ({ onBack }) => {
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <Label className="font-bold">
-                  Unique ID<span className="text-red-500">*</span>
+                  Unique ID
+                  <span className="text-red-500">*</span>
                 </Label>
                 <TextField
                   value={formData.groupUniqueId}
@@ -529,7 +552,8 @@ const UserDirectorySetup: React.FC<UserDirectorySetupProps> = ({ onBack }) => {
 
               <div>
                 <Label className="font-bold">
-                  Name<span className="text-red-500">*</span>
+                  Name
+                  <span className="text-red-500">*</span>
                 </Label>
                 <TextField
                   value={formData.groupName}
@@ -541,7 +565,8 @@ const UserDirectorySetup: React.FC<UserDirectorySetupProps> = ({ onBack }) => {
 
               <div>
                 <Label className="font-bold">
-                  Description<span className="text-red-500">*</span>
+                  Description
+                  <span className="text-red-500">*</span>
                 </Label>
                 <TextField
                   value={formData.groupDescription}
@@ -556,7 +581,8 @@ const UserDirectorySetup: React.FC<UserDirectorySetupProps> = ({ onBack }) => {
 
               <div>
                 <Label className="font-bold">
-                  Members<span className="text-red-500">*</span>
+                  Members
+                  <span className="text-red-500">*</span>
                 </Label>
                 <TextField
                   value={formData.groupMembers}

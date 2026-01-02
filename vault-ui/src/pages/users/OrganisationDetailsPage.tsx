@@ -1,13 +1,13 @@
 import React, { useState, useEffect } from "react";
+import { toast } from "sonner";
+import { AxiosError } from "axios";
 import { Button } from "@/components/ui/button";
 import { TextField } from "@/components/forms/text-field";
 import { Loader } from "@/components/feedback/loader";
 import { Card } from "@/components/ui/card";
 import { SegmentTabs } from "@/components/layout/segment-tabs";
-import { toast } from "sonner";
 import { useAuthContext } from "@/hooks/useAuthContext";
 import Api from "@/services/Instance";
-import { AxiosError } from "axios";
 
 interface OrganisationDetails {
   firstName: string;
@@ -50,7 +50,7 @@ const OrganisationDetailsPage: React.FC = () => {
         "/api/v1/companies/getcompanycontactdetails",
         {
           userid: userId,
-        }
+        },
       );
 
       if (response.data) {

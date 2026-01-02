@@ -1,9 +1,9 @@
-import * as React from 'react';
-import { Badge } from '@/components/ui/badge';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { X } from 'lucide-react';
-import { cn } from '@/lib/utils';
+import * as React from "react";
+import { X } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { cn } from "@/lib/utils";
 
 export interface TagSelectionProps {
   label?: string;
@@ -22,7 +22,7 @@ export const TagSelection: React.FC<TagSelectionProps> = ({
   label,
   tags,
   onChange,
-  placeholder = 'Add tag...',
+  placeholder = "Add tag...",
   maxTags,
   disabled,
   required,
@@ -30,17 +30,17 @@ export const TagSelection: React.FC<TagSelectionProps> = ({
   error,
   className,
 }) => {
-  const [inputValue, setInputValue] = React.useState('');
+  const [inputValue, setInputValue] = React.useState("");
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
-    if (e.key === 'Enter' && inputValue.trim()) {
+    if (e.key === "Enter" && inputValue.trim()) {
       e.preventDefault();
       if (maxTags && tags.length >= maxTags) return;
       if (!tags.includes(inputValue.trim())) {
         onChange?.([...tags, inputValue.trim()]);
-        setInputValue('');
+        setInputValue("");
       }
-    } else if (e.key === 'Backspace' && !inputValue && tags.length > 0) {
+    } else if (e.key === "Backspace" && !inputValue && tags.length > 0) {
       onChange?.(tags.slice(0, -1));
     }
   };
@@ -50,18 +50,23 @@ export const TagSelection: React.FC<TagSelectionProps> = ({
   };
 
   return (
-    <div className={cn('space-y-2', className)}>
+    <div className={cn("space-y-2", className)}>
       {label && (
-        <Label className={cn(required && 'after:content-["*"] after:ml-0.5 after:text-destructive')}>
+        <Label
+          className={cn(
+            required &&
+              'after:content-["*"] after:ml-0.5 after:text-destructive',
+          )}
+        >
           {label}
         </Label>
       )}
 
       <div
         className={cn(
-          'flex flex-wrap gap-2 p-2 border rounded-md min-h-[42px]',
-          error && 'border-destructive',
-          disabled && 'opacity-50 cursor-not-allowed',
+          "flex flex-wrap gap-2 p-2 border rounded-md min-h-[42px]",
+          error && "border-destructive",
+          disabled && "opacity-50 cursor-not-allowed",
         )}
       >
         {tags.map((tag) => (
@@ -82,14 +87,21 @@ export const TagSelection: React.FC<TagSelectionProps> = ({
           value={inputValue}
           onChange={(e) => setInputValue(e.target.value)}
           onKeyDown={handleKeyDown}
-          placeholder={tags.length === 0 ? placeholder : ''}
-          disabled={disabled || (maxTags !== undefined && tags.length >= maxTags)}
+          placeholder={tags.length === 0 ? placeholder : ""}
+          disabled={
+            disabled || (maxTags !== undefined && tags.length >= maxTags)
+          }
           className="flex-1 border-0 p-0 h-6 min-w-[120px] focus-visible:ring-0 focus-visible:ring-offset-0"
         />
       </div>
 
       {(error || helperText) && (
-        <p className={cn('text-sm', error ? 'text-destructive' : 'text-muted-foreground')}>
+        <p
+          className={cn(
+            "text-sm",
+            error ? "text-destructive" : "text-muted-foreground",
+          )}
+        >
           {error || helperText}
         </p>
       )}
@@ -97,4 +109,4 @@ export const TagSelection: React.FC<TagSelectionProps> = ({
   );
 };
 
-TagSelection.displayName = 'TagSelection';
+TagSelection.displayName = "TagSelection";

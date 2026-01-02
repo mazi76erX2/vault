@@ -1,14 +1,14 @@
 import React, { useEffect, useState } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
+import { toast } from "sonner";
+import { AxiosError } from "axios";
 import { useAuthContext } from "@/hooks/useAuthContext";
 import { DancingBot } from "@/components/media/dancing-bot";
 import { Button } from "@/components/ui/button";
 import { Loader } from "@/components/feedback/loader";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { toast } from "sonner";
 import Api from "@/services/Instance";
-import { AxiosError } from "axios";
 
 interface LocationState {
   document?: {
@@ -37,7 +37,7 @@ interface DocumentDetails {
 const ValidatorStartExpertReviewPage: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [documentData, setDocumentData] = useState<DocumentDetails | null>(
-    null
+    null,
   );
   const authContext = useAuthContext();
   const navigate = useNavigate();
@@ -75,7 +75,7 @@ const ValidatorStartExpertReviewPage: React.FC = () => {
         toast.error(
           err instanceof Error
             ? err.message
-            : "Failed to fetch document details."
+            : "Failed to fetch document details.",
         );
       }
     } finally {
@@ -223,7 +223,7 @@ const ValidatorStartExpertReviewPage: React.FC = () => {
                           </h3>
                           <p className="text-lg">
                             {new Date(
-                              documentData.expertReviewedAt
+                              documentData.expertReviewedAt,
                             ).toLocaleString()}
                           </p>
                         </div>

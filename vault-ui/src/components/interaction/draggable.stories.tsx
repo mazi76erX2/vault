@@ -1,12 +1,12 @@
-import type { Meta, StoryObj } from '@storybook/react';
-import { Draggable, DraggableItem } from './draggable';
-import React from 'react';
+import type { Meta, StoryObj } from "@storybook/react";
+import React from "react";
+import { Draggable, DraggableItem } from "./draggable";
 
 const meta = {
-  title: 'Interaction/Draggable',
+  title: "Interaction/Draggable",
   component: Draggable,
   parameters: {
-    layout: 'padded',
+    layout: "padded",
   },
 } satisfies Meta<typeof Draggable>;
 
@@ -14,9 +14,9 @@ export default meta;
 type Story = StoryObj<typeof meta>;
 
 // Wrapper component to manage state
-const DraggableWrapper = ({ initialItems }: { initialItems: DraggableItem[] }) => {
+function DraggableWrapper({ initialItems }: { initialItems: DraggableItem[] }) {
   const [items, setItems] = React.useState(initialItems);
-  
+
   return (
     <div>
       <Draggable items={items} onChange={setItems} />
@@ -24,33 +24,37 @@ const DraggableWrapper = ({ initialItems }: { initialItems: DraggableItem[] }) =
         <p className="text-sm font-semibold mb-2">Current Order:</p>
         <ol className="text-sm space-y-1">
           {items.map((item, index) => (
-            <li key={item.id}>{index + 1}. {item.id}</li>
+            <li key={item.id}>
+              {index + 1}.{item.id}
+            </li>
           ))}
         </ol>
       </div>
     </div>
   );
-};
+}
 
 const simpleItems: DraggableItem[] = [
-  { id: '1', content: 'Item 1' },
-  { id: '2', content: 'Item 2' },
-  { id: '3', content: 'Item 3' },
-  { id: '4', content: 'Item 4' },
+  { id: "1", content: "Item 1" },
+  { id: "2", content: "Item 2" },
+  { id: "3", content: "Item 3" },
+  { id: "4", content: "Item 4" },
 ];
 
 const richItems: DraggableItem[] = [
   {
-    id: '1',
+    id: "1",
     content: (
       <div>
         <h3 className="font-semibold">Task 1</h3>
-        <p className="text-sm text-muted-foreground">Complete project documentation</p>
+        <p className="text-sm text-muted-foreground">
+          Complete project documentation
+        </p>
       </div>
     ),
   },
   {
-    id: '2',
+    id: "2",
     content: (
       <div>
         <h3 className="font-semibold">Task 2</h3>
@@ -59,7 +63,7 @@ const richItems: DraggableItem[] = [
     ),
   },
   {
-    id: '3',
+    id: "3",
     content: (
       <div>
         <h3 className="font-semibold">Task 3</h3>

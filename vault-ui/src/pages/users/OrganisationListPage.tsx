@@ -1,5 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
+import { toast } from "sonner";
+import { Users, Save, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { TextField } from "@/components/forms/text-field";
@@ -13,12 +15,10 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { toast } from "sonner";
 import { useAuthContext } from "@/hooks/useAuthContext";
 import Api from "@/services/Instance";
 import { Loader } from "@/components/feedback/loader";
 import { DancingBot } from "@/components/media/dancing-bot";
-import { Users, Save, X } from "lucide-react";
 
 interface User {
   id: string;
@@ -207,7 +207,7 @@ const OrganisationListPage: React.FC = () => {
     setSelectedDirectoryUsers((prev) =>
       prev.includes(userId)
         ? prev.filter((id) => id !== userId)
-        : [...prev, userId]
+        : [...prev, userId],
     );
   };
 
@@ -298,7 +298,8 @@ const OrganisationListPage: React.FC = () => {
                   <div className="grid grid-cols-2 gap-4">
                     <div>
                       <Label className="font-bold">
-                        Username<span className="text-red-500">*</span>
+                        Username
+                        <span className="text-red-500">*</span>
                       </Label>
                       <TextField
                         value={formData.username}
@@ -310,7 +311,8 @@ const OrganisationListPage: React.FC = () => {
 
                     <div>
                       <Label className="font-bold">
-                        Email<span className="text-red-500">*</span>
+                        Email
+                        <span className="text-red-500">*</span>
                       </Label>
                       <TextField
                         type="email"
@@ -323,7 +325,8 @@ const OrganisationListPage: React.FC = () => {
 
                     <div>
                       <Label className="font-bold">
-                        First Name<span className="text-red-500">*</span>
+                        First Name
+                        <span className="text-red-500">*</span>
                       </Label>
                       <TextField
                         value={formData.firstName}
@@ -338,7 +341,8 @@ const OrganisationListPage: React.FC = () => {
 
                     <div>
                       <Label className="font-bold">
-                        Last Name<span className="text-red-500">*</span>
+                        Last Name
+                        <span className="text-red-500">*</span>
                       </Label>
                       <TextField
                         value={formData.lastName}
@@ -422,7 +426,7 @@ const OrganisationListPage: React.FC = () => {
                             }
                             onCheckedChange={(checked) => {
                               setSelectedDirectoryUsers(
-                                checked ? directoryUsers.map((u) => u.id) : []
+                                checked ? directoryUsers.map((u) => u.id) : [],
                               );
                             }}
                           />

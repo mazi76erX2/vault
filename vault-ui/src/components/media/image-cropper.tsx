@@ -1,16 +1,16 @@
-import * as React from 'react';
-import Cropper from 'react-easy-crop';
-import { Label } from '@/components/ui/label';
-import { Button } from '@/components/ui/button';
-import { Slider } from '@/components/ui/slider';
-import { cn } from '@/lib/utils';
+import * as React from "react";
+import Cropper from "react-easy-crop";
+import { Label } from "@/components/ui/label";
+import { _Button } from "@/components/ui/button";
+import { Slider } from "@/components/ui/slider";
+import { cn } from "@/lib/utils";
 
 export interface ImageCropperProps {
   label?: string;
   image: string;
   onCropComplete?: (croppedArea: any, croppedAreaPixels: any) => void;
   aspect?: number;
-  cropShape?: 'rect' | 'round';
+  cropShape?: "rect" | "round";
   showGrid?: boolean;
   className?: string;
 }
@@ -20,7 +20,7 @@ export const ImageCropper: React.FC<ImageCropperProps> = ({
   image,
   onCropComplete,
   aspect = 16 / 9,
-  cropShape = 'rect',
+  cropShape = "rect",
   showGrid = true,
   className,
 }) => {
@@ -29,7 +29,7 @@ export const ImageCropper: React.FC<ImageCropperProps> = ({
   const [rotation, setRotation] = React.useState(0);
 
   return (
-    <div className={cn('space-y-4', className)}>
+    <div className={cn("space-y-4", className)}>
       {label && <Label>{label}</Label>}
 
       <div className="relative h-[400px] w-full bg-muted rounded-lg overflow-hidden">
@@ -75,4 +75,4 @@ export const ImageCropper: React.FC<ImageCropperProps> = ({
   );
 };
 
-ImageCropper.displayName = 'ImageCropper';
+ImageCropper.displayName = "ImageCropper";

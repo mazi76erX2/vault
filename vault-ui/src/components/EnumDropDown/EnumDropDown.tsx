@@ -44,52 +44,50 @@ export const EnumDropDown = React.forwardRef<
       disabled,
       className,
     },
-    ref
-  ) => {
-    return (
-      <div className={cn("space-y-2 w-full", className)}>
-        {label && (
-          <Label
-            className={cn(
-              required &&
-                'after:content-["*"] after:ml-0.5 after:text-destructive'
-            )}
-          >
-            {label}
-          </Label>
-        )}
-        <Select
-          value={value?.toString()}
-          onValueChange={onChange}
-          disabled={disabled}
+    ref,
+  ) => (
+    <div className={cn("space-y-2 w-full", className)}>
+      {label && (
+        <Label
+          className={cn(
+            required &&
+              'after:content-["*"] after:ml-0.5 after:text-destructive',
+          )}
         >
-          <SelectTrigger
-            ref={ref}
-            className={cn(error && "border-destructive focus:ring-destructive")}
-          >
-            <SelectValue placeholder={placeholder} />
-          </SelectTrigger>
-          <SelectContent>
-            {options.map((option) => (
-              <SelectItem key={option.value} value={option.value.toString()}>
-                {option.label}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-        {(error || helperText) && (
-          <p
-            className={cn(
-              "text-sm",
-              error ? "text-destructive" : "text-muted-foreground"
-            )}
-          >
-            {error || helperText}
-          </p>
-        )}
-      </div>
-    );
-  }
+          {label}
+        </Label>
+      )}
+      <Select
+        value={value?.toString()}
+        onValueChange={onChange}
+        disabled={disabled}
+      >
+        <SelectTrigger
+          ref={ref}
+          className={cn(error && "border-destructive focus:ring-destructive")}
+        >
+          <SelectValue placeholder={placeholder} />
+        </SelectTrigger>
+        <SelectContent>
+          {options.map((option) => (
+            <SelectItem key={option.value} value={option.value.toString()}>
+              {option.label}
+            </SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
+      {(error || helperText) && (
+        <p
+          className={cn(
+            "text-sm",
+            error ? "text-destructive" : "text-muted-foreground",
+          )}
+        >
+          {error || helperText}
+        </p>
+      )}
+    </div>
+  ),
 );
 
 EnumDropDown.displayName = "EnumDropDown";

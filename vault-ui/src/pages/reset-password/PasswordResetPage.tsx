@@ -14,9 +14,9 @@ import {
   success,
   HCIcon,
 } from "generic-components";
+import axios from "axios";
 import Map from "../../assets/truechart_map.png";
 import Logo from "../../assets/_VAULT_LOGO_ORANGE_NEW.svg";
-import axios from "axios";
 import { VAULT_API_URL } from "../../config";
 
 function PasswordResetPage() {
@@ -38,7 +38,7 @@ function PasswordResetPage() {
       // API call to request password reset
       const { data } = await axios.post(
         `${VAULT_API_URL}/api/auth/reset-password-request`,
-        { email }
+        { email },
       );
       if (data.status === "success") {
         setIsSubmitted(true);
@@ -76,7 +76,7 @@ function PasswordResetPage() {
           }}
         >
           <Box style={{ display: "flex", justifyContent: "center" }}>
-            <img style={{ width: 400 }} src={Logo} alt={""} />
+            <img style={{ width: 400 }} src={Logo} alt="" />
           </Box>
           <Typography
             sx={{

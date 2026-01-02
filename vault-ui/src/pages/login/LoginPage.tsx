@@ -1,137 +1,153 @@
-import React, { useEffect, useState } from "react";
+import * as React from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
+import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { TextField } from "@/components/forms/text-field";
 import { Loader } from "@/components/feedback/loader";
-import { toast } from "sonner";
 import { useAuthContext } from "@/hooks/useAuthContext";
-import Api from "@/services/Instance";
-import { AxiosError } from "axios";
-import Logo from "@/assets/VAULT_LOGO_ORANGE_NEW.svg";
-import Map from "@/assets/truechart_map.png";
-import { User, Lock } from "lucide-react";
+import instance from "@/services/Instance";
 
-function LoginPage() {
+const LoginPage: React.FC = () => {
   const navigate = useNavigate();
+  const authContext = useAuthContext();
+  const [loading, setLoading] = useState(false);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const authContext = useAuthContext();
 
-  if (!authContext) {
-    return <Loader />;
-  }
-
-  const { contextLogin, isLoadingUser, user } = authContext;
-
-  const onLogin = async () => {
-    if (!email || !password) {
-      toast.error("Login details are required.");
-      return;
-    }
-
+  const onLogin = async (emailParam: string, passwordParam: string) => {
+    setLoading(true);
     try {
-      const loginData = { email, password };
-      await contextLogin(loginData);
+      const response = await instance.post("/api/auth/login", {
+        email: emailParam,
+        password: passwordParam,
+      });
 
-      if (user && user.user && user.user.id) {
-        try {
-          const response = await Api.post("/api/auth/check-first-login", {
-            userid: user.user.id,
-          });
-
-          if (response.data.require_password_change) {
-            navigate("/password-reset");
-            return;
-          }
-        } catch (err) {
-          console.warn(
-            "First-login check failed, proceeding to dashboard",
-            err
-          );
-        }
-
-        toast.success("Login successful.");
-        window.location.href = "/dashboard";
+      if (response.data.access_token) {
+        console.log("Login successful:", response.data);
+        localStorage.setItem("token", response.data.access_token);
+        await authContext?.login(response.data);
+        toast.success("Login successful!");
+        navigate("/");
       }
-    } catch (err: unknown) {
-      console.error("Login error occurred", err);
-      const errorMessage =
-        err instanceof Error
-          ? err.message
-          : "Failed to sign in. Please check your credentials.";
-      toast.error(errorMessage);
+    } catch (error) {
+      console.error("Login failed:", error);
+      toast.error("Login failed. Please check your credentials.");
+    } finally {
+      setLoading(false);
     }
   };
 
+  // ✅ Move BOTH useEffects BEFORE early return
   useEffect(() => {
-    const listener = (event: KeyboardEvent) => {
-      if (event.code === "Enter" || event.code === "NumpadEnter") {
-        onLogin();
+    const token = localStorage.getItem("token");
+    if (token && authContext?.user) {
+      navigate("/");
+    }
+  }, [navigate, authContext?.user]);
+
+  useEffect(() => {
+    const handleKeyPress = (event: KeyboardEvent) => {
+      if (event.key === "Enter") {
+        onLogin(email, password);
       }
     };
-    document.addEventListener("keydown", listener);
+
+    window.addEventListener("keypress", handleKeyPress);
     return () => {
-      document.removeEventListener("keydown", listener);
+      window.removeEventListener("keypress", handleKeyPress);
     };
-  }, [email, password]);
+  }, [email, password, onLogin]);
+
+  // NOW the early return (after ALL hooks)
+  if (!authContext) {
+    return <div>Loading...</div>;
+  }
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    onLogin(email, password);
+  };
+
+  if (loading) {
+    return <Loader />;
+  }
 
   return (
-    <div className="grid grid-cols-1 md:grid-cols-[44%_56%] h-screen">
-      <div className="bg-gray-800 h-screen flex flex-col justify-center p-10 md:p-4 lg:p-10">
-        <div className="flex justify-center mb-8">
-          <img src={Logo} alt="Logo" className="w-[400px]" />
+    <div className="flex min-h-screen items-center justify-center bg-gray-100">
+      <div className="w-full max-w-md space-y-8 rounded-lg bg-white p-8 shadow-lg">
+        <div className="text-center">
+          <h2 className="text-3xl font-bold">Sign In</h2>
+          <p className="mt-2 text-gray-600">
+            Welcome back! Please sign in to continue.
+          </p>
         </div>
 
-        <h1 className="text-white text-2xl md:text-[25px] text-center mb-14 font-bold -mt-4">
-          MANAGEMENT CONSOLE
-        </h1>
+        <form onSubmit={handleSubmit} className="mt-8 space-y-6">
+          <div className="space-y-4">
+            <TextField
+              label="Email"
+              type="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              required
+              fullWidth
+            />
+            <TextField
+              label="Password"
+              type="password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              required
+              fullWidth
+            />
+          </div>
 
-        <h2 className="text-white text-2xl md:text-[25px] mb-8 font-bold">
-          LOGIN
-        </h2>
+          <div className="flex items-center justify-between">
+            <div className="flex items-center">
+              <input
+                id="remember-me"
+                name="remember-me"
+                type="checkbox"
+                className="h-4 w-4 rounded border-gray-300"
+              />
+              <label
+                htmlFor="remember-me"
+                className="ml-2 text-sm text-gray-900"
+              >
+                Remember me
+              </label>
+            </div>
 
-        <TextField
-          id="email"
-          type="text"
-          label="EMAIL"
-          value={email}
-          onChange={(e) => setEmail(e.target.value)}
-          className="mb-6 bg-transparent text-white"
-          startIcon={<User className="w-5 h-5" />}
-        />
+            <button
+              type="button"
+              className="cursor-pointer text-sm text-blue-600 hover:text-blue-500"
+              onClick={() => navigate("/reset-password")}
+            >
+              Forgot password?
+            </button>
+          </div>
 
-        <TextField
-          id="password"
-          type="password"
-          label="PASSWORD"
-          value={password}
-          onChange={(e) => setPassword(e.target.value)}
-          className="mb-6 bg-transparent text-white"
-          startIcon={<Lock className="w-5 h-5" />}
-        />
+          <Button type="submit" className="w-full" disabled={loading}>
+            {loading ? "Signing in..." : "Sign in"}
+          </Button>
+        </form>
 
-        <Button
-          className="mt-2 bg-[#e66334] hover:bg-[#FF8234]"
-          onClick={onLogin}
-          disabled={isLoadingUser}
-          size="sm"
-        >
-          Login
-        </Button>
-
-        <span
-          className="mt-2.5 text-white cursor-pointer"
-          onClick={() => navigate("/password-reset")}
-        >
-          Forgot Password?
-        </span>
-      </div>
-
-      <div className="hidden md:block h-screen">
-        <img src={Map} alt="Map" className="w-full h-full object-cover" />
+        <div className="text-center">
+          <span className="text-sm text-gray-600">
+            Don&apos;t have an account?{" "}
+            <button
+              type="button"
+              className="cursor-pointer text-blue-600 hover:text-blue-500"
+              onClick={() => navigate("/signup")}
+            >
+              Sign up
+            </button>
+          </span>
+        </div>
       </div>
     </div>
   );
-}
+};
 
 export default LoginPage;

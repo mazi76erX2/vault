@@ -1,13 +1,13 @@
-import type { Meta, StoryObj } from '@storybook/react';
-import { Button } from '@/components/ui/button';  // Use shadcn path
-import { Plus, Save } from 'lucide-react';
-import React from 'react';
+import type { Meta, StoryObj } from "@storybook/react";
+import { Plus, Save } from "lucide-react";
+import React from "react";
+import { Button } from "@/components/ui/button"; // Use shadcn path
 
 const meta = {
-  title: 'Forms/Button',
+  title: "Forms/Button",
   component: Button,
   parameters: {
-    layout: 'centered',
+    layout: "centered",
   },
 } satisfies Meta<typeof Button>;
 
@@ -16,36 +16,36 @@ type Story = StoryObj<typeof meta>;
 
 export const Primary: Story = {
   args: {
-    children: 'Primary Button',
-    variant: 'default',
+    children: "Primary Button",
+    variant: "default",
   },
 };
 
 export const Secondary: Story = {
   args: {
-    children: 'Secondary Button',
-    variant: 'secondary',
+    children: "Secondary Button",
+    variant: "secondary",
   },
 };
 
 export const Destructive: Story = {
   args: {
-    children: 'Delete',
-    variant: 'destructive',
+    children: "Delete",
+    variant: "destructive",
   },
 };
 
 export const Outline: Story = {
   args: {
-    children: 'Outline',
-    variant: 'outline',
+    children: "Outline",
+    variant: "outline",
   },
 };
 
 export const Ghost: Story = {
   args: {
-    children: 'Ghost',
-    variant: 'ghost',
+    children: "Ghost",
+    variant: "ghost",
   },
 };
 
@@ -63,27 +63,27 @@ export const WithIcon: Story = {
 export const IconOnly: Story = {
   args: {
     children: <Save className="h-4 w-4" />,
-    size: 'icon',
+    size: "icon",
   },
 };
 
 export const Small: Story = {
   args: {
-    children: 'Small',
-    size: 'sm',
+    children: "Small",
+    size: "sm",
   },
 };
 
 export const Large: Story = {
   args: {
-    children: 'Large',
-    size: 'lg',
+    children: "Large",
+    size: "lg",
   },
 };
 
 export const Disabled: Story = {
   args: {
-    children: 'Disabled',
+    children: "Disabled",
     disabled: true,
   },
 };

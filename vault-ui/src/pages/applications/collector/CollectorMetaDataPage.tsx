@@ -1,13 +1,13 @@
 import React, { useState } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
+import { toast } from "sonner";
+import { AxiosError } from "axios";
 import { DancingBot } from "@/components/media/dancing-bot";
 import { TextField } from "@/components/forms/text-field";
 import { DatePicker } from "@/components/forms/date-picker";
 import { Button } from "@/components/ui/button";
 import { Loader } from "@/components/feedback/loader";
-import { toast } from "sonner";
 import Api from "@/services/Instance";
-import { AxiosError } from "axios";
 
 interface LocationState {
   sessionId?: string;
@@ -71,7 +71,7 @@ const CollectorMetaDataPage: React.FC = () => {
       console.error("Error saving metadata:", err);
       if (!(err instanceof AxiosError && err.response?.status === 401)) {
         toast.error(
-          err instanceof Error ? err.message : "Failed to save metadata."
+          err instanceof Error ? err.message : "Failed to save metadata.",
         );
       }
     } finally {

@@ -14,9 +14,10 @@ export const DancingBot: React.FC<DancingBotProps> = ({
   className,
   ...props
 }) => {
-  const lottieSrc = React.useMemo(() => {
-    return HCDancingBotMap[state] ?? HCDancingBotMap.default;
-  }, [state]);
+  const lottieSrc = React.useMemo(
+    () => HCDancingBotMap[state] ?? HCDancingBotMap.default,
+    [state],
+  );
 
   return (
     <div className={cn("w-full h-full", className)} {...props}>

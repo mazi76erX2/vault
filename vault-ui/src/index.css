@@ -7,41 +7,41 @@
     /* Light theme colors */
     --background: 240 240 240; /* #f0f0f0 */
     --foreground: 26 26 26;
-    
+
     --primary: 96 97 192; /* #6061c0 */
     --primary-foreground: 255 255 255;
-    
+
     --secondary: 80 160 224; /* #50a0e0 */
     --secondary-foreground: 255 255 255;
-    
+
     --tertiary: 80 64 144; /* #504090 */
     --tertiary-foreground: 255 255 255;
-    
+
     --muted: 160 160 160; /* #a0a0a0 */
     --muted-foreground: 107 107 107;
-    
+
     --accent: 129 51 75; /* #81334b */
     --accent-foreground: 255 255 255;
-    
+
     --success: 110 168 97; /* #6ea861 */
     --success-foreground: 255 255 255;
-    
+
     --warning: 238 158 110; /* #ee9e6e */
     --warning-foreground: 26 26 26;
-    
+
     --destructive: 129 51 75;
     --destructive-foreground: 255 255 255;
-    
+
     --border: 208 208 208;
     --input: 255 255 255;
     --ring: 96 97 192;
-    
+
     --card: 255 255 255;
     --card-foreground: 26 26 26;
-    
+
     --popover: 255 255 255;
     --popover-foreground: 26 26 26;
-    
+
     --radius: 0.5rem;
   }
 
@@ -49,38 +49,38 @@
     /* Dark theme colors */
     --background: 41 37 74; /* #29254A */
     --foreground: 219 193 202; /* #DBC1CA */
-    
+
     --primary: 85 187 173; /* #55BBAD */
     --primary-foreground: 26 26 26;
-    
+
     --secondary: 221 87 148; /* #DD5794 */
     --secondary-foreground: 255 255 255;
-    
+
     --tertiary: 108 69 114; /* #6C4572 */
     --tertiary-foreground: 255 255 255;
-    
+
     --muted: 219 193 202; /* #DBC1CA */
     --muted-foreground: 168 156 170;
-    
+
     --accent: 221 87 148; /* #DD5794 */
     --accent-foreground: 255 255 255;
-    
+
     --success: 85 187 173; /* #55BBAD */
     --success-foreground: 26 26 26;
-    
+
     --warning: 238 158 110; /* #ee9e6e */
     --warning-foreground: 26 26 26;
-    
+
     --destructive: 221 87 148;
     --destructive-foreground: 255 255 255;
-    
+
     --border: 108 69 114;
     --input: 58 53 101;
     --ring: 85 187 173;
-    
+
     --card: 58 53 101;
     --card-foreground: 219 193 202;
-    
+
     --popover: 58 53 101;
     --popover-foreground: 219 193 202;
   }
@@ -92,7 +92,9 @@
   }
   body {
     @apply bg-background text-foreground;
-    font-feature-settings: "rlig" 1, "calt" 1;
+    font-feature-settings:
+      "rlig" 1,
+      "calt" 1;
   }
 }
 
@@ -102,15 +104,15 @@
     width: 8px;
     height: 8px;
   }
-  
+
   .scrollbar-thin::-webkit-scrollbar-track {
     @apply bg-muted/20;
   }
-  
+
   .scrollbar-thin::-webkit-scrollbar-thumb {
     @apply bg-muted rounded-md;
   }
-  
+
   .scrollbar-thin::-webkit-scrollbar-thumb:hover {
     @apply bg-muted/80;
   }

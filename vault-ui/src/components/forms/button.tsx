@@ -1,13 +1,15 @@
 import * as React from "react";
-import { Button as ShadButton, ButtonProps } from "@/components/ui/button";
 import { Loader2 } from "lucide-react";
+import { Button as ShadButton, ButtonProps } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
 type HCVariant = "primary" | "secondary" | "tertiary";
 type HCSize = "small" | "medium" | "large";
 
-export interface EnhancedButtonProps
-  extends Omit<ButtonProps, "variant" | "size"> {
+export interface EnhancedButtonProps extends Omit<
+  ButtonProps,
+  "variant" | "size"
+> {
   loading?: boolean;
   loadingText?: string;
   hcVariant?: HCVariant;
@@ -46,7 +48,7 @@ export const Button = React.forwardRef<HTMLButtonElement, EnhancedButtonProps>(
       endIcon,
       ...props
     },
-    ref
+    ref,
   ) => {
     const content = text || children;
     const mappedVariant = outlined ? "outline" : variantMap[hcVariant];
@@ -67,7 +69,7 @@ export const Button = React.forwardRef<HTMLButtonElement, EnhancedButtonProps>(
         {!loading && endIcon && <span className="ml-2">{endIcon}</span>}
       </ShadButton>
     );
-  }
+  },
 );
 
 Button.displayName = "Button";

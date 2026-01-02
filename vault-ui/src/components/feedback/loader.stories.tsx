@@ -1,11 +1,11 @@
-import type { Meta, StoryObj } from '@storybook/react';
-import { Loader } from './loader';
+import type { Meta, StoryObj } from "@storybook/react";
+import { Loader } from "./loader";
 
 const meta = {
-  title: 'Feedback/Loader',
+  title: "Feedback/Loader",
   component: Loader,
   parameters: {
-    layout: 'centered',
+    layout: "centered",
   },
 } satisfies Meta<typeof Loader>;
 
@@ -18,31 +18,31 @@ export const Default: Story = {
 
 export const Small: Story = {
   args: {
-    size: 'sm',
+    size: "sm",
   },
 };
 
 export const Large: Story = {
   args: {
-    size: 'lg',
+    size: "lg",
   },
 };
 
 export const ExtraLarge: Story = {
   args: {
-    size: 'xl',
+    size: "xl",
   },
 };
 
 export const WithText: Story = {
   args: {
-    text: 'Loading...',
+    text: "Loading...",
   },
 };
 
 export const WithCustomText: Story = {
   args: {
-    size: 'lg',
-    text: 'Please wait while we process your request',
+    size: "lg",
+    text: "Please wait while we process your request",
   },
 };

@@ -1,12 +1,12 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { Button } from "@/components/ui/button";
-import { TextField } from "@/components/forms/text-field";
 import { toast } from "sonner";
 import axios from "axios";
+import { User, Lock } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { TextField } from "@/components/forms/text-field";
 import Logo from "@/assets/VAULT_LOGO_ORANGE_NEW.svg";
 import Map from "@/assets/truechart_map.png";
-import { User, Lock } from "lucide-react";
 
 function PasswordResetPage() {
   const navigate = useNavigate();

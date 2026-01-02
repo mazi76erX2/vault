@@ -1,6 +1,5 @@
 /** Represents a row in the `projects` table */
 
-
 export interface Project {
   id: number;
   name: string;

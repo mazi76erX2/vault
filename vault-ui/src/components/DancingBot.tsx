@@ -1,6 +1,6 @@
 import * as React from "react";
 import { DotLottieReact } from "@lottiefiles/dotlottie-react";
-import { cn } from "@/lib/utils";
+import { _cn } from "@/lib/utils";
 
 export type DancingBotState = "default" | "greeting" | "idling";
 
@@ -23,9 +23,10 @@ export const DancingBot: React.FC<DancingBotProps> = ({
   speed = 0.5,
   className,
 }) => {
-  const lottieSrc = React.useMemo(() => {
-    return LOTTIE_ANIMATIONS[state] ?? LOTTIE_ANIMATIONS.default;
-  }, [state]);
+  const lottieSrc = React.useMemo(
+    () => LOTTIE_ANIMATIONS[state] ?? LOTTIE_ANIMATIONS.default,
+    [state],
+  );
 
   return (
     <div className={className}>

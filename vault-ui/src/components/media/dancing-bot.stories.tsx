@@ -1,11 +1,11 @@
-import type { Meta, StoryObj } from '@storybook/react';
-import { DancingBot } from './dancing-bot';
+import type { Meta, StoryObj } from "@storybook/react";
+import { DancingBot } from "./dancing-bot";
 
 const meta = {
-  title: 'Media/DancingBot',
+  title: "Media/DancingBot",
   component: DancingBot,
   parameters: {
-    layout: 'centered',
+    layout: "centered",
   },
 } satisfies Meta<typeof DancingBot>;
 
@@ -14,31 +14,31 @@ type Story = StoryObj<typeof meta>;
 
 export const Default: Story = {
   args: {
-    size: 'md',
+    size: "md",
   },
 };
 
 export const Small: Story = {
   args: {
-    size: 'sm',
+    size: "sm",
   },
 };
 
 export const Large: Story = {
   args: {
-    size: 'lg',
+    size: "lg",
   },
 };
 
 export const ExtraLarge: Story = {
   args: {
-    size: 'xl',
+    size: "xl",
   },
 };
 
 export const NoLoop: Story = {
   args: {
-    size: 'md',
+    size: "md",
     loop: false,
   },
 };

@@ -1,15 +1,15 @@
 import React, { useEffect, useState } from "react";
+import { toast } from "sonner";
+import { AxiosError } from "axios";
+import { Upload } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { TextField } from "@/components/forms/text-field";
 import { ColorPicker } from "@/components/pickers/color-picker";
 import { Loader } from "@/components/feedback/loader";
 import { CheckBox } from "@/components/forms/checkbox";
 import { Card } from "@/components/ui/card";
-import { toast } from "sonner";
 import { useAuthContext } from "@/hooks/useAuthContext";
 import Api from "@/services/Instance";
-import { AxiosError } from "axios";
-import { Upload } from "lucide-react";
 import assistantIcon from "@/assets/assistant_icon.png";
 
 interface ThemeSettings {
@@ -92,7 +92,7 @@ const BusinessThemePage: React.FC = () => {
           fontOptions.find((f) => f.value === settings.font) || {
             id: "tahoma",
             value: "Tahoma",
-          }
+          },
         );
         setLogoPreview(settings.logo || "");
         setBotProfilePicPreview(settings.botProfilePicture || assistantIcon);
@@ -160,7 +160,7 @@ const BusinessThemePage: React.FC = () => {
 
   const handleFileUpload = (
     e: React.ChangeEvent<HTMLInputElement>,
-    isLogo: boolean
+    isLogo: boolean,
   ) => {
     if (e.target.files && e.target.files[0]) {
       const file = e.target.files[0];
@@ -382,7 +382,7 @@ const BusinessThemePage: React.FC = () => {
                     {message.text}
                   </div>
                 </div>
-              )
+              ),
             )}
           </div>
 

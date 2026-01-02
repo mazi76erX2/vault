@@ -1,11 +1,11 @@
-import type { Meta, StoryObj } from '@storybook/react';
-import { RichEditor } from './rich-editor';
+import type { Meta, StoryObj } from "@storybook/react";
+import { RichEditor } from "./rich-editor";
 
 const meta = {
-  title: 'Editors/RichEditor',
+  title: "Editors/RichEditor",
   component: RichEditor,
   parameters: {
-    layout: 'padded',
+    layout: "padded",
   },
 } satisfies Meta<typeof RichEditor>;
 
@@ -14,37 +14,37 @@ type Story = StoryObj<typeof meta>;
 
 export const Default: Story = {
   args: {
-    label: 'Description',
-    placeholder: 'Enter your description...',
+    label: "Description",
+    placeholder: "Enter your description...",
   },
 };
 
 export const WithHelperText: Story = {
   args: {
-    label: 'Post Content',
-    placeholder: 'Write your post...',
-    helperText: 'Supports rich text formatting',
+    label: "Post Content",
+    placeholder: "Write your post...",
+    helperText: "Supports rich text formatting",
   },
 };
 
 export const WithError: Story = {
   args: {
-    label: 'Content',
-    error: 'Content is required',
+    label: "Content",
+    error: "Content is required",
   },
 };
 
 export const ReadOnly: Story = {
   args: {
-    label: 'Preview',
+    label: "Preview",
     readOnly: true,
   },
 };
 
 export const Tall: Story = {
   args: {
-    label: 'Article',
-    placeholder: 'Write your article...',
-    minHeight: '400px',
+    label: "Article",
+    placeholder: "Write your article...",
+    minHeight: "400px",
   },
 };

@@ -1,5 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
+import { toast } from "sonner";
+import { AxiosError } from "axios";
 import { Button } from "@/components/ui/button";
 import { TextField } from "@/components/forms/text-field";
 import { CheckBox } from "@/components/forms/checkbox";
@@ -7,10 +9,8 @@ import { Loader } from "@/components/feedback/loader";
 import { DancingBot } from "@/components/media/dancing-bot";
 import { Card } from "@/components/ui/card";
 import { SegmentTabs } from "@/components/layout/segment-tabs";
-import { toast } from "sonner";
 import { useAuthContext } from "@/hooks/useAuthContext";
 import Api from "@/services/Instance";
-import { AxiosError } from "axios";
 
 interface UserData {
   email: string;
@@ -49,7 +49,7 @@ const UserDirectoryPage: React.FC = () => {
 
   const handleInputChange = (
     field: keyof UserData,
-    value: string | boolean
+    value: string | boolean,
   ) => {
     setUserData((prev) => ({ ...prev, [field]: value }));
   };
@@ -95,7 +95,7 @@ const UserDirectoryPage: React.FC = () => {
         firstname: userData.firstname,
         lastname: userData.lastname,
         password: userData.password,
-        roles: roles,
+        roles,
       });
 
       toast.success("User created successfully.");

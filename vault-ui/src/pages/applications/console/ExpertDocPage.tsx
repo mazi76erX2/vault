@@ -1,5 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
+import { toast } from "sonner";
+import { AxiosError } from "axios";
 import { useAuthContext } from "@/hooks/useAuthContext";
 import { DancingBot } from "@/components/media/dancing-bot";
 import { TextField } from "@/components/forms/text-field";
@@ -7,9 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Loader } from "@/components/feedback/loader";
 import { Card } from "@/components/ui/card";
 import { RadioGroup } from "@/components/forms/radio-group";
-import { toast } from "sonner";
 import Api from "@/services/Instance";
-import { AxiosError } from "axios";
 
 interface LocationState {
   document?: {
@@ -35,7 +35,7 @@ const ExpertDocPage: React.FC = () => {
   const [decision, setDecision] = useState<string>("");
   const [comments, setComments] = useState("");
   const [documentData, setDocumentData] = useState<DocumentDetails | null>(
-    null
+    null,
   );
   const authContext = useAuthContext();
   const navigate = useNavigate();
@@ -79,7 +79,7 @@ const ExpertDocPage: React.FC = () => {
         toast.error(
           err instanceof Error
             ? err.message
-            : "Failed to fetch document details."
+            : "Failed to fetch document details.",
         );
       }
     } finally {
@@ -107,7 +107,7 @@ const ExpertDocPage: React.FC = () => {
       console.error("Error submitting review:", err);
       if (!(err instanceof AxiosError && err.response?.status === 401)) {
         toast.error(
-          err instanceof Error ? err.message : "Failed to submit review."
+          err instanceof Error ? err.message : "Failed to submit review.",
         );
       }
     } finally {

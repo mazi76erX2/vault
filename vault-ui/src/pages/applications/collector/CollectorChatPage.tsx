@@ -1,13 +1,13 @@
 import React, { useEffect, useState } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
+import { toast } from "sonner";
+import { AxiosError } from "axios";
 import { useAuthContext } from "@/hooks/useAuthContext";
 import { DancingBot } from "@/components/media/dancing-bot";
 import { Button } from "@/components/ui/button";
 import { Loader } from "@/components/feedback/loader";
 import { Card } from "@/components/ui/card";
-import { toast } from "sonner";
 import Api from "@/services/Instance";
-import { AxiosError } from "axios";
 
 interface LocationState {
   sessionId?: string;
@@ -60,7 +60,7 @@ const CollectorSummaryPage: React.FC = () => {
       console.error("Error fetching summary:", err);
       if (!(err instanceof AxiosError && err.response?.status === 401)) {
         toast.error(
-          err instanceof Error ? err.message : "Failed to fetch summary."
+          err instanceof Error ? err.message : "Failed to fetch summary.",
         );
       }
     } finally {
@@ -78,7 +78,7 @@ const CollectorSummaryPage: React.FC = () => {
       console.error("Error submitting session:", err);
       if (!(err instanceof AxiosError && err.response?.status === 401)) {
         toast.error(
-          err instanceof Error ? err.message : "Failed to submit session."
+          err instanceof Error ? err.message : "Failed to submit session.",
         );
       }
     } finally {

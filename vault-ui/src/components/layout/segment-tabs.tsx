@@ -1,6 +1,6 @@
-import * as React from 'react';
-import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
-import { cn } from '@/lib/utils';
+import * as React from "react";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import { cn } from "@/lib/utils";
 
 export interface TabItem {
   value: string;
@@ -24,34 +24,32 @@ export const SegmentTabs: React.FC<SegmentTabsProps> = ({
   value,
   onValueChange,
   className,
-}) => {
-  return (
-    <Tabs
-      defaultValue={defaultValue || tabs[0]?.value}
-      value={value}
-      onValueChange={onValueChange}
-      className={cn('w-full', className)}
-    >
-      <TabsList className="w-full justify-start">
-        {tabs.map((tab) => (
-          <TabsTrigger
-            key={tab.value}
-            value={tab.value}
-            disabled={tab.disabled}
-            className="flex items-center gap-2"
-          >
-            {tab.icon}
-            {tab.label}
-          </TabsTrigger>
-        ))}
-      </TabsList>
+}) => (
+  <Tabs
+    defaultValue={defaultValue || tabs[0]?.value}
+    value={value}
+    onValueChange={onValueChange}
+    className={cn("w-full", className)}
+  >
+    <TabsList className="w-full justify-start">
       {tabs.map((tab) => (
-        <TabsContent key={tab.value} value={tab.value}>
-          {tab.content}
-        </TabsContent>
+        <TabsTrigger
+          key={tab.value}
+          value={tab.value}
+          disabled={tab.disabled}
+          className="flex items-center gap-2"
+        >
+          {tab.icon}
+          {tab.label}
+        </TabsTrigger>
       ))}
-    </Tabs>
-  );
-};
+    </TabsList>
+    {tabs.map((tab) => (
+      <TabsContent key={tab.value} value={tab.value}>
+        {tab.content}
+      </TabsContent>
+    ))}
+  </Tabs>
+);
 
-SegmentTabs.displayName = 'SegmentTabs';
+SegmentTabs.displayName = "SegmentTabs";

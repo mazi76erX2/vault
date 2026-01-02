@@ -1,23 +1,18 @@
 import React from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import {
-  Box,
-  Collapse,
-  List,
-  ListItemButton,
-  ListItemIcon,
-  ListItemText,
-  Tooltip,
-} from "@mui/material";
-import {
+  ChevronDown,
+  ChevronUp,
   ContactPage,
-  ExpandLess,
-  ExpandMore,
   TableChart,
-  ColorLensOutlined,
-} from "@mui/icons-material";
-import { HCIcon, useHCStyledContext } from "generic-components";
+  Palette,
+  LayoutDashboard,
+  AppWindow,
+  CheckCircle,
+  Mail,
+} from "lucide-react";
 import { useAuthContext } from "@/hooks/useAuthContext";
+import { cn } from "@/lib/utils";
 
 interface MenuItem {
   to: string;
@@ -49,49 +44,49 @@ export const MenuListItems: React.FC<MenuListItemsProps> = ({ open }) => {
     {
       title: "Dashboard",
       to: "/dashboard",
-      icon: <HCIcon icon="Category" />,
+      icon: <LayoutDashboard className="w-5 h-5" />,
     },
     {
       title: "Organisational Details",
       to: "/users/OrganisationDetailsPage",
-      icon: <ContactPage />,
+      icon: <ContactPage className="w-5 h-5" />,
       shouldHide: !isAdmin,
     },
     {
       title: "User Management",
       to: "/users/UserManagementPage",
-      icon: <TableChart />,
+      icon: <TableChart className="w-5 h-5" />,
       shouldHide: !isAdmin,
     },
     {
       title: "Theme",
       to: "/theme/BusinessThemePage",
       indexChild: "/theme/BusinessThemePage",
-      icon: <ColorLensOutlined />,
+      icon: <Palette className="w-5 h-5" />,
       shouldHide: !isAdmin,
     },
     {
       title: "Applications",
       to: "/applications/ApplicationsPage",
-      icon: <HCIcon icon="Apps" />,
+      icon: <AppWindow className="w-5 h-5" />,
       shouldHide: !isAdmin && !isCollector && !isHelper && !isValidator,
       subMenu: [
         {
           title: "Collector",
           to: "/applications/collector/CollectorMainPage",
-          icon: <HCIcon icon="Check" />,
+          icon: <CheckCircle className="w-5 h-5" />,
           shouldHide: !isAdmin && !isCollector,
         },
         {
           title: "Helper",
           to: "/applications/helper/HelperMainPage",
-          icon: <HCIcon icon="Check" />,
+          icon: <CheckCircle className="w-5 h-5" />,
           shouldHide: !isAdmin && !isHelper,
         },
         {
           title: "Validator",
           to: "/applications/console/ConsoleMainPage",
-          icon: <HCIcon icon="Email" />,
+          icon: <Mail className="w-5 h-5" />,
           shouldHide: !isAdmin && !isValidator,
         },
       ],
@@ -99,23 +94,25 @@ export const MenuListItems: React.FC<MenuListItemsProps> = ({ open }) => {
   ];
 
   return (
-    <List sx={{ width: "100%" }}>
-      {menuItems
-        .filter((item) => {
-          if (typeof item.shouldHide !== "undefined") {
-            return !item.shouldHide;
-          }
-          return true;
-        })
-        .map((item, index) => (
-          <MenuListItem
-            activeIndex={item.indexChild}
-            item={item}
-            key={index}
-            showText={open}
-          />
-        ))}
-    </List>
+    <nav className="w-full">
+      <ul className="space-y-0">
+        {menuItems
+          .filter((item) => {
+            if (typeof item.shouldHide !== "undefined") {
+              return !item.shouldHide;
+            }
+            return true;
+          })
+          .map((item, index) => (
+            <MenuListItem
+              activeIndex={item.indexChild}
+              item={item}
+              key={index}
+              showText={open}
+            />
+          ))}
+      </ul>
+    </nav>
   );
 };
 
@@ -133,103 +130,116 @@ const MenuListItem: React.FC<MenuListItemProps> = ({
   subItem,
   showText,
   onActiveIndexChanged,
-  activeIndex: initActiveIndex,
+  activeIndex: _initActiveIndex,
   parent,
 }) => {
-  if (item.shouldHide) {
-    return null;
-  }
-
-  const pathname = useLocation().pathname;
+  // ✅ ALL HOOKS MOVED TO TOP (before any conditions)
+  const { pathname } = useLocation();
   const [activeIndex, setActiveIndex] = React.useState<string | undefined>(
     pathname
   );
+  const [isExpanded, setIsExpanded] = React.useState(false);
   const navigate = useNavigate();
-  const theme = useHCStyledContext();
 
-  const isFirstInParent = React.useMemo(() => {
+  const _isFirstInParent = React.useMemo(() => {
     if (!parent) return true;
     const index = parent.subMenu?.findIndex((i) => i.to === item.to);
     return index === 0;
   }, [parent, item]);
 
-  const isActive = React.useMemo(() => {
-    return pathname.includes(item.to);
-  }, [pathname, initActiveIndex, activeIndex, parent, isFirstInParent, item]);
+  const isActive = React.useMemo(
+    () => pathname.includes(item.to),
+    [pathname, item.to]
+  );
 
   React.useEffect(() => {
     if (activeIndex !== pathname) {
       setActiveIndex(pathname);
     }
-  }, [pathname]);
+    if (isActive && item.subMenu) {
+      setIsExpanded(true);
+    }
+  }, [pathname, isActive, activeIndex, item.subMenu]);
+
+  // NOW the early return (after all hooks)
+  if (item.shouldHide) {
+    return null;
+  }
+
+  const handleClick = () => {
+    if (onActiveIndexChanged) {
+      onActiveIndexChanged(item.indexChild ?? item.to);
+    }
+    if (item.indexChild) {
+      setActiveIndex(item.indexChild);
+    }
+
+    if (item.subMenu) {
+      setIsExpanded(!isExpanded);
+    } else {
+      navigate(item.to);
+    }
+  };
 
   return (
-    <Box>
-      <Tooltip title={item.title} placement="right">
-        <ListItemButton
-          onClick={() => {
-            if (onActiveIndexChanged) {
-              onActiveIndexChanged(item.indexChild ?? item.to);
-            }
-            if (item.indexChild) {
-              setActiveIndex(item.indexChild);
-            }
-            navigate(item.to);
-          }}
-          sx={{
-            ...(isActive
-              ? {
-                  borderLeft: subItem
-                    ? undefined
-                    : "2px solid " + theme?.hcPalette.primary500!.hex,
-                  background: subItem ? undefined : "#313131",
-                  color: subItem ? theme!.textColor.black : "#fff",
-                }
-              : {
-                  color: theme!.textColor.black,
-                  borderLeft: subItem ? undefined : "2px solid transparent",
-                  background: "#fff",
-                }),
-            height: "40px !important",
-            px: showText ? "25px" : subItem ? "32px" : "25px",
-            ...(item.subMenu ? { my: 0 } : {}),
-            "&:hover": {
-              background: isActive ? (subItem ? "#fff" : "#222") : "#fff",
-            },
-          }}
-        >
-          {!subItem && (
-            <Tooltip title={item.title} placement="right">
-              <ListItemIcon
-                sx={{
-                  color: isActive ? "#fff" : "#000",
-                  minWidth: "30px",
-                }}
-              >
-                {item.icon}
-              </ListItemIcon>
-            </Tooltip>
-          )}
+    <li>
+      <button
+        type="button"
+        onClick={handleClick}
+        className={cn(
+          "w-full flex items-center gap-3 h-10 transition-all duration-200",
+          "hover:bg-gray-100 dark:hover:bg-gray-800",
+          showText ? "px-6" : subItem ? "px-8" : "px-6",
+          isActive &&
+            !subItem &&
+            "border-l-2 border-primary bg-gray-900 text-white",
+          isActive && subItem && "text-primary font-medium bg-gray-50",
+          !isActive && "border-l-2 border-transparent bg-white text-gray-900",
+          !isActive && "dark:bg-gray-900 dark:text-gray-100"
+        )}
+        title={item.title}
+      >
+        {!subItem && item.icon && (
+          <span
+            className={cn(
+              "min-w-[20px] flex items-center justify-center",
+              isActive ? "text-white" : "text-gray-900 dark:text-gray-100"
+            )}
+          >
+            {item.icon}
+          </span>
+        )}
 
-          {showText && (
-            <ListItemText
-              sx={{
-                "& span": {
-                  fontWeight: subItem && isActive ? "bold" : "normal",
-                  fontSize: "16px",
-                },
-              }}
-              primary={item.title}
-            />
-          )}
+        {showText && (
+          <span
+            className={cn(
+              "flex-1 text-left text-base",
+              subItem && isActive && "font-bold"
+            )}
+          >
+            {item.title}
+          </span>
+        )}
 
-          {item.subMenu ? isActive ? <ExpandLess /> : <ExpandMore /> : null}
-        </ListItemButton>
-      </Tooltip>
+        {item.subMenu && showText && (
+          <span className="ml-auto">
+            {isExpanded ? (
+              <ChevronUp className="w-4 h-4" />
+            ) : (
+              <ChevronDown className="w-4 h-4" />
+            )}
+          </span>
+        )}
+      </button>
 
       {item.subMenu && (
-        <Collapse in={isActive} timeout="auto" unmountOnExit>
-          <List component="div" disablePadding>
+        <div
+          className={cn(
+            "overflow-hidden transition-all duration-300 ease-in-out",
+            isExpanded ? "max-h-96 opacity-100" : "max-h-0 opacity-0"
+          )}
+        >
+          <ul className="pl-0">
             {item.subMenu.map((subMenu, index) => (
               <MenuListItem
                 parent={item}
@@ -241,9 +251,11 @@ const MenuListItem: React.FC<MenuListItemProps> = ({
                 key={index}
               />
             ))}
-          </List>
-        </Collapse>
+          </ul>
+        </div>
       )}
-    </Box>
+    </li>
   );
 };
+
+export default MenuListItems;

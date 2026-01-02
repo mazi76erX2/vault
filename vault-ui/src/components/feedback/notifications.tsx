@@ -14,29 +14,29 @@ export interface NotificationOptions {
 export const notification = {
   success: (message: string, options?: NotificationOptions) => {
     toast.success(message, {
-      duration: options?.duration || 3000,
-      position: options?.position || "bottom-left",
+      duration: options?.duration ?? 3000,
+      position: options?.position ?? "bottom-left",
     });
   },
 
   error: (message: string, options?: NotificationOptions) => {
     toast.error(message, {
-      duration: options?.duration || 4000,
-      position: options?.position || "bottom-left",
+      duration: options?.duration ?? 4000,
+      position: options?.position ?? "bottom-left",
     });
   },
 
   info: (message: string, options?: NotificationOptions) => {
     toast.info(message, {
-      duration: options?.duration || 3000,
-      position: options?.position || "bottom-left",
+      duration: options?.duration ?? 3000,
+      position: options?.position ?? "bottom-left",
     });
   },
 
   warning: (message: string, options?: NotificationOptions) => {
     toast.warning(message, {
-      duration: options?.duration || 3000,
-      position: options?.position || "bottom-left",
+      duration: options?.duration ?? 3000,
+      position: options?.position ?? "bottom-left",
     });
   },
 
@@ -46,11 +46,6 @@ export const notification = {
       loading: string;
       success: string | ((data: T) => string);
       error: string | ((error: unknown) => string);
-    }
-  ) => {
-    return toast.promise(promise, messages);
-  },
+    },
+  ) => toast.promise(promise, messages),
 };
-
-// Export as default for convenience
-export default notification;

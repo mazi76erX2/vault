@@ -1,14 +1,14 @@
 import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { toast } from "sonner";
+import { AxiosError } from "axios";
+import type { ColumnDef } from "@tanstack/react-table";
 import { useAuthContext } from "@/hooks/useAuthContext";
 import { DancingBot } from "@/components/media/dancing-bot";
 import { DataTable } from "@/components/data-display/data-table";
 import { Loader } from "@/components/feedback/loader";
 import { Button } from "@/components/ui/button";
-import { toast } from "sonner";
 import Api from "@/services/Instance";
-import { AxiosError } from "axios";
-import type { ColumnDef } from "@tanstack/react-table";
 
 interface Session {
   id: string;
@@ -64,14 +64,14 @@ const CollectorResumePage: React.FC = () => {
     try {
       setLoading(true);
       const response = await Api.get<FetchSessionsResponse>(
-        "/api/v1/collector/fetchsessions"
+        "/api/v1/collector/fetchsessions",
       );
       setRows(response.data.sessions);
     } catch (err: unknown) {
       console.error("Error fetching sessions:", err);
       if (!(err instanceof AxiosError && err.response?.status === 401)) {
         toast.error(
-          err instanceof Error ? err.message : "Failed to fetch sessions."
+          err instanceof Error ? err.message : "Failed to fetch sessions.",
         );
       }
     } finally {

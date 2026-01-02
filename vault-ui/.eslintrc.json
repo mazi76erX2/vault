@@ -1,86 +1,56 @@
 {
   "env": {
     "browser": true,
-    "es2021": true
+    "es2021": true,
+    "node": true
   },
   "extends": [
-    "airbnb",
-    "airbnb-typescript",
-    "airbnb/hooks",
-    "plugin:@typescript-eslint/recommended",
+    "eslint:recommended",
     "plugin:react/recommended",
-    "plugin:react/jsx-runtime",
-    "plugin:storybook/recommended"
+    "plugin:react-hooks/recommended",
+    "plugin:@typescript-eslint/recommended"
   ],
   "parser": "@typescript-eslint/parser",
   "parserOptions": {
+    "ecmaFeatures": {
+      "jsx": true
+    },
     "ecmaVersion": "latest",
-    "sourceType": "module",
-    "project": "./tsconfig.json"
+    "sourceType": "module"
   },
-  "plugins": [
-    "@typescript-eslint",
-    "react",
-    "react-hooks",
-    "jsx-a11y",
-    "import"
-  ],
-  "rules": {
-    "indent": "off",
-    "@typescript-eslint/indent": [
-      "error",
-      2
-    ],
-    "linebreak-style": "off",
-    "quotes": [
-      "error",
-      "single"
-    ],
-    "semi": [
-      "error",
-      "always"
-    ],
-    "react/react-in-jsx-scope": "off",
-    "react/jsx-props-no-spreading": "off",
-    "react/require-default-props": "off",
-    "import/prefer-default-export": "off",
-    "@typescript-eslint/naming-convention": [
-      "error",
-      {
-        "selector": "variable",
-        "format": [
-          "camelCase",
-          "PascalCase",
-          "UPPER_CASE"
-        ]
-      },
-      {
-        "selector": "function",
-        "format": [
-          "camelCase",
-          "PascalCase"
-        ]
-      },
-      {
-        "selector": "typeLike",
-        "format": [
-          "PascalCase"
-        ]
-      },
-      {
-        "selector": "interface",
-        "format": [
-          "PascalCase"
-        ]
-      }
-    ]
-  },
+  "plugins": ["react", "react-hooks", "@typescript-eslint"],
   "settings": {
     "react": {
       "version": "detect"
-    },
-    "import/resolver": {
-      "typescript": {}
     }
+  },
+  "rules": {
+    "react/react-in-jsx-scope": "off",
+    "react/prop-types": "off",
+    "react/function-component-definition": "off",
+    "react/button-has-type": "warn",
+    "react/jsx-no-useless-fragment": "warn",
+    
+    "no-console": "warn",
+    "no-alert": "warn",
+    "no-param-reassign": "off",
+    "no-underscore-dangle": "off",
+    "prefer-regex-literals": "warn",
+    "max-len": ["warn", { 
+      "code": 150, 
+      "ignoreStrings": true, 
+      "ignoreTemplateLiterals": true,
+      "ignoreComments": true 
+    }],
+    
+    "@typescript-eslint/no-explicit-any": "warn",
+    "@typescript-eslint/no-unused-vars": ["warn", { 
+      "argsIgnorePattern": "^_",
+      "varsIgnorePattern": "^_"
+    }],
+    "@typescript-eslint/no-use-before-define": "off",
+    
+    "react-hooks/exhaustive-deps": "warn",
+    "react-hooks/rules-of-hooks": "error"
   }
 }

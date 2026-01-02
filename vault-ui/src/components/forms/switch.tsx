@@ -17,7 +17,7 @@ export interface SwitchProps {
 export const Switch = React.forwardRef<HTMLButtonElement, SwitchProps>(
   (
     { label, checked, disabled, onChange, required, helperText, id, className },
-    ref
+    ref,
   ) => {
     const switchId = id || label?.toLowerCase().replace(/\s+/g, "-");
 
@@ -38,7 +38,7 @@ export const Switch = React.forwardRef<HTMLButtonElement, SwitchProps>(
                 "cursor-pointer",
                 required &&
                   'after:content-["*"] after:ml-0.5 after:text-destructive',
-                disabled && "cursor-not-allowed opacity-50"
+                disabled && "cursor-not-allowed opacity-50",
               )}
             >
               {label}
@@ -50,7 +50,7 @@ export const Switch = React.forwardRef<HTMLButtonElement, SwitchProps>(
         )}
       </div>
     );
-  }
+  },
 );
 
 Switch.displayName = "Switch";

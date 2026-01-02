@@ -1,9 +1,9 @@
 import React, { useState } from "react";
 import { Outlet, useNavigate } from "react-router-dom";
+import { Menu, ChevronLeft, _ChevronRight } from "lucide-react";
 import { MenuListItems } from "./MenuItems";
 import { ExternalMenuItems } from "./ExternalMenuItems";
 import { useAuthContext } from "@/hooks/useAuthContext";
-import { Menu, ChevronLeft, ChevronRight } from "lucide-react";
 import Logo from "@/assets/VAULT_LOGO_ORANGE_NEW.svg";
 import { ThemeToggle } from "@/components/theme/theme-toggle";
 
@@ -37,7 +37,7 @@ const RootLayout: React.FC = () => {
               onClick={() => navigate("/dashboard")}
             />
           )}
-          <button
+          <button type="button"
             onClick={handleDrawerToggle}
             className="p-2 hover:bg-gray-800 rounded"
           >

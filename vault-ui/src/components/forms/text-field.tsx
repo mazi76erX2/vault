@@ -4,8 +4,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { cn } from "@/lib/utils";
 
-export interface TextFieldProps
-  extends React.InputHTMLAttributes<HTMLInputElement> {
+export interface TextFieldProps extends React.InputHTMLAttributes<HTMLInputElement> {
   label?: string;
   error?: string;
   helperText?: string;
@@ -33,7 +32,7 @@ export const TextField = React.forwardRef<HTMLInputElement, TextFieldProps>(
       id,
       ...props
     },
-    ref
+    ref,
   ) => {
     const inputId = id || label?.toLowerCase().replace(/\s+/g, "-");
 
@@ -44,7 +43,7 @@ export const TextField = React.forwardRef<HTMLInputElement, TextFieldProps>(
             htmlFor={inputId}
             className={cn(
               required &&
-                'after:content-["*"] after:ml-0.5 after:text-destructive'
+                'after:content-["*"] after:ml-0.5 after:text-destructive',
             )}
           >
             {label}
@@ -66,7 +65,7 @@ export const TextField = React.forwardRef<HTMLInputElement, TextFieldProps>(
                 error && "border-destructive focus-visible:ring-destructive",
                 startIcon && "pl-10",
                 endIcon && "pr-10",
-                className
+                className,
               )}
               {...(props as React.TextareaHTMLAttributes<HTMLTextAreaElement>)}
             />
@@ -78,7 +77,7 @@ export const TextField = React.forwardRef<HTMLInputElement, TextFieldProps>(
                 error && "border-destructive focus-visible:ring-destructive",
                 startIcon && "pl-10",
                 endIcon && "pr-10",
-                className
+                className,
               )}
               {...props}
             />
@@ -105,7 +104,7 @@ export const TextField = React.forwardRef<HTMLInputElement, TextFieldProps>(
           <p
             className={cn(
               "text-sm",
-              error ? "text-destructive" : "text-muted-foreground"
+              error ? "text-destructive" : "text-muted-foreground",
             )}
           >
             {error || helperText}
@@ -113,7 +112,7 @@ export const TextField = React.forwardRef<HTMLInputElement, TextFieldProps>(
         )}
       </div>
     );
-  }
+  },
 );
 
 TextField.displayName = "TextField";

@@ -47,62 +47,60 @@ export const RadioButtonGroup = React.forwardRef<
       error,
       helperText,
     },
-    ref
-  ) => {
-    return (
-      <div className="space-y-3" ref={ref}>
-        {label && (
-          <Label
-            className={cn(
-              required &&
-                'after:content-["*"] after:ml-0.5 after:text-destructive'
-            )}
-          >
-            {label}
-          </Label>
-        )}
-        <RadioGroup
-          value={value}
-          onValueChange={onChange}
-          disabled={disabled}
+    ref,
+  ) => (
+    <div className="space-y-3" ref={ref}>
+      {label && (
+        <Label
           className={cn(
-            orientation === "horizontal" && "flex flex-row space-x-4"
+            required &&
+              'after:content-["*"] after:ml-0.5 after:text-destructive',
           )}
         >
-          {options.map((option) => (
-            <div key={option.id} className="flex items-center space-x-2">
-              <RadioGroupItem
-                value={option.id}
-                id={option.id}
-                disabled={option.disabled || disabled}
-                className={sizeMap[size]}
-              />
-              <Label
-                htmlFor={option.id}
-                className={cn(
-                  "cursor-pointer",
-                  (option.disabled || disabled) &&
-                    "cursor-not-allowed opacity-50"
-                )}
-              >
-                {option.label}
-              </Label>
-            </div>
-          ))}
-        </RadioGroup>
-        {(error || helperText) && (
-          <p
-            className={cn(
-              "text-sm",
-              error ? "text-destructive" : "text-muted-foreground"
-            )}
-          >
-            {error || helperText}
-          </p>
+          {label}
+        </Label>
+      )}
+      <RadioGroup
+        value={value}
+        onValueChange={onChange}
+        disabled={disabled}
+        className={cn(
+          orientation === "horizontal" && "flex flex-row space-x-4",
         )}
-      </div>
-    );
-  }
+      >
+        {options.map((option) => (
+          <div key={option.id} className="flex items-center space-x-2">
+            <RadioGroupItem
+              value={option.id}
+              id={option.id}
+              disabled={option.disabled || disabled}
+              className={sizeMap[size]}
+            />
+            <Label
+              htmlFor={option.id}
+              className={cn(
+                "cursor-pointer",
+                (option.disabled || disabled) &&
+                  "cursor-not-allowed opacity-50",
+              )}
+            >
+              {option.label}
+            </Label>
+          </div>
+        ))}
+      </RadioGroup>
+      {(error || helperText) && (
+        <p
+          className={cn(
+            "text-sm",
+            error ? "text-destructive" : "text-muted-foreground",
+          )}
+        >
+          {error || helperText}
+        </p>
+      )}
+    </div>
+  ),
 );
 
 RadioButtonGroup.displayName = "RadioButtonGroup";

@@ -1,12 +1,12 @@
 import React, { useEffect, useState } from "react";
+import { toast } from "sonner";
+import { AxiosError } from "axios";
+import type { ColumnDef } from "@tanstack/react-table";
 import { useAuthContext } from "@/hooks/useAuthContext";
 import { DancingBot } from "@/components/media/dancing-bot";
 import { DataTable } from "@/components/data-display/data-table";
 import { Loader } from "@/components/feedback/loader";
-import { toast } from "sonner";
 import Api from "@/services/Instance";
-import { AxiosError } from "axios";
-import type { ColumnDef } from "@tanstack/react-table";
 
 interface DocumentStatus {
   title: string;
@@ -55,7 +55,7 @@ const CollectorDocumentsStatusPage: React.FC = () => {
     try {
       setLoading(true);
       const response = await Api.get<FetchDocumentsResponse>(
-        "/api/v1/collector/fetchdocumentsstatus"
+        "/api/v1/collector/fetchdocumentsstatus",
       );
       setRows(response.data.documents);
     } catch (err: unknown) {
@@ -64,7 +64,7 @@ const CollectorDocumentsStatusPage: React.FC = () => {
         toast.error(
           err instanceof Error
             ? err.message
-            : "Failed to fetch document status."
+            : "Failed to fetch document status.",
         );
       }
     } finally {

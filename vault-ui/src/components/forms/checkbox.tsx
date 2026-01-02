@@ -39,7 +39,7 @@ export const CheckBox = React.forwardRef<HTMLButtonElement, CheckBoxProps>(
       helperText,
       id,
     },
-    ref
+    ref,
   ) => {
     const checkboxId = id || label?.toLowerCase().replace(/\s+/g, "-");
 
@@ -61,7 +61,7 @@ export const CheckBox = React.forwardRef<HTMLButtonElement, CheckBoxProps>(
                 "cursor-pointer",
                 required &&
                   'after:content-["*"] after:ml-0.5 after:text-destructive',
-                disabled && "cursor-not-allowed opacity-50"
+                disabled && "cursor-not-allowed opacity-50",
               )}
             >
               {label}
@@ -72,7 +72,7 @@ export const CheckBox = React.forwardRef<HTMLButtonElement, CheckBoxProps>(
           <p
             className={cn(
               "text-sm",
-              error ? "text-destructive" : "text-muted-foreground"
+              error ? "text-destructive" : "text-muted-foreground",
             )}
           >
             {error || helperText}
@@ -80,7 +80,7 @@ export const CheckBox = React.forwardRef<HTMLButtonElement, CheckBoxProps>(
         )}
       </div>
     );
-  }
+  },
 );
 
 CheckBox.displayName = "CheckBox";

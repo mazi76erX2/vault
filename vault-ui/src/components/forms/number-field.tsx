@@ -1,8 +1,8 @@
 import * as React from "react";
+import { Plus, Minus } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
-import { Plus, Minus } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 export interface NumberFieldProps {
@@ -38,7 +38,7 @@ export const NumberField = React.forwardRef<HTMLInputElement, NumberFieldProps>(
       placeholder,
       className,
     },
-    ref
+    ref,
   ) => {
     const handleIncrement = () => {
       const newValue = (value || 0) + step;
@@ -60,7 +60,7 @@ export const NumberField = React.forwardRef<HTMLInputElement, NumberFieldProps>(
           <Label
             className={cn(
               required &&
-                'after:content-["*"] after:ml-0.5 after:text-destructive'
+                'after:content-["*"] after:ml-0.5 after:text-destructive',
             )}
           >
             {label}
@@ -91,7 +91,7 @@ export const NumberField = React.forwardRef<HTMLInputElement, NumberFieldProps>(
             placeholder={placeholder}
             className={cn(
               error && "border-destructive",
-              showControls && "text-center"
+              showControls && "text-center",
             )}
           />
           {showControls && (
@@ -111,7 +111,7 @@ export const NumberField = React.forwardRef<HTMLInputElement, NumberFieldProps>(
           <p
             className={cn(
               "text-sm",
-              error ? "text-destructive" : "text-muted-foreground"
+              error ? "text-destructive" : "text-muted-foreground",
             )}
           >
             {error || helperText}
@@ -119,7 +119,7 @@ export const NumberField = React.forwardRef<HTMLInputElement, NumberFieldProps>(
         )}
       </div>
     );
-  }
+  },
 );
 
 NumberField.displayName = "NumberField";
