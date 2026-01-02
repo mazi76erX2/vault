@@ -1,5 +1,8 @@
 import * as React from "react";
-import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import {
+  RadioGroup as RadixRadioGroup,
+  RadioGroupItem,
+} from "@/components/ui/radio-group";
 import { Label } from "@/components/ui/label";
 import { cn } from "@/lib/utils";
 
@@ -47,25 +50,25 @@ export const RadioButtonGroup = React.forwardRef<
       error,
       helperText,
     },
-    ref,
+    ref
   ) => (
     <div className="space-y-3" ref={ref}>
       {label && (
         <Label
           className={cn(
             required &&
-              'after:content-["*"] after:ml-0.5 after:text-destructive',
+              'after:content-["*"] after:ml-0.5 after:text-destructive'
           )}
         >
           {label}
         </Label>
       )}
-      <RadioGroup
+      <RadixRadioGroup
         value={value}
         onValueChange={onChange}
         disabled={disabled}
         className={cn(
-          orientation === "horizontal" && "flex flex-row space-x-4",
+          orientation === "horizontal" && "flex flex-row space-x-4"
         )}
       >
         {options.map((option) => (
@@ -80,27 +83,32 @@ export const RadioButtonGroup = React.forwardRef<
               htmlFor={option.id}
               className={cn(
                 "cursor-pointer",
-                (option.disabled || disabled) &&
-                  "cursor-not-allowed opacity-50",
+                (option.disabled || disabled) && "cursor-not-allowed opacity-50"
               )}
             >
               {option.label}
             </Label>
           </div>
         ))}
-      </RadioGroup>
+      </RadixRadioGroup>
       {(error || helperText) && (
         <p
           className={cn(
             "text-sm",
-            error ? "text-destructive" : "text-muted-foreground",
+            error ? "text-destructive" : "text-muted-foreground"
           )}
         >
           {error || helperText}
         </p>
       )}
     </div>
-  ),
+  )
 );
 
 RadioButtonGroup.displayName = "RadioButtonGroup";
+
+// ✅ Add this export alias
+export { RadioButtonGroup as RadioGroup };
+
+// Or export both
+export default RadioButtonGroup;

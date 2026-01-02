@@ -8,7 +8,7 @@ import { TextField } from "@/components/forms/text-field";
 import { Button } from "@/components/ui/button";
 import { Loader } from "@/components/feedback/loader";
 import { Card } from "@/components/ui/card";
-import { RadioGroup } from "@/components/forms/radio-group";
+import { RadioButtonGroup as RadioGroup } from "@/components/forms/radio-group";
 import Api from "@/services/Instance";
 
 interface LocationState {

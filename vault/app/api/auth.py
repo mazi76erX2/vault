@@ -39,7 +39,7 @@ class RefreshTokenResponse(BaseModel):
 async def login(req: LoginRequest):
     if supabase is None:
         raise HTTPException(
-            status_code=status.HTTP500_INTERNAL_SERVER_ERROR,
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Supabase client not configured (set SUPABASE_URL and SUPABASE_KEY)",
         )
 
@@ -49,7 +49,7 @@ async def login(req: LoginRequest):
         )
         if not auth_resp or not auth_resp.user or not auth_resp.session:
             raise HTTPException(
-                status_code=status.HTTP401_UNAUTHORIZED, detail="Invalid credentials"
+                status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid credentials"
             )
 
         return LoginResponse(
@@ -63,14 +63,14 @@ async def login(req: LoginRequest):
         msg = str(e)
         if "SSL" in msg or "connect" in msg.lower():
             msg = "Failed to connect to authentication service. Please try again."
-        raise HTTPException(status_code=status.HTTP500_INTERNAL_SERVER_ERROR, detail=msg) from e
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=msg) from e
 
 
 @router.post("/refresh", response_model=RefreshTokenResponse)
 async def refresh(req: RefreshTokenRequest):
     if supabase is None:
         raise HTTPException(
-            status_code=status.HTTP500_INTERNAL_SERVER_ERROR,
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Supabase client not configured (set SUPABASE_URL and SUPABASE_KEY)",
         )
 
@@ -78,7 +78,7 @@ async def refresh(req: RefreshTokenRequest):
         refresh_resp = supabase.auth.refresh_session(req.refreshToken)
         if not refresh_resp or not refresh_resp.user or not refresh_resp.session:
             raise HTTPException(
-                status_code=status.HTTP401_UNAUTHORIZED, detail="Invalid refresh token"
+                status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid refresh token"
             )
 
         return RefreshTokenResponse(
@@ -90,7 +90,7 @@ async def refresh(req: RefreshTokenRequest):
         raise
     except Exception as e:
         raise HTTPException(
-            status_code=status.HTTP401_UNAUTHORIZED,
+            status_code=status.HTTP_401_UNAUTHORIZED,
             detail=f"Could not refresh token: {e}",
         ) from e
 

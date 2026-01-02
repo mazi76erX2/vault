@@ -2,7 +2,7 @@ import React, { useState } from "react";
 import { Outlet, useNavigate } from "react-router-dom";
 import { Menu, ChevronLeft, _ChevronRight } from "lucide-react";
 import { MenuListItems } from "./MenuItems";
-import { ExternalMenuItems } from "./ExternalMenuItems";
+// Removed ExternalMenuItems import;
 import { useAuthContext } from "@/hooks/useAuthContext";
 import Logo from "@/assets/VAULT_LOGO_ORANGE_NEW.svg";
 import { ThemeToggle } from "@/components/theme/theme-toggle";
