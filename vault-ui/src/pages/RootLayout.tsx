@@ -5,6 +5,7 @@ import { ExternalMenuItems } from "./ExternalMenuItems";
 import { useAuthContext } from "@/hooks/useAuthContext";
 import { Menu, ChevronLeft, ChevronRight } from "lucide-react";
 import Logo from "@/assets/VAULT_LOGO_ORANGE_NEW.svg";
+import { ThemeToggle } from "@/components/theme/theme-toggle";
 
 const DRAWER_WIDTH = 240;
 
@@ -27,6 +28,7 @@ const RootLayout: React.FC = () => {
       >
         {/* Header */}
         <div className="h-16 flex items-center justify-between px-4 border-b border-gray-700">
+          <ThemeToggle />
           {open && (
             <img
               src={Logo}
