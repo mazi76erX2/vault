@@ -1,88 +1,95 @@
-import React, { useState, useEffect } from 'react';
-import { supabase } from '../../supabase_client';
-import { HCDropDown, HCDropDownValue } from 'generic-components';
+import * as React from "react";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Label } from "@/components/ui/label";
+import { cn } from "@/lib/utils";
 
-interface EnumDropDownProps {
-    enumName: string;
-    label: string;
-    onChange?: (value: HCDropDownValue) => void;
-    value?: HCDropDownValue;
-    required?: boolean;
-    inputProps?: React.ComponentProps<typeof HCDropDown>['inputProps'];
+export interface EnumOption {
+  label: string;
+  value: string | number;
 }
 
-const EnumDropDown: React.FC<EnumDropDownProps> = ({
-    enumName,
-    label,
-    onChange,
-    value,
-    required,
-    inputProps,
-    ...otherProps
-}) => {
-    const [options, setOptions] = useState<HCDropDownValue[]>([]);
-    const [loading, setLoading] = useState(true);
-    const [error, setError] = useState<string | null>(null);
-    const [selectedValue, setSelectedValue] = useState<HCDropDownValue | undefined>(value);
+export interface EnumDropDownProps {
+  label?: string;
+  placeholder?: string;
+  options: EnumOption[];
+  value?: string | number;
+  onChange?: (value: string) => void;
+  error?: string;
+  helperText?: string;
+  required?: boolean;
+  disabled?: boolean;
+  className?: string;
+}
 
-    useEffect(() => {
-        const fetchEnumValues = async () => {
-            try {
-                const { data, error } = await supabase.rpc('get_enum_values', {
-                    enum_name: enumName,
-                });
-
-                if (error) {
-                    console.error(`Error fetching ${enumName} enum values:`, error);
-                    setError(error.message);
-                    return;
-                }
-
-                setOptions(
-                    data.map((item: { value: string }, index: number) => ({
-                        id: index.toString(),
-                        value: item.value,
-                    }))
-                );
-            } catch (err: unknown) {
-                console.error(`Unexpected error fetching ${enumName} enum values:`, err);
-                const message = err instanceof Error ? err.message : String(err);
-                setError(message);
-            } finally {
-                setLoading(false);
-            }
-        };
-
-        fetchEnumValues();
-    }, [enumName]);
-
-    const handleChange = (selectedOption: HCDropDownValue) => {
-        setSelectedValue(selectedOption);
-        if (onChange) {
-            onChange(selectedOption);
-        }
-    };
-
-
-    if (loading) {
-        return <p>Loading...</p>;
-    }
-
-    if (error) {
-        return <p>Error: {error}</p>;
-    }
-
+export const EnumDropDown = React.forwardRef<
+  HTMLButtonElement,
+  EnumDropDownProps
+>(
+  (
+    {
+      label,
+      placeholder = "Select an option",
+      options,
+      value,
+      onChange,
+      error,
+      helperText,
+      required,
+      disabled,
+      className,
+    },
+    ref
+  ) => {
     return (
-        <HCDropDown
-            label={label}
-            onChange={handleChange}
-            options={options}
-            value={selectedValue}
-            required={required}
-            inputProps={inputProps}
-            {...otherProps}
-        />
+      <div className={cn("space-y-2 w-full", className)}>
+        {label && (
+          <Label
+            className={cn(
+              required &&
+                'after:content-["*"] after:ml-0.5 after:text-destructive'
+            )}
+          >
+            {label}
+          </Label>
+        )}
+        <Select
+          value={value?.toString()}
+          onValueChange={onChange}
+          disabled={disabled}
+        >
+          <SelectTrigger
+            ref={ref}
+            className={cn(error && "border-destructive focus:ring-destructive")}
+          >
+            <SelectValue placeholder={placeholder} />
+          </SelectTrigger>
+          <SelectContent>
+            {options.map((option) => (
+              <SelectItem key={option.value} value={option.value.toString()}>
+                {option.label}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+        {(error || helperText) && (
+          <p
+            className={cn(
+              "text-sm",
+              error ? "text-destructive" : "text-muted-foreground"
+            )}
+          >
+            {error || helperText}
+          </p>
+        )}
+      </div>
     );
-};
+  }
+);
 
-export default EnumDropDown;
+EnumDropDown.displayName = "EnumDropDown";

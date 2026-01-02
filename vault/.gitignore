@@ -5,6 +5,7 @@ dependencies
 .idea
 .env
 *.log
+.DS_Store
 
 ### Intellij ###
 # Covers JetBrains IDEs: IntelliJ, RubyMine, PhpStorm, AppCode, PyCharm, CLion, Android Studio, WebStorm and Rider
@@ -122,3 +123,9 @@ fabric.properties
 # End of https://www.toptal.com/developers/gitignore/api/intellij
 vault.iml
 venv/
+
+# Vector databases
+postgres_data/
+qdrant_data/
+weaviate_data/
+milvus_data/

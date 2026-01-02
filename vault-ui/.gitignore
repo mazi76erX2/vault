@@ -144,3 +144,6 @@ fabric.properties
 # End of https://www.toptal.com/developers/gitignore/api/intellij
 src/config.ts
 src/config.ts
+
+*storybook.log
+storybook-static
