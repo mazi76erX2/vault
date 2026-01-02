@@ -1,663 +1,588 @@
-import React, { useState, useEffect } from "react";
-import { Box, Checkbox, FormControlLabel } from "@mui/material";
-import {
-  HCTextField,
-  HCButton,
-  success,
-  error as showError,
-} from "generic-components";
-import { useAuthContext } from "../../../hooks/useAuthContext";
-import axios from "axios";
-import { VAULT_API_URL } from "../../../config";
-import { DirectoryFormData } from "../types";
-import {
-  FormSection,
-  FormBox,
-  TabContainer,
-  Tab,
-} from "../OrganisationDetailsPage";
-import {
-  Title,
-  Subtitle,
-  FieldLabel,
-  InfoIconText,
-  ButtonContainer,
-} from "../styles";
+import React, { useState } from "react";
+import { Checkbox } from "@/components/ui/checkbox";
+import { TextField } from "@/components/forms/text-field";
+import { Button } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
+import { Label } from "@/components/ui/label";
+import { toast } from "sonner";
+import { useAuthContext } from "@/hooks/useAuthContext";
+import Api from "@/services/Instance";
+import { Info } from "lucide-react";
+
+interface DirectoryFormData {
+  directoryType: string;
+  name: string;
+  domain: string;
+  host: string;
+  port: string;
+  username: string;
+  password: string;
+  syncInterval: string;
+  searchTimeout: string;
+  baseDN: string;
+  userDN: string;
+  groupDN: string;
+  sslConnection: boolean;
+  userObject: string;
+  userFilter: string;
+  userName: string;
+  userObjectRDN: string;
+  firstName: string;
+  lastName: string;
+  displayName: string;
+  principalName: string;
+  email: string;
+  uniqueId: string;
+  userGroups: string;
+  groupObject: string;
+  groupFilter: string;
+  fetchRecursively: boolean;
+  groupUniqueId: string;
+  groupName: string;
+  groupDescription: string;
+  groupMembers: string;
+}
 
 interface UserDirectorySetupProps {
   onBack: () => void;
 }
 
 const UserDirectorySetup: React.FC<UserDirectorySetupProps> = ({ onBack }) => {
-  const [activeDirectoryTab, setActiveDirectoryTab] = useState<
-    "server" | "user" | "group"
-  >("server");
+  const [activeTab, setActiveTab] = useState<"server" | "user" | "group">(
+    "server"
+  );
   const authContext = useAuthContext();
 
-  // Directory form data state
-  const [directoryFormData, setDirectoryFormData] = useState<DirectoryFormData>(
-    {
-      // Server Settings
-      directoryType: "Active Directory - Legacy",
-      name: "-GROUP",
-      domain: "-group",
-      host: "ldaps://ldap-ssl.highcoordination.de",
-      port: "636",
-      username: "-group\\service",
-      password: "••••••••••••••••••",
-      syncInterval: "60",
-      searchTimeout: "60",
-      baseDN: "DC=-group, DC=local",
-      userDN: "OU=-GROUP",
-      groupDN: "OU=-GROUP",
-      sslConnection: true,
+  const [formData, setFormData] = useState<DirectoryFormData>({
+    directoryType: "Active Directory - Legacy",
+    name: "HC-GROUP",
+    domain: "hc-group",
+    host: "ldaps://ldap-ssl.highcoordination.de",
+    port: "636",
+    username: "hc-group",
+    password: "",
+    syncInterval: "60",
+    searchTimeout: "60",
+    baseDN: "DC=hc-group,DC=local",
+    userDN: "OU=HC-GROUP",
+    groupDN: "OU=HC-GROUP",
+    sslConnection: true,
+    userObject: "user",
+    userFilter: "(&(objectCategory=Person)(sAMAccountName=*))",
+    userName: "sAMAccountName",
+    userObjectRDN: "cn",
+    firstName: "givenName",
+    lastName: "sn",
+    displayName: "displayName",
+    principalName: "userPrincipalName",
+    email: "mail",
+    uniqueId: "objectGUID",
+    userGroups: "memberOf",
+    groupObject: "group",
+    groupFilter: "(&(objectCategory=Group)(name=*))",
+    fetchRecursively: true,
+    groupUniqueId: "objectGUID",
+    groupName: "cn",
+    groupDescription: "description",
+    groupMembers: "member",
+  });
 
-      // User Schema
-      userObject: "user",
-      userFilter: "(&(objectCategory=Person)(sAMAccountName=*))",
-      userName: "sAMAccountName",
-      userObjectRDN: "cn",
-      firstName: "givenName",
-      lastName: "sn",
-      displayName: "displayName",
-      principalName: "userPrincipalName",
-      email: "mail",
-      uniqueId: "objectGUID",
-      userGroups: "memberOf",
-
-      // Group Schema
-      groupObject: "group",
-      groupFilter: "(&(objectCategory=Group)(name=*))",
-      fetchRecursively: true,
-      groupUniqueId: "objectGUID",
-      groupName: "cn",
-      groupDescription: "description",
-      groupMembers: "member",
-    }
-  );
-
-  const handleSaveDirectoryConfig = async () => {
-    if (!authContext?.isLoggedIn) {
-      showError("You must be logged in to continue");
-      return;
-    }
-
+  const handleSave = async () => {
     try {
-      const dataToSend = {
-        ...directoryFormData,
-        user_id: authContext.user?.user.id,
-      };
-
-      await axios.post(
-        `${VAULT_API_URL}/api/ldap/directory/config`,
-        dataToSend
-      );
-      success("Directory configuration saved successfully");
+      const userId = authContext?.user?.user?.id;
+      await Api.post("/api/ldap/directoryconfig", {
+        userid: userId,
+        ...formData,
+      });
+      toast.success("Directory configuration saved successfully");
     } catch (err) {
       console.error("Error saving directory config:", err);
-      showError("Failed to save directory configuration");
+      toast.error("Failed to save directory configuration");
     }
   };
 
   return (
-    <>
-      <Title>SETUP USER DIRECTORY SERVICE</Title>
+    <div className="space-y-6">
+      <h2 className="text-2xl font-bold">SETUP USER DIRECTORY SERVICE</h2>
 
-      <HCTextField
-        type="text"
+      <TextField
         label="Directory Type"
-        value={directoryFormData.directoryType}
+        value={formData.directoryType}
         onChange={(e) =>
-          setDirectoryFormData({
-            ...directoryFormData,
-            directoryType: e.target.value,
-          })
+          setFormData({ ...formData, directoryType: e.target.value })
         }
         disabled
       />
 
-      <TabContainer sx={{ borderBottom: "1px solid #e66334" }}>
-        <Tab
-          active={activeDirectoryTab === "server"}
-          onClick={() => setActiveDirectoryTab("server")}
+      {/* Tabs */}
+      <div className="flex gap-0.5 border border-[#e66334] rounded-t bg-[#d3d3d3]">
+        <button
+          className={`px-5 py-2.5 cursor-pointer rounded-t transition-colors ${
+            activeTab === "server"
+              ? "bg-[#e66334] text-white"
+              : "bg-[#d3d3d3] text-black hover:bg-[#c3c3c3]"
+          }`}
+          onClick={() => setActiveTab("server")}
         >
           Server Settings
-        </Tab>
-        <Tab
-          active={activeDirectoryTab === "user"}
-          onClick={() => setActiveDirectoryTab("user")}
+        </button>
+        <button
+          className={`px-5 py-2.5 cursor-pointer rounded-t transition-colors ${
+            activeTab === "user"
+              ? "bg-[#e66334] text-white"
+              : "bg-[#d3d3d3] text-black hover:bg-[#c3c3c3]"
+          }`}
+          onClick={() => setActiveTab("user")}
         >
           User Schema
-        </Tab>
-        <Tab
-          active={activeDirectoryTab === "group"}
-          onClick={() => setActiveDirectoryTab("group")}
+        </button>
+        <button
+          className={`px-5 py-2.5 cursor-pointer rounded-t transition-colors ${
+            activeTab === "group"
+              ? "bg-[#e66334] text-white"
+              : "bg-[#d3d3d3] text-black hover:bg-[#c3c3c3]"
+          }`}
+          onClick={() => setActiveTab("group")}
         >
           Group Schema
-        </Tab>
-      </TabContainer>
+        </button>
+      </div>
 
-      {activeDirectoryTab === "server" && (
-        <>
-          <Subtitle>
-            Server Settings
-            <InfoIconText>ⓘ</InfoIconText>
-          </Subtitle>
+      <Card className="bg-[#d3d3d3] p-6">
+        {activeTab === "server" && (
+          <div className="space-y-6">
+            <div className="flex items-center gap-2">
+              <h3 className="text-lg font-semibold">Server Settings</h3>
+              <Info className="w-4 h-4 text-gray-500" />
+            </div>
 
-          <Box
-            sx={{
-              display: "grid",
-              gridTemplateColumns: "1fr 1fr",
-              gap: "20px",
-            }}
-          >
-            <Box>
-              <FieldLabel>Name</FieldLabel>
-              <HCTextField
-                type="text"
-                value={directoryFormData.name}
-                onChange={(e) =>
-                  setDirectoryFormData({
-                    ...directoryFormData,
-                    name: e.target.value,
-                  })
-                }
-              />
-            </Box>
-            <Box>
-              <FieldLabel>Domain</FieldLabel>
-              <HCTextField
-                type="text"
-                value={directoryFormData.domain}
-                onChange={(e) =>
-                  setDirectoryFormData({
-                    ...directoryFormData,
-                    domain: e.target.value,
-                  })
-                }
-              />
-            </Box>
-            <Box>
-              <FieldLabel>Host</FieldLabel>
-              <HCTextField
-                type="text"
-                value={directoryFormData.host}
-                onChange={(e) =>
-                  setDirectoryFormData({
-                    ...directoryFormData,
-                    host: e.target.value,
-                  })
-                }
-              />
-            </Box>
-            <Box>
-              <FieldLabel>Port</FieldLabel>
-              <HCTextField
-                type="text"
-                value={directoryFormData.port}
-                onChange={(e) =>
-                  setDirectoryFormData({
-                    ...directoryFormData,
-                    port: e.target.value,
-                  })
-                }
-              />
-            </Box>
-            <Box>
-              <FieldLabel>Username</FieldLabel>
-              <HCTextField
-                type="text"
-                value={directoryFormData.username}
-                onChange={(e) =>
-                  setDirectoryFormData({
-                    ...directoryFormData,
-                    username: e.target.value,
-                  })
-                }
-              />
-            </Box>
-            <Box>
-              <FieldLabel>Password</FieldLabel>
-              <HCTextField
-                type="text"
-                value={directoryFormData.password}
-                onChange={(e) =>
-                  setDirectoryFormData({
-                    ...directoryFormData,
-                    password: e.target.value,
-                  })
-                }
-              />
-            </Box>
-            <Box>
-              <FieldLabel>Sync interval (in min)</FieldLabel>
-              <HCTextField
-                type="text"
-                value={directoryFormData.syncInterval}
-                onChange={(e) =>
-                  setDirectoryFormData({
-                    ...directoryFormData,
-                    syncInterval: e.target.value,
-                  })
-                }
-              />
-            </Box>
-            <Box>
-              <FieldLabel>Search timeout (in sec)</FieldLabel>
-              <HCTextField
-                type="text"
-                value={directoryFormData.searchTimeout}
-                onChange={(e) =>
-                  setDirectoryFormData({
-                    ...directoryFormData,
-                    searchTimeout: e.target.value,
-                  })
-                }
-              />
-            </Box>
-          </Box>
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <Label className="font-bold">
+                  Name<span className="text-red-500">*</span>
+                </Label>
+                <TextField
+                  value={formData.name}
+                  onChange={(e) =>
+                    setFormData({ ...formData, name: e.target.value })
+                  }
+                />
+              </div>
 
-          <Subtitle>
-            LDAP schema
-            <InfoIconText>ⓘ</InfoIconText>
-          </Subtitle>
+              <div>
+                <Label className="font-bold">
+                  Domain<span className="text-red-500">*</span>
+                </Label>
+                <TextField
+                  value={formData.domain}
+                  onChange={(e) =>
+                    setFormData({ ...formData, domain: e.target.value })
+                  }
+                />
+              </div>
 
-          <Box
-            sx={{
-              display: "grid",
-              gridTemplateColumns: "1fr 1fr",
-              gap: "20px",
-            }}
-          >
-            <Box>
-              <FieldLabel>Base DN</FieldLabel>
-              <HCTextField
-                type="text"
-                value={directoryFormData.baseDN}
-                onChange={(e) =>
-                  setDirectoryFormData({
-                    ...directoryFormData,
-                    baseDN: e.target.value,
-                  })
-                }
-              />
-            </Box>
-            <Box>
-              <FieldLabel>User DN (optional)</FieldLabel>
-              <HCTextField
-                type="text"
-                value={directoryFormData.userDN}
-                onChange={(e) =>
-                  setDirectoryFormData({
-                    ...directoryFormData,
-                    userDN: e.target.value,
-                  })
-                }
-              />
-            </Box>
-            <Box>
-              <FieldLabel>Group DN (optional)</FieldLabel>
-              <HCTextField
-                type="text"
-                value={directoryFormData.groupDN}
-                onChange={(e) =>
-                  setDirectoryFormData({
-                    ...directoryFormData,
-                    groupDN: e.target.value,
-                  })
-                }
-              />
-            </Box>
-            <Box sx={{ display: "flex", alignItems: "center" }}>
-              <FormControlLabel
-                control={
-                  <Checkbox
-                    name="sslConnection"
-                    checked={directoryFormData.sslConnection}
-                    onChange={(e) =>
-                      setDirectoryFormData({
-                        ...directoryFormData,
-                        sslConnection: e.target.checked,
-                      })
-                    }
-                  />
-                }
-                label="SSL Connection?"
-              />
-            </Box>
-          </Box>
-        </>
-      )}
+              <div>
+                <Label className="font-bold">
+                  Host<span className="text-red-500">*</span>
+                </Label>
+                <TextField
+                  value={formData.host}
+                  onChange={(e) =>
+                    setFormData({ ...formData, host: e.target.value })
+                  }
+                />
+              </div>
 
-      {activeDirectoryTab === "user" && (
-        <>
-          <Subtitle>
-            User Schema
-            <InfoIconText>ⓘ</InfoIconText>
-          </Subtitle>
+              <div>
+                <Label className="font-bold">
+                  Port<span className="text-red-500">*</span>
+                </Label>
+                <TextField
+                  value={formData.port}
+                  onChange={(e) =>
+                    setFormData({ ...formData, port: e.target.value })
+                  }
+                />
+              </div>
 
-          <Box
-            sx={{
-              display: "grid",
-              gridTemplateColumns: "1fr 1fr",
-              gap: "20px",
-            }}
-          >
-            <Box>
-              <FieldLabel>User Object</FieldLabel>
-              <HCTextField
-                type="text"
-                value={directoryFormData.userObject}
-                onChange={(e) =>
-                  setDirectoryFormData({
-                    ...directoryFormData,
-                    userObject: e.target.value,
-                  })
-                }
-              />
-            </Box>
-            <Box>
-              <FieldLabel>User Filter</FieldLabel>
-              <HCTextField
-                type="text"
-                value={directoryFormData.userFilter}
-                onChange={(e) =>
-                  setDirectoryFormData({
-                    ...directoryFormData,
-                    userFilter: e.target.value,
-                  })
-                }
-              />
-            </Box>
-          </Box>
+              <div>
+                <Label className="font-bold">
+                  Username<span className="text-red-500">*</span>
+                </Label>
+                <TextField
+                  value={formData.username}
+                  onChange={(e) =>
+                    setFormData({ ...formData, username: e.target.value })
+                  }
+                />
+              </div>
 
-          <Subtitle>
-            User Schema : Attributes
-            <InfoIconText>ⓘ</InfoIconText>
-          </Subtitle>
+              <div>
+                <Label className="font-bold">
+                  Password<span className="text-red-500">*</span>
+                </Label>
+                <TextField
+                  type="password"
+                  value={formData.password}
+                  onChange={(e) =>
+                    setFormData({ ...formData, password: e.target.value })
+                  }
+                />
+              </div>
 
-          <Box
-            sx={{
-              display: "grid",
-              gridTemplateColumns: "1fr 1fr",
-              gap: "20px",
-            }}
-          >
-            <Box>
-              <FieldLabel>USER NAME</FieldLabel>
-              <HCTextField
-                type="text"
-                value={directoryFormData.userName}
-                onChange={(e) =>
-                  setDirectoryFormData({
-                    ...directoryFormData,
-                    userName: e.target.value,
-                  })
-                }
-              />
-            </Box>
-            <Box>
-              <FieldLabel>User Object RDN</FieldLabel>
-              <HCTextField
-                type="text"
-                value={directoryFormData.userObjectRDN}
-                onChange={(e) =>
-                  setDirectoryFormData({
-                    ...directoryFormData,
-                    userObjectRDN: e.target.value,
-                  })
-                }
-              />
-            </Box>
-            <Box>
-              <FieldLabel>First Name</FieldLabel>
-              <HCTextField
-                type="text"
-                value={directoryFormData.firstName}
-                onChange={(e) =>
-                  setDirectoryFormData({
-                    ...directoryFormData,
-                    firstName: e.target.value,
-                  })
-                }
-              />
-            </Box>
-            <Box>
-              <FieldLabel>Last Name</FieldLabel>
-              <HCTextField
-                type="text"
-                value={directoryFormData.lastName}
-                onChange={(e) =>
-                  setDirectoryFormData({
-                    ...directoryFormData,
-                    lastName: e.target.value,
-                  })
-                }
-              />
-            </Box>
-            <Box>
-              <FieldLabel>Display Name</FieldLabel>
-              <HCTextField
-                type="text"
-                value={directoryFormData.displayName}
-                onChange={(e) =>
-                  setDirectoryFormData({
-                    ...directoryFormData,
-                    displayName: e.target.value,
-                  })
-                }
-              />
-            </Box>
-            <Box>
-              <FieldLabel>Principal Name</FieldLabel>
-              <HCTextField
-                type="text"
-                value={directoryFormData.principalName}
-                onChange={(e) =>
-                  setDirectoryFormData({
-                    ...directoryFormData,
-                    principalName: e.target.value,
-                  })
-                }
-              />
-            </Box>
-            <Box>
-              <FieldLabel>Email</FieldLabel>
-              <HCTextField
-                type="text"
-                value={directoryFormData.email}
-                onChange={(e) =>
-                  setDirectoryFormData({
-                    ...directoryFormData,
-                    email: e.target.value,
-                  })
-                }
-              />
-            </Box>
-            <Box>
-              <FieldLabel>Unique ID</FieldLabel>
-              <HCTextField
-                type="text"
-                value={directoryFormData.uniqueId}
-                onChange={(e) =>
-                  setDirectoryFormData({
-                    ...directoryFormData,
-                    uniqueId: e.target.value,
-                  })
-                }
-              />
-            </Box>
-            <Box>
-              <FieldLabel>User Groups</FieldLabel>
-              <HCTextField
-                type="text"
-                value={directoryFormData.userGroups}
-                onChange={(e) =>
-                  setDirectoryFormData({
-                    ...directoryFormData,
-                    userGroups: e.target.value,
-                  })
-                }
-              />
-            </Box>
-          </Box>
-        </>
-      )}
+              <div>
+                <Label className="font-bold">
+                  Sync interval (in min)<span className="text-red-500">*</span>
+                </Label>
+                <TextField
+                  value={formData.syncInterval}
+                  onChange={(e) =>
+                    setFormData({ ...formData, syncInterval: e.target.value })
+                  }
+                />
+              </div>
 
-      {activeDirectoryTab === "group" && (
-        <>
-          <Subtitle>
-            Group Schema
-            <InfoIconText>ⓘ</InfoIconText>
-          </Subtitle>
+              <div>
+                <Label className="font-bold">
+                  Search timeout (in sec)<span className="text-red-500">*</span>
+                </Label>
+                <TextField
+                  value={formData.searchTimeout}
+                  onChange={(e) =>
+                    setFormData({ ...formData, searchTimeout: e.target.value })
+                  }
+                />
+              </div>
+            </div>
 
-          <Box
-            sx={{
-              display: "grid",
-              gridTemplateColumns: "1fr 1fr",
-              gap: "20px",
-            }}
-          >
-            <Box>
-              <FieldLabel>Group Object</FieldLabel>
-              <HCTextField
-                type="text"
-                value={directoryFormData.groupObject}
-                onChange={(e) =>
-                  setDirectoryFormData({
-                    ...directoryFormData,
-                    groupObject: e.target.value,
-                  })
-                }
-              />
-            </Box>
-            <Box>
-              <FieldLabel>Group Filter</FieldLabel>
-              <HCTextField
-                type="text"
-                value={directoryFormData.groupFilter}
-                onChange={(e) =>
-                  setDirectoryFormData({
-                    ...directoryFormData,
-                    groupFilter: e.target.value,
-                  })
-                }
-              />
-            </Box>
-            <Box
-              sx={{
-                display: "flex",
-                alignItems: "center",
-                gridColumn: "1 / span 2",
-              }}
-            >
-              <FormControlLabel
-                control={
-                  <Checkbox
-                    name="fetchRecursively"
-                    checked={directoryFormData.fetchRecursively}
-                    onChange={(e) =>
-                      setDirectoryFormData({
-                        ...directoryFormData,
-                        fetchRecursively: e.target.checked,
-                      })
-                    }
-                  />
-                }
-                label="Fetch group members recursively"
-              />
-            </Box>
-          </Box>
+            <div className="flex items-center gap-2 mt-6">
+              <h3 className="text-lg font-semibold">LDAP Schema</h3>
+              <Info className="w-4 h-4 text-gray-500" />
+            </div>
 
-          <Subtitle>
-            Group Schema
-            <InfoIconText>ⓘ</InfoIconText>
-          </Subtitle>
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <Label className="font-bold">
+                  Base DN<span className="text-red-500">*</span>
+                </Label>
+                <TextField
+                  value={formData.baseDN}
+                  onChange={(e) =>
+                    setFormData({ ...formData, baseDN: e.target.value })
+                  }
+                />
+              </div>
 
-          <Box
-            sx={{
-              display: "grid",
-              gridTemplateColumns: "1fr 1fr",
-              gap: "20px",
-            }}
-          >
-            <Box>
-              <FieldLabel>Unique ID</FieldLabel>
-              <HCTextField
-                type="text"
-                value={directoryFormData.groupUniqueId}
-                onChange={(e) =>
-                  setDirectoryFormData({
-                    ...directoryFormData,
-                    groupUniqueId: e.target.value,
-                  })
-                }
-              />
-            </Box>
-            <Box>
-              <FieldLabel>Name</FieldLabel>
-              <HCTextField
-                type="text"
-                value={directoryFormData.groupName}
-                onChange={(e) =>
-                  setDirectoryFormData({
-                    ...directoryFormData,
-                    groupName: e.target.value,
-                  })
-                }
-              />
-            </Box>
-            <Box>
-              <FieldLabel>Description</FieldLabel>
-              <HCTextField
-                type="text"
-                value={directoryFormData.groupDescription}
-                onChange={(e) =>
-                  setDirectoryFormData({
-                    ...directoryFormData,
-                    groupDescription: e.target.value,
-                  })
-                }
-              />
-            </Box>
-            <Box>
-              <FieldLabel>Members</FieldLabel>
-              <HCTextField
-                type="text"
-                value={directoryFormData.groupMembers}
-                onChange={(e) =>
-                  setDirectoryFormData({
-                    ...directoryFormData,
-                    groupMembers: e.target.value,
-                  })
-                }
-              />
-            </Box>
-          </Box>
-        </>
-      )}
+              <div>
+                <Label className="font-bold">User DN (optional)</Label>
+                <TextField
+                  value={formData.userDN}
+                  onChange={(e) =>
+                    setFormData({ ...formData, userDN: e.target.value })
+                  }
+                />
+              </div>
 
-      <ButtonContainer>
-        <HCButton
-          sx={{ mt: 2 }}
-          hcVariant="secondary"
-          size="large"
-          text="BACK"
-          onClick={onBack}
-        />
-        <HCButton
-          sx={{
-            mt: 2,
-            background: "#e66334",
-            ":hover": { background: "#FF8234" },
-          }}
-          hcVariant="primary"
-          size="large"
-          text="SAVE"
-          onClick={handleSaveDirectoryConfig}
-        />
-      </ButtonContainer>
-    </>
+              <div>
+                <Label className="font-bold">Group DN (optional)</Label>
+                <TextField
+                  value={formData.groupDN}
+                  onChange={(e) =>
+                    setFormData({ ...formData, groupDN: e.target.value })
+                  }
+                />
+              </div>
+
+              <div className="flex items-center space-x-2">
+                <Checkbox
+                  id="sslConnection"
+                  checked={formData.sslConnection}
+                  onCheckedChange={(checked) =>
+                    setFormData({
+                      ...formData,
+                      sslConnection: checked as boolean,
+                    })
+                  }
+                />
+                <Label htmlFor="sslConnection">SSL Connection?</Label>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {activeTab === "user" && (
+          <div className="space-y-6">
+            <div className="flex items-center gap-2">
+              <h3 className="text-lg font-semibold">User Schema</h3>
+              <Info className="w-4 h-4 text-gray-500" />
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <Label className="font-bold">
+                  User Object<span className="text-red-500">*</span>
+                </Label>
+                <TextField
+                  value={formData.userObject}
+                  onChange={(e) =>
+                    setFormData({ ...formData, userObject: e.target.value })
+                  }
+                />
+              </div>
+
+              <div>
+                <Label className="font-bold">
+                  User Filter<span className="text-red-500">*</span>
+                </Label>
+                <TextField
+                  value={formData.userFilter}
+                  onChange={(e) =>
+                    setFormData({ ...formData, userFilter: e.target.value })
+                  }
+                />
+              </div>
+            </div>
+
+            <div className="flex items-center gap-2 mt-6">
+              <h3 className="text-lg font-semibold">User Schema Attributes</h3>
+              <Info className="w-4 h-4 text-gray-500" />
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <Label className="font-bold">
+                  User Name<span className="text-red-500">*</span>
+                </Label>
+                <TextField
+                  value={formData.userName}
+                  onChange={(e) =>
+                    setFormData({ ...formData, userName: e.target.value })
+                  }
+                />
+              </div>
+
+              <div>
+                <Label className="font-bold">
+                  User Object RDN<span className="text-red-500">*</span>
+                </Label>
+                <TextField
+                  value={formData.userObjectRDN}
+                  onChange={(e) =>
+                    setFormData({ ...formData, userObjectRDN: e.target.value })
+                  }
+                />
+              </div>
+
+              <div>
+                <Label className="font-bold">
+                  First Name<span className="text-red-500">*</span>
+                </Label>
+                <TextField
+                  value={formData.firstName}
+                  onChange={(e) =>
+                    setFormData({ ...formData, firstName: e.target.value })
+                  }
+                />
+              </div>
+
+              <div>
+                <Label className="font-bold">
+                  Last Name<span className="text-red-500">*</span>
+                </Label>
+                <TextField
+                  value={formData.lastName}
+                  onChange={(e) =>
+                    setFormData({ ...formData, lastName: e.target.value })
+                  }
+                />
+              </div>
+
+              <div>
+                <Label className="font-bold">
+                  Display Name<span className="text-red-500">*</span>
+                </Label>
+                <TextField
+                  value={formData.displayName}
+                  onChange={(e) =>
+                    setFormData({ ...formData, displayName: e.target.value })
+                  }
+                />
+              </div>
+
+              <div>
+                <Label className="font-bold">
+                  Principal Name<span className="text-red-500">*</span>
+                </Label>
+                <TextField
+                  value={formData.principalName}
+                  onChange={(e) =>
+                    setFormData({ ...formData, principalName: e.target.value })
+                  }
+                />
+              </div>
+
+              <div>
+                <Label className="font-bold">
+                  Email<span className="text-red-500">*</span>
+                </Label>
+                <TextField
+                  value={formData.email}
+                  onChange={(e) =>
+                    setFormData({ ...formData, email: e.target.value })
+                  }
+                />
+              </div>
+
+              <div>
+                <Label className="font-bold">
+                  Unique ID<span className="text-red-500">*</span>
+                </Label>
+                <TextField
+                  value={formData.uniqueId}
+                  onChange={(e) =>
+                    setFormData({ ...formData, uniqueId: e.target.value })
+                  }
+                />
+              </div>
+
+              <div>
+                <Label className="font-bold">
+                  User Groups<span className="text-red-500">*</span>
+                </Label>
+                <TextField
+                  value={formData.userGroups}
+                  onChange={(e) =>
+                    setFormData({ ...formData, userGroups: e.target.value })
+                  }
+                />
+              </div>
+            </div>
+          </div>
+        )}
+
+        {activeTab === "group" && (
+          <div className="space-y-6">
+            <div className="flex items-center gap-2">
+              <h3 className="text-lg font-semibold">Group Schema</h3>
+              <Info className="w-4 h-4 text-gray-500" />
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <Label className="font-bold">
+                  Group Object<span className="text-red-500">*</span>
+                </Label>
+                <TextField
+                  value={formData.groupObject}
+                  onChange={(e) =>
+                    setFormData({ ...formData, groupObject: e.target.value })
+                  }
+                />
+              </div>
+
+              <div>
+                <Label className="font-bold">
+                  Group Filter<span className="text-red-500">*</span>
+                </Label>
+                <TextField
+                  value={formData.groupFilter}
+                  onChange={(e) =>
+                    setFormData({ ...formData, groupFilter: e.target.value })
+                  }
+                />
+              </div>
+
+              <div className="col-span-2 flex items-center space-x-2">
+                <Checkbox
+                  id="fetchRecursively"
+                  checked={formData.fetchRecursively}
+                  onCheckedChange={(checked) =>
+                    setFormData({
+                      ...formData,
+                      fetchRecursively: checked as boolean,
+                    })
+                  }
+                />
+                <Label htmlFor="fetchRecursively">
+                  Fetch group members recursively
+                </Label>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-2 mt-6">
+              <h3 className="text-lg font-semibold">Group Schema Attributes</h3>
+              <Info className="w-4 h-4 text-gray-500" />
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <Label className="font-bold">
+                  Unique ID<span className="text-red-500">*</span>
+                </Label>
+                <TextField
+                  value={formData.groupUniqueId}
+                  onChange={(e) =>
+                    setFormData({ ...formData, groupUniqueId: e.target.value })
+                  }
+                />
+              </div>
+
+              <div>
+                <Label className="font-bold">
+                  Name<span className="text-red-500">*</span>
+                </Label>
+                <TextField
+                  value={formData.groupName}
+                  onChange={(e) =>
+                    setFormData({ ...formData, groupName: e.target.value })
+                  }
+                />
+              </div>
+
+              <div>
+                <Label className="font-bold">
+                  Description<span className="text-red-500">*</span>
+                </Label>
+                <TextField
+                  value={formData.groupDescription}
+                  onChange={(e) =>
+                    setFormData({
+                      ...formData,
+                      groupDescription: e.target.value,
+                    })
+                  }
+                />
+              </div>
+
+              <div>
+                <Label className="font-bold">
+                  Members<span className="text-red-500">*</span>
+                </Label>
+                <TextField
+                  value={formData.groupMembers}
+                  onChange={(e) =>
+                    setFormData({ ...formData, groupMembers: e.target.value })
+                  }
+                />
+              </div>
+            </div>
+          </div>
+        )}
+      </Card>
+
+      <div className="flex justify-center gap-5 mt-8">
+        <Button variant="outline" size="lg" onClick={onBack}>
+          BACK
+        </Button>
+        <Button
+          size="lg"
+          onClick={handleSave}
+          className="bg-[#e66334] hover:bg-[#FF8234]"
+        >
+          SAVE
+        </Button>
+      </div>
+    </div>
   );
 };
 

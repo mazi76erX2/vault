@@ -1,25 +1,29 @@
-import React from 'react';
-import {DancingBotGridComponentMiddle} from '../components/DancingBotGridComponentMiddle';
-import {styled} from '@mui/material';
-import {drawerWidth} from '../utils';
-import {HeaderContainer, MiddleText} from '../components';
+import React from "react";
+import { DancingBot } from "@/components/media/dancing-bot";
 
-const Container = styled('div')({
-    display: 'grid',
-    gridTemplateColumns: `${drawerWidth}px 1fr`,
-    padding: '20px',
-});
+const DRAWER_WIDTH = 240;
 
-const MaintenancePage = () => {
-    return (
-        <Container>
-            <DancingBotGridComponentMiddle botState={'thinking'}>
-                <HeaderContainer>
-                    <MiddleText>Oops! <br /> Under Maintenance</MiddleText>
-                </HeaderContainer>
-            </DancingBotGridComponentMiddle>
-        </Container>
-    );
+const MaintenancePage: React.FC = () => {
+  return (
+    <div
+      className="grid gap-5 p-5"
+      style={{
+        gridTemplateColumns: `${DRAWER_WIDTH}px 1fr`,
+      }}
+    >
+      <div className="flex justify-center items-center">
+        <DancingBot state="thinking" className="w-[600px] h-[600px]" />
+      </div>
+
+      <div className="flex justify-center items-center">
+        <h1 className="text-4xl font-bold text-center">
+          Oops!
+          <br />
+          Under Maintenance
+        </h1>
+      </div>
+    </div>
+  );
 };
 
 export default MaintenancePage;

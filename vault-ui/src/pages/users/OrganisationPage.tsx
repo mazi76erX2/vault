@@ -1,54 +1,37 @@
-import React from 'react';
-import {HCButton} from 'generic-components';
-import { Link } from 'react-router-dom';
-import {styled} from '@mui/material';
-import {drawerWidth} from '../../utils';
+import React from "react";
+import { Link } from "react-router-dom";
+import { Button } from "@/components/ui/button";
 
-const Container = styled('div')({
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-    padding: '20px',
-    position: 'relative',
-    flexWrap: 'wrap',
-    marginLeft: `-${drawerWidth}px`,
-    width: `calc(100% + ${drawerWidth}px)`,
-    '@media (max-width: 1279px)': {
-        justifyContent: 'center',
-        flexWrap: 'wrap',
-    },
-});
+const DRAWER_WIDTH = 240;
 
-const ButtonContainer = styled('div')({
-    display: 'flex',
-    flexDirection: 'column',
-    gap: '20px',
-    justifyContent: 'center',
-    alignItems: 'center',
-});
+const OrganisationPage: React.FC = () => {
+  return (
+    <div
+      className="flex items-center justify-center p-5 flex-col gap-5"
+      style={{
+        marginLeft: `-${DRAWER_WIDTH}px`,
+        width: `calc(100% + ${DRAWER_WIDTH}px)`,
+      }}
+    >
+      <Link to="/users/OrganisationDetailsPage">
+        <Button
+          className="w-[220px] h-[50px] text-center text-base font-bold mt-2 bg-[#e66334] hover:bg-[#FF8234]"
+          size="sm"
+        >
+          ORGANISATION DETAILS
+        </Button>
+      </Link>
 
-const Button = styled(HCButton)({
-    width: '220px', // Set a fixed width for uniformity
-    height: '50px', // Set a fixed height for uniformity
-    textAlign: 'center', // Ensure text is centered
-    fontSize: '16px', // Standardized text size
-    fontWeight: 'bold', // Make text bold
-});
-
-function OrganisationPage() {
-    return (
-        <Container>
-            {/* Buttons Section */}
-            <ButtonContainer>
-                <Link to="/users/OrganisationDetailsPage">
-                    <Button sx={{mt: 2, background: '#e66334', ':hover': { background: '#FF8234' }}} hcVariant="primary" size="small" text="ORGANISATION DETAILS" />
-                </Link>
-                <Link to="/users/UserManagementPage">
-                    <Button sx={{mt: 2, background: '#e66334', ':hover': { background: '#FF8234' }}} hcVariant="primary" size="small" text="USER MANAGEMENT" />
-                </Link>
-            </ButtonContainer>
-        </Container>
-    );
-}
+      <Link to="/users/UserManagementPage">
+        <Button
+          className="w-[220px] h-[50px] text-center text-base font-bold mt-2 bg-[#e66334] hover:bg-[#FF8234]"
+          size="sm"
+        >
+          USER MANAGEMENT
+        </Button>
+      </Link>
+    </div>
+  );
+};
 
 export default OrganisationPage;

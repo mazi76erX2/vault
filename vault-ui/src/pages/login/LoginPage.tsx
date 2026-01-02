@@ -1,76 +1,44 @@
-// LoginPage.tsx
-
 import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import {
-  ThemeProvider,
-  Box,
-  Typography,
-  useTheme,
-  useMediaQuery,
-} from "@mui/material";
-import {
-  HCButton,
-  HCTextField,
-  error,
-  success,
-  HCIcon,
-  HCLoader,
-} from "generic-components";
-import Map from "../../assets/truechart_map.png";
-import Logo from "../../assets/_VAULT_LOGO_ORANGE_NEW.svg";
-import { PasswordInput } from "../../components/PasswordInput/PasswordInput";
-import { useAuthContext } from "../../hooks/useAuthContext";
-import Api from "../../services/Instance";
+import { Button } from "@/components/ui/button";
+import { TextField } from "@/components/forms/text-field";
+import { Loader } from "@/components/feedback/loader";
+import { toast } from "sonner";
+import { useAuthContext } from "@/hooks/useAuthContext";
+import Api from "@/services/Instance";
 import { AxiosError } from "axios";
-import { LoginRequestDTO } from "../../types/LoginResponseDTO";
+import Logo from "@/assets/VAULT_LOGO_ORANGE_NEW.svg";
+import Map from "@/assets/truechart_map.png";
+import { User, Lock } from "lucide-react";
 
 function LoginPage() {
-  const theme = useTheme();
-  const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
   const navigate = useNavigate();
-
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-
   const authContext = useAuthContext();
 
-  // Handle case where context might be undefined during initial renders or if not wrapped properly
   if (!authContext) {
-    // Optional: Render a loader or a specific message, or null
-    return <HCLoader />; // Or return a more specific loading/error component
+    return <Loader />;
   }
 
-  const { login: contextLogin, isLoadingUser, user } = authContext;
+  const { contextLogin, isLoadingUser, user } = authContext;
 
   const onLogin = async () => {
     if (!email || !password) {
-      error({ message: "Login details are required." });
+      toast.error("Login details are required.");
       return;
     }
 
     try {
-      console.log("Login attempt starting...");
-      console.log(
-        "API URL:",
-        process.env.NODE_ENV === "development"
-          ? "Check config.ts"
-          : "Production mode"
-      );
-
-      const loginData: LoginRequestDTO = { email, password };
-      console.log("Calling contextLogin...");
+      const loginData = { email, password };
       await contextLogin(loginData);
-      console.log("contextLogin completed");
 
-      // Use user data from context after login, which should be updated by the login process
-      console.log("Checking user from context:", user);
       if (user && user.user && user.user.id) {
-        console.log("User found in context, proceeding with first-login check");
         try {
           const response = await Api.post("/api/auth/check-first-login", {
-            user_id: user.user.id,
+            userid: user.user.id,
           });
+
           if (response.data.require_password_change) {
             navigate("/password-reset");
             return;
@@ -80,66 +48,18 @@ function LoginPage() {
             "First-login check failed, proceeding to dashboard",
             err
           );
-          if (!(err instanceof AxiosError && err.response?.status === 401)) {
-            // Handle other errors if needed
-          }
         }
-        success({ message: "Login successful." });
-        window.location.href = "/dashboard";
-      } else {
-        // If context user is still not available after login, wait a bit and try getCurrentUser
-        console.log(
-          "User not found in context, waiting and checking localStorage..."
-        );
-        await new Promise((resolve) => setTimeout(resolve, 200));
-        const currentUser = (
-          await import("../../services/auth/Auth.service")
-        ).getCurrentUser();
 
-        console.log("User from localStorage:", currentUser);
-        if (currentUser && currentUser.user && currentUser.user.id) {
-          console.log(
-            "User found in localStorage, proceeding with first-login check"
-          );
-          try {
-            const response = await Api.post("/api/auth/check-first-login", {
-              user_id: currentUser.user.id,
-            });
-            if (response.data.require_password_change) {
-              navigate("/password-reset");
-              return;
-            }
-          } catch (err) {
-            console.warn(
-              "First-login check failed, proceeding to dashboard",
-              err
-            );
-            if (!(err instanceof AxiosError && err.response?.status === 401)) {
-              // Handle other errors if needed
-            }
-          }
-          success({ message: "Login successful." });
-          window.location.href = "/dashboard";
-        } else {
-          console.error(
-            "No user data found anywhere. Context user:",
-            user,
-            "localStorage user:",
-            currentUser
-          );
-          error({
-            message:
-              "Login process completed, but user data not found. Please try again.",
-          });
-        }
+        toast.success("Login successful.");
+        window.location.href = "/dashboard";
       }
-    } catch (err) {
-      console.error("Login error occurred:", err);
+    } catch (err: unknown) {
+      console.error("Login error occurred", err);
       const errorMessage =
         err instanceof Error
           ? err.message
           : "Failed to sign in. Please check your credentials.";
-      error({ message: errorMessage });
+      toast.error(errorMessage);
     }
   };
 
@@ -153,117 +73,64 @@ function LoginPage() {
     return () => {
       document.removeEventListener("keydown", listener);
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [email, password, contextLogin]); // Added contextLogin to dependencies
+  }, [email, password]);
 
   return (
-    <ThemeProvider theme={theme}>
-      <Box
-        sx={{
-          display: "grid",
-          gridTemplateColumns: isMobile ? "100%" : "44% 56%",
-          height: "100vh",
-        }}
-      >
-        <Box
-          sx={{
-            background: "gray",
-            height: "100vh",
-            display: "flex",
-            flexDirection: "column",
-            justifyContent: "center",
-            p: 10,
-            [theme.breakpoints.down("md")]: { p: 2 },
-            [theme.breakpoints.down("lg")]: { p: 4 },
-          }}
+    <div className="grid grid-cols-1 md:grid-cols-[44%_56%] h-screen">
+      <div className="bg-gray-800 h-screen flex flex-col justify-center p-10 md:p-4 lg:p-10">
+        <div className="flex justify-center mb-8">
+          <img src={Logo} alt="Logo" className="w-[400px]" />
+        </div>
+
+        <h1 className="text-white text-2xl md:text-[25px] text-center mb-14 font-bold -mt-4">
+          MANAGEMENT CONSOLE
+        </h1>
+
+        <h2 className="text-white text-2xl md:text-[25px] mb-8 font-bold">
+          LOGIN
+        </h2>
+
+        <TextField
+          id="email"
+          type="text"
+          label="EMAIL"
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
+          className="mb-6 bg-transparent text-white"
+          startIcon={<User className="w-5 h-5" />}
+        />
+
+        <TextField
+          id="password"
+          type="password"
+          label="PASSWORD"
+          value={password}
+          onChange={(e) => setPassword(e.target.value)}
+          className="mb-6 bg-transparent text-white"
+          startIcon={<Lock className="w-5 h-5" />}
+        />
+
+        <Button
+          className="mt-2 bg-[#e66334] hover:bg-[#FF8234]"
+          onClick={onLogin}
+          disabled={isLoadingUser}
+          size="sm"
         >
-          <Box style={{ display: "flex", justifyContent: "center" }}>
-            <img style={{ width: 400 }} src={Logo} alt={""} />
-          </Box>
-          <Typography
-            sx={{
-              color: "#fff",
-              fontSize: isMobile ? 24 : 25,
-              marginTop: "-16px",
-              textAlign: "center",
-              mb: "56.4px",
-              fontWeight: "bold",
-            }}
-          >
-            MANAGEMENT CONSOLE
-          </Typography>
-          <Typography
-            sx={{
-              color: "#fff",
-              fontSize: isMobile ? 24 : 25,
-              mb: "32px",
-              fontWeight: "bold",
-            }}
-          >
-            LOGIN
-          </Typography>
+          Login
+        </Button>
 
-          <HCTextField
-            id="email"
-            type="text"
-            label="EMAIL"
-            value={email}
-            textColor="#fff"
-            inputProps={{ startAdornment: <HCIcon icon="Profile" /> }}
-            formControlSx={{ mb: "24px" }}
-            onChange={(e) => setEmail(e.target.value)}
-          />
+        <span
+          className="mt-2.5 text-white cursor-pointer"
+          onClick={() => navigate("/password-reset")}
+        >
+          Forgot Password?
+        </span>
+      </div>
 
-          <PasswordInput
-            id="password"
-            type="text"
-            label="PASSWORD"
-            value={password}
-            textColor="#fff"
-            inputProps={{ startAdornment: <HCIcon icon="Lock" /> }}
-            formControlSx={{ mb: "24px" }}
-            onChange={(e) => setPassword(e.target.value)}
-          />
-
-          <HCButton
-            sx={{
-              mt: 2,
-              background: "#e66334",
-              ":hover": { background: "#FF8234" },
-            }}
-            text="Login"
-            hcVariant="primary"
-            size="small"
-            onClick={onLogin}
-            disabled={isLoadingUser}
-          />
-
-          <span
-            style={{
-              marginTop: "10px",
-              color: "#FFF",
-              cursor: "pointer",
-            }}
-            onClick={() => navigate("/password-reset")}
-          >
-            Forgot Password?
-          </span>
-        </Box>
-        {!isMobile && (
-          <Box sx={{ height: "100vh" }}>
-            <img
-              style={{
-                width: "100%",
-                height: "100%",
-                objectFit: "cover",
-              }}
-              src={Map}
-              alt="Map"
-            />
-          </Box>
-        )}
-      </Box>
-    </ThemeProvider>
+      <div className="hidden md:block h-screen">
+        <img src={Map} alt="Map" className="w-full h-full object-cover" />
+      </div>
+    </div>
   );
 }
 

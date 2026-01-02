@@ -1,52 +1,34 @@
-import * as React from 'react';
-import Lottie from 'lottie-react';
-import { cn } from '@/lib/utils';
+import * as React from "react";
+import { DotLottieReact } from "@lottiefiles/dotlottie-react";
+import { cn } from "@/lib/utils";
+import { HCDancingBotMap, HCDancingBotState } from "./dancing-bot.constants";
 
-export interface DancingBotProps {
-  animationData?: any;
-  loop?: boolean;
-  autoplay?: boolean;
-  className?: string;
-  size?: 'sm' | 'md' | 'lg' | 'xl';
+export interface DancingBotProps extends React.HTMLAttributes<HTMLDivElement> {
+  state?: HCDancingBotState;
+  speed?: number;
 }
 
-const sizeMap = {
-  sm: 'w-24 h-24',
-  md: 'w-32 h-32',
-  lg: 'w-48 h-48',
-  xl: 'w-64 h-64',
-};
-
 export const DancingBot: React.FC<DancingBotProps> = ({
-  animationData,
-  loop = true,
-  autoplay = true,
+  state = "default",
+  speed = 0.5,
   className,
-  size = 'md',
+  ...props
 }) => {
-  // Default loading animation if no animation data provided
-  const defaultAnimation = {
-    v: '5.5.7',
-    fr: 30,
-    ip: 0,
-    op: 60,
-    w: 200,
-    h: 200,
-    nm: 'Loading',
-    ddd: 0,
-    assets: [],
-    layers: [],
-  };
+  const lottieSrc = React.useMemo(() => {
+    return HCDancingBotMap[state] ?? HCDancingBotMap.default;
+  }, [state]);
 
   return (
-    <div className={cn('flex items-center justify-center', sizeMap[size], className)}>
-      <Lottie
-        animationData={animationData || defaultAnimation}
-        loop={loop}
-        autoplay={autoplay}
+    <div className={cn("w-full h-full", className)} {...props}>
+      <DotLottieReact
+        src={`data:application/json;base64,${lottieSrc}`}
+        loop
+        autoplay
+        speed={speed}
+        style={{ width: "100%", height: "100%" }}
       />
     </div>
   );
 };
 
-DancingBot.displayName = 'DancingBot';
+DancingBot.displayName = "DancingBot";

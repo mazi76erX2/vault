@@ -1,196 +1,161 @@
-import {ThemeProvider} from '@mui/material/styles';
-import {
-    Box, Typography,
-    useTheme, useMediaQuery
-} from '@mui/material';
-import {useEffect, useState} from 'react';
-import {useNavigate} from 'react-router-dom';
-import React from 'react';
-import {HCButton, HCTextField, error} from 'generic-components';
-import {HCIcon} from 'generic-components/src/HCIcon';
-import Map from '../../assets/truechart_map.png';
-import Logo from '../../assets/tclogo.svg';
-import {PasswordInput} from '../../components/PasswordInput/PasswordInput';
+import React, { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
+import { Button } from "@/components/ui/button";
+import { TextField } from "@/components/forms/text-field";
+import { toast } from "sonner";
+import axios from "axios";
+import Logo from "@/assets/VAULT_LOGO_ORANGE_NEW.svg";
+import Map from "@/assets/truechart_map.png";
+import { User, Lock } from "lucide-react";
 
 function PasswordResetPage() {
-    const theme = useTheme();
-    const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
-    const navigate = useNavigate();
-    const [email, setEmail] = useState('');
-    const [password, setPassword] = useState('');
-    const [isOnResetRequest, setIsOnResetRequest] = useState(true);
-    const [passwordConfirmation, setPasswordConfirmation] = useState('');
-    const [buttonText , setButtonText] = useState('REQUEST PASSWORD RESET');
-    const [queryKey, setQueryKey] = useState('');
-    const [loading, setLoading] = useState(false);
+  const navigate = useNavigate();
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [passwordConfirmation, setPasswordConfirmation] = useState("");
+  const [isOnResetRequest, setIsOnResetRequest] = useState(true);
+  const [buttonText, setButtonText] = useState("REQUEST PASSWORD RESET");
+  const [queryKey, setQueryKey] = useState("");
+  const [loading, setLoading] = useState(false);
 
-    const onSubmit = async () => {
-        if (!email) return  error({message: 'Email is required'});
-        if(!isOnResetRequest){
-            if(password.length < 8) return  error({message: 'Enter at least 8 characters'});
-            if(password !== passwordConfirmation) return  error({message: 'The passwords do not match'});
-        }
-        setLoading(true);
-        if(isOnResetRequest){
-            // const response = await sendPasswordResetLink(email);
-            // buildMessages(response);
-        }
-        else if(!isOnResetRequest){
-            // const response = await saveNewPassword(email,queryKey,password,passwordConfirmation);
-            // buildMessages(response);
-        }
-    };
+  const handleResetRequest = async () => {
+    if (!email) {
+      toast.error("Email is required");
+      return;
+    }
 
-    useEffect(() => {
-        const listener = (event: KeyboardEvent) => {
-            if (event.code === 'Enter' ||  event.code === 'NumpadEnter') {
-                onSubmit();
-            }
-        };
-        document.addEventListener('keydown', listener);
-        return () => {
-            document.removeEventListener('keydown', listener);
-        };
-    });
+    setLoading(true);
+    try {
+      await axios.post("/api/auth/password-reset-request", { email });
+      toast.success("Password reset link sent to your email");
+    } catch (error) {
+      toast.error("Failed to send password reset link");
+    } finally {
+      setLoading(false);
+    }
+  };
 
-    useEffect(() => {
-        const searchParams = new URLSearchParams(window.location.search);
-        const key = searchParams.get('key');
-        const emailValue = searchParams.get('email');
+  const handlePasswordUpdate = async () => {
+    if (!email || !password || !passwordConfirmation) {
+      toast.error("All fields are required");
+      return;
+    }
 
-        if (key && emailValue) {
-            setIsOnResetRequest(false);
-            setButtonText('UPDATE PASSWORD');
-            setQueryKey(key);
-            setEmail(emailValue);
-        }else{
-            setIsOnResetRequest(true);
-            setButtonText('REQUEST PASSWORD RESET');
-        }
-    }, []);
+    if (password.length < 8) {
+      toast.error("Password must be at least 8 characters");
+      return;
+    }
 
-    return (
-        <ThemeProvider theme={theme}>
-            <Box sx={{
-                display: 'grid',
-                gridTemplateColumns: isMobile ? '100%' : '44% 56%',
-                height: '100vh'
-            }}>
-                <Box sx={{
-                    background: 'gray',
-                    height: '100vh',
-                    display: 'flex',
-                    flexDirection: 'column',
-                    justifyContent: 'center',
-                    p: 10,
-                    [theme.breakpoints.down('md')]: {
-                        p: 2,
-                    },
-                    [theme.breakpoints.down('lg')]: {
-                        p: 4,
-                    },
-                }}>
-                    <Box style={{
-                        display: 'flex',
-                        justifyContent: 'center',
-                    }}>
-                        <img style={{
-                            width: 400,
-                        }} src={Logo} alt={''}/>
-                    </Box>
-                    <Typography sx={{
-                        color: '#fff',
-                        fontSize: isMobile ? 24 : 25,
-                        marginTop: '-16px',
-                        textAlign: 'center',
-                        mb: '56.4px',
-                        fontWeight: 'bold',
-                    }}>MANAGEMENT CONSOLE</Typography>
-                    <Typography sx={{
-                        color: '#fff',
-                        fontSize: isMobile ? 24 : 25,
-                        mb: '32px',
-                        fontWeight: 'bold',
-                    }}>PASSWORD RESET</Typography>
+    if (password !== passwordConfirmation) {
+      toast.error("Passwords do not match");
+      return;
+    }
 
-                    <HCTextField
-                        id={'email'}
-                        type={'text'}
-                        label={'EMAIL'}
-                        value={email}
-                        textColor={'#fff'}
-                        inputProps={{
-                            startAdornment: <HCIcon icon={'Profile'}/>
-                        }}
-                        formControlSx={{
-                            mb: '24px'
-                        }}
-                        onChange={(e) => setEmail(e.target.value)}
-                    />
-                    {
-                        queryKey.length > 10 && (<>
-                            <PasswordInput
-                                id={'password'}
-                                type={'text'}
-                                label={'PASSWORD'}
-                                value={password}
-                                textColor={'#fff'}
-                                inputProps={{
-                                    startAdornment: <HCIcon icon={'Lock'}/>,
-                                }}
-                                formControlSx={{
-                                    mb: '24px'
-                                }}
-                                onChange={(e) => setPassword(e.target.value)}
-                            />
-                            <PasswordInput
-                                id={'password'}
-                                type={'text'}
-                                label={'CONFIRM PASSWORD'}
-                                value={passwordConfirmation}
-                                textColor={'#fff'}
-                                inputProps={{
-                                    startAdornment: <HCIcon icon={'Lock'}/>,
-                                }}
-                                formControlSx={{
-                                    mb: '24px'
-                                }}
-                                onChange={(e) => setPasswordConfirmation(e.target.value)}
-                            />
-                        </>)
-                    }
-                    <HCButton
-                        disabled={loading}
-                        sx={{mt: 2}}
-                        text={loading ? 'PLEASE WAIT' : buttonText}
-                        hcVariant={'primary'}
-                        size={'small'}
-                        onClick={onSubmit}/>
-                    <span
-                        style={{
-                            marginTop: '10px',
-                            color: '#FFF',
-                            cursor: 'pointer'
-                        }}
-                        onClick={() => navigate('/login')}
-                    >
-                        Back to Login
-                    </span>
-                </Box>
-                {!isMobile && (
-                    <Box sx={{
-                        height: '100vh'
-                    }}>
-                        <img style={{
-                            width: '100%',
-                            height: '100%',
-                            objectFit: 'cover'
-                        }} src={Map} alt={'Map'}/>
-                    </Box>
-                )}
-            </Box>
-        </ThemeProvider>
-    );
+    setLoading(true);
+    try {
+      await axios.post("/api/auth/password-reset", {
+        email,
+        key: queryKey,
+        password,
+        password_confirmation: passwordConfirmation,
+      });
+      toast.success("Password updated successfully");
+      navigate("/login");
+    } catch (error) {
+      toast.error("Failed to update password");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    const searchParams = new URLSearchParams(window.location.search);
+    const key = searchParams.get("key");
+    const emailValue = searchParams.get("email");
+
+    if (key && emailValue) {
+      setIsOnResetRequest(false);
+      setButtonText("UPDATE PASSWORD");
+      setQueryKey(key);
+      setEmail(emailValue);
+    } else {
+      setIsOnResetRequest(true);
+      setButtonText("REQUEST PASSWORD RESET");
+    }
+  }, []);
+
+  return (
+    <div className="grid grid-cols-1 md:grid-cols-[44%_56%] h-screen">
+      <div className="bg-gray-800 h-screen flex flex-col justify-center p-10 md:p-4 lg:p-10">
+        <div className="flex justify-center mb-8">
+          <img src={Logo} alt="Logo" className="w-[400px]" />
+        </div>
+
+        <h1 className="text-white text-2xl md:text-[25px] text-center mb-14 font-bold -mt-4">
+          MANAGEMENT CONSOLE
+        </h1>
+
+        <h2 className="text-white text-2xl md:text-[25px] mb-8 font-bold">
+          PASSWORD RESET
+        </h2>
+
+        <TextField
+          id="email"
+          type="text"
+          label="EMAIL"
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
+          className="mb-6 bg-transparent text-white"
+          startIcon={<User className="w-5 h-5" />}
+          disabled={!isOnResetRequest}
+        />
+
+        {!isOnResetRequest && (
+          <>
+            <TextField
+              id="password"
+              type="password"
+              label="PASSWORD"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              className="mb-6 bg-transparent text-white"
+              startIcon={<Lock className="w-5 h-5" />}
+            />
+
+            <TextField
+              id="password-confirm"
+              type="password"
+              label="CONFIRM PASSWORD"
+              value={passwordConfirmation}
+              onChange={(e) => setPasswordConfirmation(e.target.value)}
+              className="mb-6 bg-transparent text-white"
+              startIcon={<Lock className="w-5 h-5" />}
+            />
+          </>
+        )}
+
+        <Button
+          className="mt-2 bg-[#e66334] hover:bg-[#FF8234]"
+          onClick={isOnResetRequest ? handleResetRequest : handlePasswordUpdate}
+          disabled={loading}
+          size="sm"
+        >
+          {loading ? "Please wait..." : buttonText}
+        </Button>
+
+        <span
+          className="mt-2.5 text-white cursor-pointer"
+          onClick={() => navigate("/login")}
+        >
+          Back to Login
+        </span>
+      </div>
+
+      <div className="hidden md:block h-screen">
+        <img src={Map} alt="Map" className="w-full h-full object-cover" />
+      </div>
+    </div>
+  );
 }
 
 export default PasswordResetPage;

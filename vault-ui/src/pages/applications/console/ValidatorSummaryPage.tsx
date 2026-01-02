@@ -1,181 +1,163 @@
-import React, {useEffect, useState} from 'react';
-import {Button, Card, CardContent, Chip, Container, Grid, Typography} from '@mui/material';
-import {useNavigate} from 'react-router-dom';
-import axios from 'axios';
+import React, { useEffect, useState } from "react";
+import { useNavigate, useLocation } from "react-router-dom";
+import { useAuthContext } from "@/hooks/useAuthContext";
+import { DancingBot } from "@/components/media/dancing-bot";
+import { Button } from "@/components/ui/button";
+import { Loader } from "@/components/feedback/loader";
+import { Card } from "@/components/ui/card";
+import { toast } from "sonner";
+import Api from "@/services/Instance";
+import { AxiosError } from "axios";
 
-import {LoginResponseDTO} from '../../../types/LoginResponseDTO';
-import {useAuthContext} from '../../../hooks/useAuthContext';
-import {VAULT_API_URL} from '../../../config';
-import CollectorPageLayout from '../../CollectorLayoutPage';
-import {error as showError} from 'generic-components';
-
-// ------------ Types --------------------
-// Interface for the raw API response (snake_case)
-// interface StatsDataFromAPI {
-//     total_assigned: number;
-//     total_completed: number;
-//     average_review_time: number;
-// }
-
-// Interface for UI state (camelCase)
-interface StatsData {
-    totalAssigned: number;
-    totalCompleted: number;
-    averageReviewTime: number;
+interface LocationState {
+  documentId?: string;
 }
 
-// Interface for the raw API response for documents (snake_case)
-interface DocumentRowFromAPI { 
-    id: string; 
-    title: string;
-    status: string;
-    // Add other snake_case properties from API as needed
+interface SummaryData {
+  documentTitle: string;
+  author: string;
+  reviewedBy: string;
+  decision: string;
+  comments: string;
+  reviewedAt: string;
+  [key: string]: unknown;
 }
 
-// Interface for UI state for documents (camelCase)
-interface DocumentRow {
-    id: string; 
-    title: string;
-    status: string;
-    // Add other camelCase properties for UI as needed
-    [key: string]: unknown; 
-}
-
-// ------------ Component ----------------
 const ValidatorSummaryPage: React.FC = () => {
-    const authContext = useAuthContext();
-    const user = authContext?.user;
-    const navigate = useNavigate();
-    const [stats, setStats] = useState<StatsData | null>(null);
-    const [assignedDocuments, setAssignedDocuments] = useState<DocumentRow[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [summary, setSummary] = useState<SummaryData | null>(null);
+  const authContext = useAuthContext();
+  const navigate = useNavigate();
+  const location = useLocation();
+  const { documentId } = (location.state as LocationState) || {};
 
-    const fetchStats = async () => {
-        if (!user) {
-            showError('User not authenticated.');
-            return;
-        }
-        try {
-            // Fetch as a generic object, then access snake_case properties for mapping
-            const response = await axios.get<{[key: string]: number}>(`${VAULT_API_URL}/api/v1/validator/get_stats`, {
-                headers: {
-                    Authorization: `Bearer ${(user as LoginResponseDTO).token}`,
-                },
-            });
-            const apiData = response.data; // apiData will have snake_case keys from the API
-            setStats({
-                totalAssigned: apiData.total_assigned,       // Map from snake_case
-                totalCompleted: apiData.total_completed,    // Map from snake_case
-                averageReviewTime: apiData.average_review_time // Map from snake_case
-            });
-        } catch (error: unknown) {
-            console.error('Failed to fetch stats:', error);
-            let errorMessage = 'Failed to load summary statistics.';
-            if (error instanceof Error) {
-                errorMessage = error.message;
-                if (axios.isAxiosError(error) && error.response?.data && typeof error.response.data === 'object' && 'detail' in error.response.data) {
-                    const detail = (error.response.data as {detail?: string}).detail;
-                    errorMessage = detail ?? errorMessage;
-                }
-            }
-            showError(errorMessage);
-        }
-    };
+  const fetchSummary = async () => {
+    if (
+      !authContext ||
+      !authContext.user?.user?.id ||
+      !authContext.isLoggedIn
+    ) {
+      if (!authContext?.isLoadingUser) {
+        toast.error("User not authenticated or session has expired.");
+        setLoading(false);
+      }
+      return;
+    }
 
-    const fetchAssignedDocuments = async () => {
-        if (!user) {
-            showError('User not authenticated.');
-            return;
-        }
-        try {
-            const response = await axios.post<{ documents: DocumentRowFromAPI[] }>(`${VAULT_API_URL}/api/v1/validator/fetch_assigned_documents`,
-                { validator_id: (user as LoginResponseDTO).user.id }, 
-                {
-                    headers: {
-                        Authorization: `Bearer ${(user as LoginResponseDTO).token}`,
-                    },
-                }
-            );
-            setAssignedDocuments(response.data.documents.map(docFromApi => ({
-                id: docFromApi.id, 
-                title: docFromApi.title, 
-                status: docFromApi.status, 
-            }))); 
-        } catch (error: unknown) {
-            console.error('Failed to fetch assigned documents:', error);
-            let errorMessage = 'Failed to load assigned documents.';
-            if (error instanceof Error) {
-                errorMessage = error.message;
-                if (axios.isAxiosError(error) && error.response?.data && typeof error.response.data === 'object' && 'detail' in error.response.data) {
-                    const detail = (error.response.data as {detail?: string}).detail;
-                    errorMessage = detail ?? errorMessage;
-                }
-            }
-            showError(errorMessage);
-        }
-    };
+    if (!documentId) {
+      toast.error("Document ID not found.");
+      navigate("/applications/console/ValidatorStartPage");
+      return;
+    }
 
-    useEffect(() => {
-        if (user) {
-            fetchStats();
-            fetchAssignedDocuments();
-        }
-    }, [user]);
+    try {
+      setLoading(true);
+      const response = await Api.get(`/api/v1/validator/summary/${documentId}`);
+      setSummary(response.data);
+    } catch (err: unknown) {
+      console.error("Error fetching summary:", err);
+      if (!(err instanceof AxiosError && err.response?.status === 401)) {
+        toast.error(
+          err instanceof Error ? err.message : "Failed to fetch summary."
+        );
+      }
+    } finally {
+      setLoading(false);
+    }
+  };
 
-    return (
-        <CollectorPageLayout headline1='Validator Summary' headline2='Overview of your activities' showContinueButton={false}>
-            <Container maxWidth='lg' sx={{mt: 4, mb: 4}}>
-                <Grid container spacing={3}>
-                    <Grid item xs={12} md={4}>
-                        <Card>
-                            <CardContent>
-                                <Typography variant='h6'>Total Assigned</Typography>
-                                <Typography variant='h4'>{stats?.totalAssigned ?? 'Loading...'}</Typography>
-                            </CardContent>
-                        </Card>
-                    </Grid>
-                    <Grid item xs={12} md={4}>
-                        <Card>
-                            <CardContent>
-                                <Typography variant='h6'>Total Completed</Typography>
-                                <Typography variant='h4'>{stats?.totalCompleted ?? 'Loading...'}</Typography>
-                            </CardContent>
-                        </Card>
-                    </Grid>
-                    <Grid item xs={12} md={4}>
-                        <Card>
-                            <CardContent>
-                                <Typography variant='h6'>Avg. Review Time</Typography>
-                                <Typography variant='h4'>{stats?.averageReviewTime ?? 'Loading...'} (hours)</Typography>
-                            </CardContent>
-                        </Card>
-                    </Grid>
+  useEffect(() => {
+    if (authContext && !authContext.isLoadingUser && authContext.isLoggedIn) {
+      fetchSummary();
+    }
+  }, [authContext]);
 
-                    <Grid item xs={12}>
-                        <Typography variant='h5' gutterBottom sx={{ mt: 3 }}>Assigned Documents</Typography>
-                        {assignedDocuments.length > 0 ? (
-                            assignedDocuments.map((doc) => (
-                                <Card key={doc.id} sx={{ mb: 2 }}>
-                                    <CardContent>
-                                        <Typography variant='h6'>{doc.title}</Typography>
-                                        <Chip label={doc.status} size='small' sx={{mr:1}} /> 
-                                        <Button 
-                                            variant='contained' 
-                                            size='small' 
-                                            onClick={() => navigate(`/applications/console/ValidatorDocPage/${doc.id}`)}
-                                        >
-                                            Review Document
-                                        </Button>
-                                    </CardContent>
-                                </Card>
-                            ))
-                        ) : (
-                            <Typography>No documents currently assigned.</Typography>
-                        )}
-                    </Grid>
-                </Grid>
-            </Container>
-        </CollectorPageLayout>
-    );
+  return (
+    <div className="relative">
+      {loading && (
+        <div className="fixed top-0 left-0 w-full h-full bg-white/80 z-[1000] flex justify-center items-center">
+          <Loader />
+        </div>
+      )}
+
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-start">
+        <DancingBot state="greeting" className="w-full max-w-[600px] mx-auto" />
+
+        <div>
+          <div className="mb-6">
+            <h1 className="text-2xl font-bold">Review Summary</h1>
+            <p className="text-gray-600 mt-2">
+              Your review has been submitted successfully.
+            </p>
+          </div>
+
+          <Card className="bg-[#d3d3d3] p-6 shadow-md space-y-4">
+            {summary && (
+              <>
+                <div>
+                  <h3 className="text-sm font-semibold text-gray-600">
+                    Document Title
+                  </h3>
+                  <p className="text-lg">{summary.documentTitle}</p>
+                </div>
+
+                <div>
+                  <h3 className="text-sm font-semibold text-gray-600">
+                    Author
+                  </h3>
+                  <p className="text-lg">{summary.author}</p>
+                </div>
+
+                <div>
+                  <h3 className="text-sm font-semibold text-gray-600">
+                    Reviewed By
+                  </h3>
+                  <p className="text-lg">{summary.reviewedBy}</p>
+                </div>
+
+                <div>
+                  <h3 className="text-sm font-semibold text-gray-600">
+                    Decision
+                  </h3>
+                  <p className="text-lg capitalize">{summary.decision}</p>
+                </div>
+
+                {summary.comments && (
+                  <div>
+                    <h3 className="text-sm font-semibold text-gray-600">
+                      Comments
+                    </h3>
+                    <p className="text-lg">{summary.comments}</p>
+                  </div>
+                )}
+
+                <div>
+                  <h3 className="text-sm font-semibold text-gray-600">
+                    Reviewed At
+                  </h3>
+                  <p className="text-lg">
+                    {new Date(summary.reviewedAt).toLocaleString()}
+                  </p>
+                </div>
+              </>
+            )}
+          </Card>
+
+          <div className="mt-6 flex justify-end">
+            <Button
+              onClick={() =>
+                navigate("/applications/console/ValidatorStartPage")
+              }
+              className="bg-[#e66334] hover:bg-[#FF8234]"
+              size="lg"
+            >
+              Back to Documents
+            </Button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
 };
 
-export default ValidatorSummaryPage; 
+export default ValidatorSummaryPage;

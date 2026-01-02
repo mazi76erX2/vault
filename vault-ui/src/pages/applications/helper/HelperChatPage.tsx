@@ -1,512 +1,240 @@
-import React, { useEffect, useRef, useState } from 'react';
-import { useLocation } from 'react-router-dom';
-import {
-    error as showError,
-    HCContextFrameMD,
-    HCIcon,
-    HCLoader,
-    HCMarkdownView,
-    HCRadioButton,
-    HCRadioButtonGroupType,
-    HCRadioButtonOption,
-    HCTextareaAutosize,
-    success,
-} from 'generic-components';
-import { useAuthContext } from '../../../hooks/useAuthContext';
-import axios from 'axios';
-import { Box, styled } from '@mui/material';
-import assistantIcon from '../../../assets/assistant-icon.png';
-import { VAULT_API_URL } from '../../../config';
-import { LoginResponseDTO } from '../../../types/LoginResponseDTO';
+import React, { useEffect, useState, useRef } from "react";
+import { useLocation, useNavigate } from "react-router-dom";
+import { useAuthContext } from "@/hooks/useAuthContext";
+import { DancingBot } from "@/components/media/dancing-bot";
+import { TextField } from "@/components/forms/text-field";
+import { Button } from "@/components/ui/button";
+import { Loader } from "@/components/feedback/loader";
+import { toast } from "sonner";
+import Api from "@/services/Instance";
+import { AxiosError } from "axios";
+import { Send } from "lucide-react";
 
-// Define the radio button options
-const options: HCRadioButtonOption[] = [
-    { id: 'chat', label: 'Chat Frame' },
-    { id: 'context', label: 'Context Frame' },
-];
-
-// Default theme settings
-const defaultThemeSettings = {
-    userChatBubbleColor: '#007bff',
-    botChatBubbleColor: '#e5e5ea',
-    sendButtonAndBox: '#007bff',
-    font: 'Arial',
-    userChatFontColor: '#ffffff',
-    botChatFontColor: '#000000',
-    logo: '',
-    botProfilePicture: ''
-};
-
-interface ThemeSettings {
-    userChatBubbleColor: string;
-    botChatBubbleColor: string;
-    sendButtonAndBox: string;
-    font: string;
-    userChatFontColor: string;
-    botChatFontColor: string;
-    logo: string;
-    botProfilePicture: string;
+interface LocationState {
+  chatId?: string;
 }
 
-interface ThemeSettingsFromApi {
-    userChatBubbleColor: string;
-    botChatBubbleColor: string;
-    sendButtonAndBox: string;
-    font: string;
-    userChatFontColor: string;
-    botChatFontColor: string;
-    logo: string | null;
-    botProfilePicture: string | null;
+interface Message {
+  id: string;
+  role: "user" | "assistant";
+  content: string;
+  timestamp: string;
 }
-
-// Styled components
-const Container = styled('div')({
-    display: 'flex',
-    flexDirection: 'column',
-    width: '100%',
-    height: '100vh',
-    padding: '20px',
-    backgroundColor: '#f5f5f5',
-});
-
-const RadioButtonContainer = styled('div')({
-    position: 'absolute',
-    top: '10px',
-    right: '10px',
-    display: 'flex',
-    gap: '10px',
-    padding: '10px',
-    backgroundColor: '#ffffff',
-    border: '1px solid #e0e0e0',
-    borderRadius: '5px',
-    boxShadow: '0px 4px 8px rgba(0, 0, 0, 0.1)',
-    zIndex: 1000,
-});
-
-const LoaderContainer = styled(Container)({
-    position: 'fixed',
-    top: 0,
-    left: 0,
-    backgroundColor: 'rgba(255, 255, 255, 0.8)',
-    zIndex: 1000,
-    justifyContent: 'center',
-    alignItems: 'center',
-});
-
-const ChatContainer = styled('div')({
-    flex: 1,
-    overflowY: 'auto',
-    display: 'flex',
-    flexDirection: 'column',
-    gap: '10px',
-    padding: '20px',
-});
-
-// Dynamic styled components that use theme
-const UserMessage = styled('div')<{ themeSettings: ThemeSettings }>(({ themeSettings }) => ({
-    alignSelf: 'flex-end',
-    backgroundColor: themeSettings.userChatBubbleColor,
-    color: themeSettings.userChatFontColor,
-    padding: '10px',
-    borderRadius: '10px',
-    maxWidth: '70%',
-    overflowWrap: 'break-word',
-    fontFamily: themeSettings.font,
-}));
-
-const BotMessage = styled('div')<{ themeSettings: ThemeSettings }>(({ themeSettings }) => ({
-    alignSelf: 'flex-start',
-    backgroundColor: themeSettings.botChatBubbleColor,
-    color: themeSettings.botChatFontColor,
-    padding: '10px',
-    borderRadius: '10px',
-    maxWidth: '70%',
-    display: 'grid',
-    gridTemplateColumns: 'min-content 1fr',
-    gap: '8px',
-    fontFamily: themeSettings.font,
-}));
-
-const BotIcon = styled('img')({
-    width: '30px',
-    height: '30px',
-    marginRight: '10px',
-    borderRadius: '50%',
-    margin: '10px 8px'
-});
-
-// Dynamic send button styles
-const SendButton = styled(Box)<{ themeSettings: ThemeSettings }>(({ themeSettings }) => ({
-    bottom: 0,
-    display: 'flex',
-    padding: '16px 14px',
-    position: 'absolute',
-    right: 0,
-    color: themeSettings.sendButtonAndBox,
-    cursor: 'pointer',
-    '&:hover': {
-        opacity: 0.8,
-    },
-}));
 
 const HelperChatPage: React.FC = () => {
-    const location = useLocation();
-    const { isResume, ChatId } = location.state || {};
+  const [loading, setLoading] = useState(false);
+  const [messages, setMessages] = useState<Message[]>([]);
+  const [inputMessage, setInputMessage] = useState("");
+  const [chatId, setChatId] = useState<string | null>(null);
+  const messagesEndRef = useRef<HTMLDivElement>(null);
+  const authContext = useAuthContext();
+  const location = useLocation();
+  const navigate = useNavigate();
 
-    const authContext = useAuthContext();
+  const scrollToBottom = () => {
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  };
 
-    if (!authContext) {
-        return <HCLoader />; 
+  useEffect(() => {
+    const state = location.state as LocationState;
+    const id = state?.chatId;
+
+    if (id) {
+      setChatId(id);
+      fetchMessages(id);
+    } else {
+      createNewChat();
+    }
+  }, [location.state]);
+
+  useEffect(() => {
+    scrollToBottom();
+  }, [messages]);
+
+  const createNewChat = async () => {
+    if (
+      !authContext ||
+      !authContext.user?.user?.id ||
+      !authContext.isLoggedIn
+    ) {
+      if (!authContext?.isLoadingUser) {
+        toast.error("User not authenticated or session has expired.");
+      }
+      return;
     }
 
-    const { user: authUser, isLoggedIn, isLoadingUser } = authContext;
-    const user = authUser as LoginResponseDTO;
+    try {
+      setLoading(true);
+      const response = await Api.post("/api/v1/helper/createchat");
+      setChatId(response.data.chatId);
+    } catch (err: unknown) {
+      console.error("Error creating chat:", err);
+      if (!(err instanceof AxiosError && err.response?.status === 401)) {
+        toast.error(
+          err instanceof Error ? err.message : "Failed to create chat."
+        );
+      }
+    } finally {
+      setLoading(false);
+    }
+  };
 
-    const [loading, setLoading] = useState(false);
-    const [themeSettings, setThemeSettings] = useState<ThemeSettings>(defaultThemeSettings);
-    const [botProfilePicSrc, setBotProfilePicSrc] = useState<string>(assistantIcon);
+  const fetchMessages = async (id: string) => {
+    if (
+      !authContext ||
+      !authContext.user?.user?.id ||
+      !authContext.isLoggedIn
+    ) {
+      if (!authContext?.isLoadingUser) {
+        toast.error("User not authenticated or session has expired.");
+      }
+      return;
+    }
 
-    // Store messages and input
-    const [messages, setMessages] = useState([
-        { id: 1, text: 'Welcome! How can I help you today?', sender: 'bot' },
-    ]);
-    const [newMessage, setNewMessage] = useState('');
+    try {
+      setLoading(true);
+      const response = await Api.get(`/api/v1/helper/messages/${id}`);
+      setMessages(response.data.messages || []);
+    } catch (err: unknown) {
+      console.error("Error fetching messages:", err);
+      if (!(err instanceof AxiosError && err.response?.status === 401)) {
+        toast.error(
+          err instanceof Error ? err.message : "Failed to fetch messages."
+        );
+      }
+    } finally {
+      setLoading(false);
+    }
+  };
 
-    // Radio button state for switching between chat and context view
-    const [selectedOption, setSelectedOption] = useState<HCRadioButtonOption>(options[0]);
-    const [helperChatId, setHelperChatId] = useState<number | null>(null);
+  const handleSendMessage = async () => {
+    if (!inputMessage.trim() || !chatId) {
+      return;
+    }
 
-    // Dynamic markdown content state with an initial text
-    const [markdownContent, setMarkdownContent] = useState<string>('# 🔍 Search Results\n');
-    const hasFetchedRef = useRef(false);
-
-    const fetchThemeSettings = async () => {
-        if (!user?.token) {
-            console.error('Cannot fetch theme settings, user or token missing.');
-            return;
-        }
-
-        try {
-            console.log('Fetching theme settings for helper chat...');
-            const response = await axios.post<{ status: string, theme_settings: ThemeSettingsFromApi }>(
-                `${VAULT_API_URL}/api/v1/companies/get_theme_settings`,
-                { user_id: user.user.id },
-                {
-                    headers: {
-                        Authorization: `Bearer ${user.token}`,
-                        'Content-Type': 'application/json'
-                    }
-                }
-            );
-
-            if (response.data && response.data.status === 'success') {
-                const settings = response.data.theme_settings;
-                
-                const appliedTheme: ThemeSettings = {
-                    userChatBubbleColor: settings.userChatBubbleColor || defaultThemeSettings.userChatBubbleColor,
-                    botChatBubbleColor: settings.botChatBubbleColor || defaultThemeSettings.botChatBubbleColor,
-                    sendButtonAndBox: settings.sendButtonAndBox || defaultThemeSettings.sendButtonAndBox,
-                    font: settings.font || defaultThemeSettings.font,
-                    userChatFontColor: settings.userChatFontColor || defaultThemeSettings.userChatFontColor,
-                    botChatFontColor: settings.botChatFontColor || defaultThemeSettings.botChatFontColor,
-                    logo: settings.logo || defaultThemeSettings.logo,
-                    botProfilePicture: settings.botProfilePicture || defaultThemeSettings.botProfilePicture
-                };
-                
-                console.log('Applied theme settings in helper chat:', appliedTheme);
-                setThemeSettings(appliedTheme);
-                
-                // Set bot profile picture
-                if (settings.botProfilePicture) {
-                    setBotProfilePicSrc(settings.botProfilePicture);
-                } else {
-                    setBotProfilePicSrc(assistantIcon);
-                }
-            }
-        } catch (error) {
-            const errorMessage = error instanceof Error ? error.message : 'Failed to load theme settings';
-            console.error('Error fetching theme settings:', error);
-            showError({ message: errorMessage });
-        }
+    const userMessage: Message = {
+      id: Date.now().toString(),
+      role: "user",
+      content: inputMessage,
+      timestamp: new Date().toISOString(),
     };
 
-    // Fetch theme settings when the user is available
-    useEffect(() => {
-        if (!isLoadingUser && isLoggedIn && user) {
-            fetchThemeSettings();
-        }
-    }, [isLoadingUser, isLoggedIn, user]);
+    setMessages((prev) => [...prev, userMessage]);
+    setInputMessage("");
 
-    useEffect(() => {
-        (async () => {
-            try {
-                if (!user) {
-                    showError({ message: 'User not logged in' });
-                    return;
-                }
+    try {
+      setLoading(true);
+      const response = await Api.post("/api/v1/helper/sendmessage", {
+        chatId,
+        message: inputMessage,
+      });
 
-                if (hasFetchedRef.current) return;
-                hasFetchedRef.current = true;
+      const assistantMessage: Message = {
+        id: (Date.now() + 1).toString(),
+        role: "assistant",
+        content: response.data.response,
+        timestamp: new Date().toISOString(),
+      };
 
-                if (!isResume) {
-                    //TODO check user signed in and add authorisation bearer token etc.
+      setMessages((prev) => [...prev, assistantMessage]);
+    } catch (err: unknown) {
+      console.error("Error sending message:", err);
+      if (!(err instanceof AxiosError && err.response?.status === 401)) {
+        toast.error(
+          err instanceof Error ? err.message : "Failed to send message."
+        );
+      }
+    } finally {
+      setLoading(false);
+    }
+  };
 
-                    // const {data: {session}} = await supabase.auth.getSession();
-                    // const authToken = session?.access_token;
-                    //
-                    // if (!authToken) {
-                    //     showError({message: 'No valid session'});
-                    //     return;
-                    // }
+  return (
+    <div className="relative h-[calc(100vh-100px)]">
+      {loading && messages.length === 0 && (
+        <div className="fixed top-0 left-0 w-full h-full bg-white/80 z-[1000] flex justify-center items-center">
+          <Loader />
+        </div>
+      )}
 
-                    // Call FastAPI endpoint
-                    const response = await axios.post(
-                        `${VAULT_API_URL}/api/v1/helper/add_new_chat_session`,
-                        {
-                            user_id: user.user.id,
-                        },
-                        {
-                            headers: {
-                                Authorization: `Bearer ${user.token ?? ''}`,
-                                'Content-Type': 'application/json',
-                            },
-                        }
-                    );
-                    // Validate response structure
-                    if (!response.data || !response.data.helper_chat_id) {
-                        showError({ message: 'Invalid response from the server.' });
-                    }
-                    if (response.data.helper_chat_id === 'None') {
-                        showError({ message: 'Invalid response from the server.' });
-                        return;
-                    }
+      <div className="grid grid-cols-1 lg:grid-cols-[400px_1fr] gap-8 h-full">
+        <div className="hidden lg:block">
+          <DancingBot state="idling" className="w-full h-[400px]" />
+        </div>
 
-                    success({ message: 'Successfully created new chat session.' });
-                    setHelperChatId(response.data.helper_chat_id);
+        <div className="flex flex-col h-full bg-[#d3d3d3] rounded-lg shadow-md">
+          <div className="p-6 border-b border-gray-300">
+            <div className="flex justify-between items-center">
+              <h1 className="text-2xl font-bold">Helper Chat</h1>
+              <Button
+                onClick={() => navigate("/applications/helper/HelperMainPage")}
+                variant="outline"
+                size="sm"
+              >
+                Back to Main
+              </Button>
+            </div>
+          </div>
 
-                } else {
-
-                    // If we *are* resuming, check if we have a chat_msgId
-
-                    const finalChatId = ChatId;
-                    setHelperChatId(finalChatId);
-
-
-                    // Now fetch the conversation from chat_messages_collector
-                    if (!finalChatId) return;
-
-                    // Call FastAPI endpoint
-                    const response = await axios.post(
-                        `${VAULT_API_URL}/api/v1/helper/get_helper_chat_message`,
-                        {
-                            chat_id: finalChatId,
-                        },
-                        {
-                            headers: {
-                                Authorization: `Bearer ${user.token ?? ''}`,
-                                'Content-Type': 'application/json',
-                            },
-                        }
-                    );
-                    // Validate response structure
-                    if (!response.data || !response.data.message) {
-                        showError({ message: 'Invalid response from the server.' });
-                    }
-                    const chatData = response.data.message[0];
-
-                    if (!chatData) {
-                        showError({ message: 'No stored messages found.' });
-                        console.log('No stored messages found.');
-                        return;
-                    }
-                    console.log('chatData', chatData);
-                    // Map each chat pair to an array of messages.
-                    const oldMessages = chatData.messages.flatMap((pair: [string, string], idx: number) => {
-                        const userMessage = {
-                            id: idx * 2 + 1,
-                            text: pair[0],
-                            sender: 'user' as const,
-                        };
-                        const botMessage = {
-                            id: idx * 2 + 2,
-                            text: pair[1],
-                            sender: 'bot' as const,
-                        };
-                        return [userMessage, botMessage];
-                    });
-
-
-                    success({ message: 'Successfully fetched old conversation.' });
-                    // Overwrite local messages with stored conversation
-                    setMessages(oldMessages);
-                }
-
-            } catch (err) {
-                const errorMessage = err instanceof Error ? err.message : 'An unknown error occurred';
-                console.error('Error fetching old conversation:', err);
-                showError({ message: errorMessage });
-            }
-        })();
-    }, [isLoadingUser, isLoggedIn, isResume, ChatId, user]);
-
-
-    // Handle radio button change selections
-    const handleFrameChange = (checked: boolean, item: HCRadioButtonOption) => {
-        if (checked) {
-            setSelectedOption(item);
-        }
-    };
-
-    const generateAnswers = async (userAnswer: string) => {
-        try {
-            if (!user) {
-                showError({ message: 'User not logged in' });
-                return;
-            }
-
-            // Call FastAPI endpoint
-            const response = await axios.post(
-                `${VAULT_API_URL}/api/v1/helper/generate_answer_response`,
-                {
-                    // chat_prompt_id: chat_msgId,
-                    user_text: userAnswer,
-                    user_id: user.user.id,
-                    chat_id: helperChatId,
-                },
-                {
-                    headers: {
-                        Authorization: `Bearer ${user.token ?? ''}`,
-                        'Content-Type': 'application/json',
-                    },
-                }
-            );
-            // Validate response structure
-            if (!response.data || !response.data.helper_response) {
-                showError({ message: 'Invalid response from the server.' });
-            }
-            // Validate response structure
-            if (!response.data || !response.data.confidence) {
-                showError({ message: 'Invalid response from the server.' });
-            }
-            if (!response.data || !response.data.md_text_formatted) {
-                showError({ message: 'Invalid response from the server.' });
-            }
-
-
-            //here update the chatbot
-            const helperResponse = response.data.helper_response;  // The follow-up question from backend
-            // We're not using confidence, but keeping it in the response
-            const mdTextFormatted = response.data.md_text_formatted;
-            // The follow-up question from backend
-            setMarkdownContent(mdTextFormatted);
-            // Update the chatbot UI with the user's message and the follow-up question
-            setMessages((prevMessages) => [
-                ...prevMessages,
-                { id: Date.now() + 1, text: helperResponse, sender: 'bot' },  // Bot's follow-up question
-            ]);
-
-
-        } catch (error) {
-            const errorMessage = error instanceof Error ? error.message : 'An unknown error occurred';
-            console.error('Error:', error);
-            showError({ message: errorMessage });
-        }
-    };
-
-    // Handler for sending a new message
-    const handleSendMessage = async () => {
-        try {
-            if (newMessage.trim() !== '') {
-                const message = {
-                    id: Date.now(),
-                    text: newMessage,
-                    sender: 'user',
-                };
-                setLoading(true);
-
-                setMessages([...messages, message]);
-                setNewMessage('');
-                // Send the user response to the backend
-                await generateAnswers(message.text);
-            }
-        } catch (error) {
-            const errorMessage = error instanceof Error ? error.message : 'An unknown error occurred';
-            console.error('Error:', error);
-            showError({ message: errorMessage });
-        } finally {
-            setLoading(false);
-        }
-    };
-
-    return (
-        <Container>
-            <RadioButtonContainer>
-                <HCRadioButton
-                    hcType={{
-                        type: 'group',
-                        options,
-                        defaultValue: selectedOption,
-                        name: 'frame-selection',
-                        row: true,
-                    } as HCRadioButtonGroupType}
-                    hcVariant="primary"
-                    onRadioSelect={handleFrameChange}
-                />
-            </RadioButtonContainer>
-
-            {selectedOption.id === 'context' ? (
-                <HCContextFrameMD content={markdownContent} components={{
-                    hr() {
-                        return null;
-                    }
-                }} />
-            ) : (
-                <ChatContainer>
-                    {messages.map(message =>
-                        message.sender === 'bot' ? (
-                            <BotMessage key={message.id} themeSettings={themeSettings}>
-                                <BotIcon src={botProfilePicSrc} alt="Assistant" />
-                                <div>
-                                    <HCMarkdownView content={message.text} />
-                                </div>
-                            </BotMessage>
-                        ) : (
-                            <UserMessage key={message.id} themeSettings={themeSettings}>{message.text}</UserMessage>
-                        )
-                    )}
-                </ChatContainer>
+          <div className="flex-1 overflow-y-auto p-6 space-y-4">
+            {messages.length === 0 && !loading && (
+              <div className="flex items-center justify-center h-full text-gray-500">
+                <p>Start a conversation by typing a message below.</p>
+              </div>
             )}
 
-            {selectedOption.id === 'chat' && (
-                <HCTextareaAutosize
-                    value={newMessage}
-                    inputPadding="0 16px 0 0 !important"
-                    inputProps={{
-                        endAdornment: <SendButton 
-                            themeSettings={themeSettings}
-                            onClick={handleSendMessage}
-                        >
-                            <HCIcon icon="Send" />
-                        </SendButton>,
-                        placeholder: 'Type your message here...'
-                    }}
-                    type="textArea"
-                    onKeyDown={e => {
-                        if (e.key.toLowerCase() === 'enter') handleSendMessage();
-                    }}
-                    onTextChanged={(text) => {
-                        setNewMessage(text || '');
-                    }}
-                />
-            )}
+            {messages.map((message) => (
+              <div
+                key={message.id}
+                className={`flex ${
+                  message.role === "user" ? "justify-end" : "justify-start"
+                }`}
+              >
+                <div
+                  className={`max-w-[70%] rounded-lg p-4 ${
+                    message.role === "user"
+                      ? "bg-[#e66334] text-white"
+                      : "bg-white text-gray-900"
+                  }`}
+                >
+                  <p className="whitespace-pre-wrap">{message.content}</p>
+                  <span className="text-xs opacity-70 mt-2 block">
+                    {new Date(message.timestamp).toLocaleTimeString()}
+                  </span>
+                </div>
+              </div>
+            ))}
+            <div ref={messagesEndRef} />
+          </div>
 
-            {loading && (
-                <LoaderContainer>
-                    <HCLoader />
-                </LoaderContainer>
-            )}
-        </Container>
-    );
+          <div className="p-6 border-t border-gray-300">
+            <div className="flex gap-2">
+              <TextField
+                value={inputMessage}
+                onChange={(e) => setInputMessage(e.target.value)}
+                placeholder="Ask the Helper anything..."
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" && !e.shiftKey) {
+                    e.preventDefault();
+                    handleSendMessage();
+                  }
+                }}
+                disabled={loading}
+                className="flex-1"
+              />
+              <Button
+                onClick={handleSendMessage}
+                disabled={loading || !inputMessage.trim()}
+                className="bg-[#e66334] hover:bg-[#FF8234]"
+              >
+                <Send className="w-4 h-4" />
+              </Button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
 };
 
 export default HelperChatPage;

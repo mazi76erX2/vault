@@ -1,84 +1,60 @@
-import React, {PropsWithChildren} from 'react';
-import {Link} from 'react-router-dom';
-import {HCButton} from 'generic-components';
-import {HCIcon} from 'generic-components/src/HCIcon';
-import {styled} from '@mui/material';
-import {DancingBotGridComponent} from '../components/DancingBotGridComponent';
-import {HeaderContainer, WelcomeText} from '../components';
+import React, { PropsWithChildren } from "react";
+import { Link } from "react-router-dom";
+import { Button } from "@/components/ui/button";
+import { HCIcon } from "generic-components";
+import { DancingBot } from "@/components/media/dancing-bot";
 
 interface CollectorPageProps extends PropsWithChildren {
-    showContinueButton: boolean;
-    botStatus?: string;
-    continueLink?: string;
-    headline1?: string;
-    headline2?: string;
+  showContinueButton: boolean;
+  botStatus?: string;
+  continueLink?: string;
+  headline1?: string;
+  headline2?: string;
 }
 
-const Container = styled('div')({
-    width: '100%',
-    display: 'flex',
-    justifyContent: 'center',
-});
+const CollectorPageLayout: React.FC<CollectorPageProps> = (props) => {
+  return (
+    <div className="w-full flex justify-center">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 max-w-7xl w-full p-6">
+        {/* Dancing Bot */}
+        <DancingBot
+          state={props.botStatus === "winning" ? "winning" : "greeting"}
+          className="w-full max-w-[600px] mx-auto"
+        />
 
-const ContentSection = styled('div')({
-    flex: 2,
-    display: 'flex',
-    flexDirection: 'column',
-    gap: '20px',
-    maxWidth: '800px',
-});
+        {/* Content Section */}
+        <div className="flex flex-col gap-5 max-w-[800px]">
+          {/* Header */}
+          <div>
+            <h1 className="text-2xl font-bold">{props.headline1}</h1>
+            <h2 className="text-xl text-gray-600">{props.headline2}</h2>
+          </div>
 
-const FormBox = styled('div')({
-    backgroundColor: '#d3d3d3', // Gray background
-    padding: '25px',
-    borderRadius: '8px',
-    boxShadow: '0 4px 8px rgba(0, 0, 0, 0.1)',
-    display: 'flex',
-    flexDirection: 'column',
-    // height: '80%',
-});
+          {/* Form Box */}
+          <div className="bg-[#d3d3d3] p-6 rounded-lg shadow-md flex flex-col min-h-[80%]">
+            {props.children}
+          </div>
 
-const ButtonsContainer = styled('div')({
-    display: 'flex',
-    justifyContent: 'center',
-    gap: '50px',
-    margin: '30px 0',
-});
-
-const CollectorPageLayout = (props: CollectorPageProps) => {
-    return (
-        <Container>
-            {/* Right Container: Header and Content */}
-            <DancingBotGridComponent botFixed botState={'winning'}>
-                {/* Header Section */}
-                <HeaderContainer>
-                    <WelcomeText>{props.headline1 || ''}</WelcomeText>
-                    <WelcomeText>{props.headline2 || ''}</WelcomeText>
-                </HeaderContainer>
-
-                {/* Content Section (Gray Box) */}
-                <ContentSection>
-                    <FormBox>
-                        {props.children}
-
-                        {/* Optionally render a Continue button */}
-                        {props.showContinueButton && (
-                            <ButtonsContainer>
-                                <Link to={props.continueLink || '/applications/collector/CollectorSummaryPage'}>
-                                    <HCButton
-                                        hcVariant="primary"
-                                        size="large"
-                                        endIcon={<HCIcon icon={'ArrowRight1'}/>}
-                                        text="Continue"
-                                    />
-                                </Link>
-                            </ButtonsContainer>
-                        )}
-                    </FormBox>
-                </ContentSection>
-            </DancingBotGridComponent>
-        </Container>
-    );
+          {/* Continue Button */}
+          {props.showContinueButton && (
+            <div className="flex justify-center gap-12 my-8">
+              <Link
+                to={
+                  props.continueLink ||
+                  "/applications/collector/CollectorSummaryPage"
+                }
+              >
+                <Button className="bg-[#e66334] hover:bg-[#FF8234]" size="lg">
+                  Continue
+                  <HCIcon icon="ArrowRight1" className="ml-2" />
+                </Button>
+              </Link>
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
 };
 
 export default CollectorPageLayout;

@@ -1,149 +1,234 @@
-import React, {useEffect, useState} from 'react';
-import {useNavigate} from 'react-router-dom';
-import {error as showError, HCDataTable, HCLoader} from 'generic-components';
-import {HCIcon} from 'generic-components/src/HCIcon';
-import {styled} from '@mui/material';
-import {VAULT_API_URL} from '../../../config';
-import {HeaderContainer, LoaderContainer, WelcomeText} from '../../../components';
-import {DancingBotGridComponent} from '../../../components/DancingBotGridComponent';
-import {useAuthContext} from '../../../hooks/useAuthContext';
-import axios from 'axios';
-// import { LoginResponseDTO } from '../../../types/LoginResponseDTO'; // Unused import
+import React, { useEffect, useState } from "react";
+import { useNavigate, useLocation } from "react-router-dom";
+import { useAuthContext } from "@/hooks/useAuthContext";
+import { DancingBot } from "@/components/media/dancing-bot";
+import { Button } from "@/components/ui/button";
+import { Loader } from "@/components/feedback/loader";
+import { Card } from "@/components/ui/card";
+import { toast } from "sonner";
+import Api from "@/services/Instance";
+import { AxiosError } from "axios";
 
-const Container = styled('div')({
-});
-
-const TableContainer = styled('div')({
-    flex: 2,
-    display: 'flex',
-    flexDirection: 'column',
-    gap: '20px',
-});
-
-const FormBox = styled('div')({
-    backgroundColor: '#d3d3d3',
-    padding: '40px',
-    borderRadius: '8px',
-    boxShadow: '0 4px 8px rgba(0, 0, 0, 0.1)',
-    display: 'flex',
-    flexDirection: 'column',
-    height: 'auto',  // Allow it to expand dynamically
-    justifyContent: 'space-between', // Ensures proper spacing
-});
-
-interface CompletedDocumentRow {
+interface LocationState {
+  document?: {
     id: string;
     title: string;
     author: string;
-    status: string;
-    [key: string]: unknown;
-    // Add other properties if returned by the API and used
+  };
+}
+
+interface DocumentDetails {
+  title: string;
+  author: string;
+  description: string;
+  content: string;
+  validatorDecision: string;
+  validatorComments: string;
+  validatorReviewedBy: string;
+  expertDecision: string;
+  expertComments: string;
+  expertReviewedBy: string;
+  expertReviewedAt: string;
+  [key: string]: unknown;
 }
 
 const ExpertPreviousReviewsPage: React.FC = () => {
-    // State Management
-    const [loading, setLoading] = useState(false);
-    const [rows, setRows] = useState<CompletedDocumentRow[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [documentData, setDocumentData] = useState<DocumentDetails | null>(
+    null
+  );
+  const authContext = useAuthContext();
+  const navigate = useNavigate();
+  const location = useLocation();
+  const { document } = (location.state as LocationState) || {};
 
-    const authContext = useAuthContext();
-    const user = authContext?.user;
-    const isLoggedIn = authContext?.isLoggedIn;
-    const isLoadingUser = authContext?.isLoadingUser;
-    const navigate = useNavigate();
+  useEffect(() => {
+    if (document) {
+      fetchDocumentDetails(document.id);
+    } else {
+      toast.error("Document not found.");
+      navigate("/applications/console/ExpertStartPage");
+    }
+  }, [document]);
 
-    // Table columns for completed documents
-    const columns = [
-        {field: 'title', headerName: 'Document Title', width: 400},
-        {field: 'author', headerName: 'Author', width: 200},
-        {field: 'status', headerName: 'Status', width: 200},
-    ];
+  const fetchDocumentDetails = async (docId: string) => {
+    if (
+      !authContext ||
+      !authContext.user?.user?.id ||
+      !authContext.isLoggedIn
+    ) {
+      if (!authContext?.isLoadingUser) {
+        toast.error("User not authenticated or session has expired.");
+      }
+      return;
+    }
 
-    // Fetch completed documents
-    useEffect(() => {
-        const fetchCompletedDocuments = async () => {
-            try {
-                setLoading(true);
-                if (isLoadingUser) return;
+    try {
+      setLoading(true);
+      const response = await Api.get(`/api/v1/expert/reviewed/${docId}`);
+      setDocumentData(response.data);
+    } catch (err: unknown) {
+      console.error("Error fetching document details:", err);
+      if (!(err instanceof AxiosError && err.response?.status === 401)) {
+        toast.error(
+          err instanceof Error
+            ? err.message
+            : "Failed to fetch document details."
+        );
+      }
+    } finally {
+      setLoading(false);
+    }
+  };
 
-                if (!isLoggedIn || !user?.token || !user?.user?.id) {
-                    showError({message: 'User not authenticated or user data incomplete.'});
-                    setLoading(false);
-                    return;
-                }
+  return (
+    <div className="relative">
+      {loading && (
+        <div className="fixed top-0 left-0 w-full h-full bg-white/80 z-[1000] flex justify-center items-center">
+          <Loader />
+        </div>
+      )}
 
-                const response = await axios.get<CompletedDocumentRow[]>(
-                    `${VAULT_API_URL}/api/v1/expert/completed-documents/${user.user.id}`,
-                    { headers: {
-                        Authorization: `Bearer ${user.token}`,
-                        'Content-Type': 'application/json' }
-                    }
-                );
-                setRows(response.data);
-            } catch (err) {
-                console.error(err);
-                showError({message: err instanceof Error ? err.message : 'An error occurred'});
-            } finally {
-                setLoading(false);
-            }
-        };
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-start">
+        <DancingBot state="idling" className="w-full max-w-[600px] mx-auto" />
 
-        if (user) {
-            fetchCompletedDocuments();
-        }
-    }, [user, isLoggedIn, isLoadingUser]);
-
-    // Handle Resume
-    const handleGoToDoc = (rowData: { row: CompletedDocumentRow }) => {
-        console.log(rowData);
-        if (!rowData.row.id) {
-            showError({message: 'Cannot go to document: missing document ID'});
-            return;
-        }
-
-        navigate('/applications/console/ExpertDocPage', {
-            state: {
-                DocumentId: rowData.row.id
-            },
-        });
-    };
-
-    return (
-        <Container>
-            {/* Loader overlay */}
-            {loading && (
-                <LoaderContainer>
-                    <HCLoader />
-                </LoaderContainer>
+        <div>
+          <div className="mb-6">
+            <h1 className="text-2xl font-bold">Previous Expert Review</h1>
+            {document && (
+              <p className="text-gray-600 mt-2">
+                Document:{" "}
+                <span className="font-semibold">{document.title}</span>
+              </p>
             )}
+          </div>
 
+          <Card className="bg-[#d3d3d3] p-6 shadow-md space-y-6">
+            {documentData && (
+              <>
+                <div>
+                  <h3 className="text-sm font-semibold text-gray-600">Title</h3>
+                  <p className="text-lg">{documentData.title}</p>
+                </div>
 
-            {/* Right Part */}
-            <DancingBotGridComponent botState={'default'}>
-                {/* Header */}
-                <HeaderContainer>
-                    <WelcomeText>Documents previously reviewed</WelcomeText>
-                </HeaderContainer>
+                <div>
+                  <h3 className="text-sm font-semibold text-gray-600">
+                    Author
+                  </h3>
+                  <p className="text-lg">{documentData.author}</p>
+                </div>
 
-                {/* The lower part: a gray form box containing the table + button */}
-                <TableContainer>
-                    <FormBox>
-                        {/* The table for existing sessions */}
-                        <HCDataTable
-                            actions={{
-                                resume: {
-                                    icon: <HCIcon icon="ArrowRight1"/>,
-                                    onClick: (row) => handleGoToDoc(row as { row: CompletedDocumentRow }),
-                                },
-                            }}
-                            columns={columns}
-                            rows={rows}
-                            pageLimit={10}
-                        />
-                    </FormBox>
-                </TableContainer>
-            </DancingBotGridComponent>
-        </Container>
-    );
+                <div>
+                  <h3 className="text-sm font-semibold text-gray-600">
+                    Description
+                  </h3>
+                  <p className="text-lg">{documentData.description}</p>
+                </div>
+
+                <div>
+                  <h3 className="text-sm font-semibold text-gray-600">
+                    Content
+                  </h3>
+                  <div className="bg-white p-4 rounded mt-2 max-h-[300px] overflow-y-auto">
+                    <p className="whitespace-pre-wrap">
+                      {documentData.content}
+                    </p>
+                  </div>
+                </div>
+
+                <div className="border-t border-gray-400 pt-4">
+                  <h2 className="text-xl font-bold mb-4">Validator Review</h2>
+
+                  <div className="space-y-4">
+                    <div>
+                      <h3 className="text-sm font-semibold text-gray-600">
+                        Decision
+                      </h3>
+                      <p className="text-lg capitalize">
+                        {documentData.validatorDecision}
+                      </p>
+                    </div>
+
+                    {documentData.validatorComments && (
+                      <div>
+                        <h3 className="text-sm font-semibold text-gray-600">
+                          Comments
+                        </h3>
+                        <p className="text-lg">
+                          {documentData.validatorComments}
+                        </p>
+                      </div>
+                    )}
+
+                    <div>
+                      <h3 className="text-sm font-semibold text-gray-600">
+                        Reviewed By
+                      </h3>
+                      <p className="text-lg">
+                        {documentData.validatorReviewedBy}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="border-t border-gray-400 pt-4">
+                  <h2 className="text-xl font-bold mb-4">Expert Review</h2>
+
+                  <div className="space-y-4">
+                    <div>
+                      <h3 className="text-sm font-semibold text-gray-600">
+                        Decision
+                      </h3>
+                      <p className="text-lg capitalize">
+                        {documentData.expertDecision}
+                      </p>
+                    </div>
+
+                    {documentData.expertComments && (
+                      <div>
+                        <h3 className="text-sm font-semibold text-gray-600">
+                          Comments
+                        </h3>
+                        <p className="text-lg">{documentData.expertComments}</p>
+                      </div>
+                    )}
+
+                    <div>
+                      <h3 className="text-sm font-semibold text-gray-600">
+                        Reviewed By
+                      </h3>
+                      <p className="text-lg">{documentData.expertReviewedBy}</p>
+                    </div>
+
+                    <div>
+                      <h3 className="text-sm font-semibold text-gray-600">
+                        Reviewed At
+                      </h3>
+                      <p className="text-lg">
+                        {new Date(
+                          documentData.expertReviewedAt
+                        ).toLocaleString()}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              </>
+            )}
+          </Card>
+
+          <div className="mt-6 flex justify-end">
+            <Button
+              onClick={() => navigate("/applications/console/ExpertStartPage")}
+              className="bg-[#e66334] hover:bg-[#FF8234]"
+              size="lg"
+            >
+              Back to Documents
+            </Button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
 };
 
 export default ExpertPreviousReviewsPage;

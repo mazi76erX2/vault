@@ -1,815 +1,279 @@
 import React, { useState, useEffect } from "react";
-import { styled, FormControlLabel, Checkbox, Box } from "@mui/material";
-import {
-  HCButton,
-  HCTextField,
-  HCLoader,
-  success,
-  error as showError,
-} from "generic-components";
-import { useAuthContext } from "../../hooks/useAuthContext";
-import { VAULT_API_URL } from "../../config";
-import { DancingBotGridComponent } from "../../components/DancingBotGridComponent";
-import { LoaderContainer } from "../../components";
-import {
-  FormSection,
-  FormBox,
-  TabContainer,
-  Tab,
-} from "./OrganisationDetailsPage";
 import { useNavigate } from "react-router-dom";
-import axios from "axios";
+import { Button } from "@/components/ui/button";
+import { TextField } from "@/components/forms/text-field";
+import { CheckBox } from "@/components/forms/checkbox";
+import { Loader } from "@/components/feedback/loader";
+import { DancingBot } from "@/components/media/dancing-bot";
+import { Card } from "@/components/ui/card";
+import { SegmentTabs } from "@/components/layout/segment-tabs";
+import { toast } from "sonner";
+import { useAuthContext } from "@/hooks/useAuthContext";
+import Api from "@/services/Instance";
+import { AxiosError } from "axios";
 
-const Container = styled("div")({
-  width: "100%",
-  margin: "0 auto",
-  padding: "0 20px",
-});
-
-const Title = styled("h2")({
-  marginBottom: "20px",
-  fontWeight: "bold",
-});
-
-const Subtitle = styled("h3")({
-  marginTop: "30px",
-  marginBottom: "15px",
-  display: "flex",
-  alignItems: "center",
-  gap: "10px",
-});
-
-const ButtonContainer = styled("div")({
-  display: "flex",
-  justifyContent: "flex-end",
-  gap: "20px",
-  marginTop: "20px",
-});
-
-const FieldLabel = styled("div")({
-  fontSize: "14px",
-  fontWeight: "bold",
-  marginBottom: "5px",
-  "&::after": {
-    content: '"*"',
-    color: "red",
-    marginLeft: "2px",
-  },
-});
-
-const InfoIcon = styled("span")({
-  color: "#888",
-  cursor: "pointer",
-  fontSize: "18px",
-  marginLeft: "5px",
-});
-
-interface DirectoryFormData {
-  // Server Settings Tab
-  directoryType: string;
-  name: string;
-  domain: string;
-  host: string;
-  port: string;
-  username: string;
-  password: string;
-  syncInterval: string;
-  searchTimeout: string;
-  baseDN: string;
-  userDN: string;
-  groupDN: string;
-  sslConnection: boolean;
-
-  // User Schema Tab
-  userObject: string;
-  userFilter: string;
-  userName: string;
-  userObjectRDN: string;
-  firstName: string;
-  lastName: string;
-  displayName: string;
-  principalName: string;
+interface UserData {
   email: string;
-  uniqueId: string;
-  userGroups: string;
-
-  // Group Schema Tab
-  groupObject: string;
-  groupFilter: string;
-  fetchRecursively: boolean;
-  groupUniqueId: string;
-  groupName: string;
-  groupDescription: string;
-  groupMembers: string;
+  firstname: string;
+  lastname: string;
+  password: string;
+  isAdmin: boolean;
+  isCollector: boolean;
+  isHelper: boolean;
+  isValidator: boolean;
+  isExpert: boolean;
 }
 
 const UserDirectoryPage: React.FC = () => {
-  const navigate = useNavigate();
-  const [activeTab, setActiveTab] = useState<"server" | "user" | "group">(
-    "server"
-  );
+  const [activeTab, setActiveTab] = useState(0);
   const [loading, setLoading] = useState(false);
+  const navigate = useNavigate();
   const authContext = useAuthContext();
 
-  const [formData, setFormData] = useState<DirectoryFormData>({
-    // Server Settings
-    directoryType: "Active Directory - Legacy",
-    name: "-GROUP",
-    domain: "-group",
-    host: "ldaps://ldap-ssl.highcoordination.de",
-    port: "636",
-    username: "-group\\service",
-    password: "••••••••••••••••••",
-    syncInterval: "60",
-    searchTimeout: "60",
-    baseDN: "DC=-group, DC=local",
-    userDN: "OU=-GROUP",
-    groupDN: "OU=-GROUP",
-    sslConnection: true,
-
-    // User Schema
-    userObject: "user",
-    userFilter: "(&(objectCategory=Person)(sAMAccountName=*))",
-    userName: "sAMAccountName",
-    userObjectRDN: "cn",
-    firstName: "givenName",
-    lastName: "sn",
-    displayName: "displayName",
-    principalName: "userPrincipalName",
-    email: "mail",
-    uniqueId: "objectGUID",
-    userGroups: "memberOf",
-
-    // Group Schema
-    groupObject: "group",
-    groupFilter: "(&(objectCategory=Group)(name=*))",
-    fetchRecursively: true,
-    groupUniqueId: "objectGUID",
-    groupName: "cn",
-    groupDescription: "description",
-    groupMembers: "member",
+  const [userData, setUserData] = useState<UserData>({
+    email: "",
+    firstname: "",
+    lastname: "",
+    password: "",
+    isAdmin: false,
+    isCollector: false,
+    isHelper: false,
+    isValidator: false,
+    isExpert: false,
   });
 
-  useEffect(() => {
-    fetchDirectoryConfig();
-  }, []);
+  const tabs = [
+    { label: "Create User", value: 0 },
+    { label: "Import Users", value: 1 },
+  ];
 
-  const fetchDirectoryConfig = async () => {
-    try {
-      setLoading(true);
-      // Note: company_id property may not exist on UserDTO, using optional chaining
-      const companyId = (authContext?.user?.user as any)?.company_id;
-      if (!companyId) {
-        console.warn("Company ID not available on user object");
-        return;
-      }
-      const response = await axios.get(
-        `${VAULT_API_URL}/api/ldap/directory/config/${companyId}`
-      );
-
-      if (response.data.exists) {
-        setFormData(response.data);
-      }
-    } catch (err) {
-      console.error("Error fetching directory config:", err);
-      // Don't show error to user since configuration might not exist yet
-    } finally {
-      setLoading(false);
-    }
+  const handleInputChange = (
+    field: keyof UserData,
+    value: string | boolean
+  ) => {
+    setUserData((prev) => ({ ...prev, [field]: value }));
   };
 
-  const handleSave = async () => {
-    if (!authContext?.isLoggedIn) {
-      showError("You must be logged in to continue");
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+
+    if (
+      !userData.email ||
+      !userData.firstname ||
+      !userData.lastname ||
+      !userData.password
+    ) {
+      toast.error("Please fill in all required fields.");
+      return;
+    }
+
+    if (
+      !userData.isAdmin &&
+      !userData.isCollector &&
+      !userData.isHelper &&
+      !userData.isValidator &&
+      !userData.isExpert
+    ) {
+      toast.error("Please select at least one role for the user.");
       return;
     }
 
     try {
       setLoading(true);
+      const userId = authContext?.user?.user?.id;
 
-      const dataToSend = {
-        ...formData,
-        user_id: authContext.user?.user.id,
-      };
+      const roles: string[] = [];
+      if (userData.isAdmin) roles.push("Administrator");
+      if (userData.isCollector) roles.push("Collector");
+      if (userData.isHelper) roles.push("Helper");
+      if (userData.isValidator) roles.push("Validator");
+      if (userData.isExpert) roles.push("Expert");
 
-      await axios.post(
-        `${VAULT_API_URL}/api/ldap/directory/config`,
-        dataToSend
-      );
-      success("Directory configuration saved successfully");
-      navigate(-1);
+      await Api.post("/api/v1/admin/createuser", {
+        userid: userId,
+        email: userData.email,
+        firstname: userData.firstname,
+        lastname: userData.lastname,
+        password: userData.password,
+        roles: roles,
+      });
+
+      toast.success("User created successfully.");
+
+      // Reset form
+      setUserData({
+        email: "",
+        firstname: "",
+        lastname: "",
+        password: "",
+        isAdmin: false,
+        isCollector: false,
+        isHelper: false,
+        isValidator: false,
+        isExpert: false,
+      });
     } catch (err) {
-      console.error("Error saving directory config:", err);
-      showError("Failed to save directory configuration");
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleTestConnection = async () => {
-    try {
-      setLoading(true);
-      const response = await axios.post(
-        `${VAULT_API_URL}/api/ldap/directory/test-connection`,
-        formData
-      );
-
-      if (response.data.error) {
-        showError(response.data.error);
-      } else {
-        success(response.data.message || "Connection successful");
+      console.error("Error creating user:", err);
+      if (!(err instanceof AxiosError && err.response?.status === 401)) {
+        const message =
+          err instanceof AxiosError && err.response?.data?.detail
+            ? err.response.data.detail
+            : "Failed to create user.";
+        toast.error(message);
       }
-    } catch (err) {
-      console.error("Error testing connection:", err);
-      showError("Failed to test connection");
     } finally {
       setLoading(false);
     }
   };
 
-  const handleSyncDirectory = async () => {
-    const companyId = (authContext?.user?.user as any)?.company_id;
-    if (!companyId) {
-      showError("Company ID not available");
-      return;
-    }
-
-    try {
-      setLoading(true);
-      const response = await axios.post(
-        `${VAULT_API_URL}/api/ldap/directory/sync/${companyId}`
-      );
-
-      if (response.data.error) {
-        showError(response.data.error);
-      } else {
-        success(response.data.message || "Directory synchronized successfully");
-      }
-    } catch (err) {
-      console.error("Error syncing directory:", err);
-      showError("Failed to synchronize directory");
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleBack = () => {
+  const handleCancel = () => {
     navigate(-1);
   };
 
   return (
-    <Container>
+    <div className="relative">
       {loading && (
-        <LoaderContainer>
-          <HCLoader />
-        </LoaderContainer>
+        <div className="fixed top-0 left-0 w-full h-full bg-white/80 z-[1000] flex justify-center items-center">
+          <Loader />
+        </div>
       )}
-      <DancingBotGridComponent botState={"default"}>
-        <Title>SETUP USER DIRECTORY SERVICE</Title>
 
-        <HCTextField
-          type="text"
-          label="Directory Type"
-          value={formData.directoryType}
-          onChange={(e) =>
-            setFormData({ ...formData, directoryType: e.target.value })
-          }
-          disabled
-        />
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-start">
+        <DancingBot state="greeting" className="w-full max-w-[600px] mx-auto" />
 
-        <TabContainer
-          sx={{
-            border: "1px solid #e66334",
-            borderRadius: "4px 4px 0 0",
-            backgroundColor: "#d3d3d3",
-          }}
-        >
-          <Tab
-            active={activeTab === "server"}
-            onClick={() => setActiveTab("server")}
-          >
-            Server Settings
-          </Tab>
-          <Tab
-            active={activeTab === "user"}
-            onClick={() => setActiveTab("user")}
-          >
-            User Schema
-          </Tab>
-          <Tab
-            active={activeTab === "group"}
-            onClick={() => setActiveTab("group")}
-          >
-            Group Schema
-          </Tab>
-        </TabContainer>
+        <div>
+          <h1 className="text-2xl font-bold mb-6">User Directory</h1>
 
-        <FormSection>
-          <FormBox>
-            {activeTab === "server" && (
-              <>
-                <Subtitle>
-                  Server Settings
-                  <InfoIcon>ⓘ</InfoIcon>
-                </Subtitle>
+          <SegmentTabs
+            tabs={tabs}
+            value={activeTab}
+            onChange={setActiveTab}
+            className="mb-6"
+          />
 
-                <Box
-                  sx={{
-                    display: "grid",
-                    gridTemplateColumns: "1fr 1fr",
-                    gap: "20px",
-                  }}
-                >
-                  <Box>
-                    <FieldLabel>Name</FieldLabel>
-                    <HCTextField
-                      type="text"
-                      label="Name"
-                      value={formData.name}
-                      onChange={(e) =>
-                        setFormData({ ...formData, name: e.target.value })
-                      }
-                    />
-                  </Box>
-                  <Box>
-                    <FieldLabel>Domain</FieldLabel>
-                    <HCTextField
-                      type="text"
-                      label="Domain"
-                      value={formData.domain}
-                      onChange={(e) =>
-                        setFormData({ ...formData, domain: e.target.value })
-                      }
-                    />
-                  </Box>
-                  <Box>
-                    <FieldLabel>Host</FieldLabel>
-                    <HCTextField
-                      type="text"
-                      label="Host"
-                      value={formData.host}
-                      onChange={(e) =>
-                        setFormData({ ...formData, host: e.target.value })
-                      }
-                    />
-                  </Box>
-                  <Box>
-                    <FieldLabel>Port</FieldLabel>
-                    <HCTextField
-                      type="text"
-                      label="Port"
-                      value={formData.port}
-                      onChange={(e) =>
-                        setFormData({ ...formData, port: e.target.value })
-                      }
-                    />
-                  </Box>
-                  <Box>
-                    <FieldLabel>Username</FieldLabel>
-                    <HCTextField
-                      type="text"
-                      label="Username"
-                      value={formData.username}
-                      onChange={(e) =>
-                        setFormData({ ...formData, username: e.target.value })
-                      }
-                    />
-                  </Box>
-                  <Box>
-                    <FieldLabel>Password</FieldLabel>
-                    <HCTextField
-                      type="text"
-                      label="Password"
-                      value={formData.password}
-                      onChange={(e) =>
-                        setFormData({ ...formData, password: e.target.value })
-                      }
-                    />
-                  </Box>
-                  <Box>
-                    <FieldLabel>Sync interval (in min)</FieldLabel>
-                    <HCTextField
-                      type="text"
-                      label="Sync Interval"
-                      value={formData.syncInterval}
-                      onChange={(e) =>
-                        setFormData({
-                          ...formData,
-                          syncInterval: e.target.value,
-                        })
-                      }
-                    />
-                  </Box>
-                  <Box>
-                    <FieldLabel>Search timeout (in sec)</FieldLabel>
-                    <HCTextField
-                      type="text"
-                      label="Search Timeout"
-                      value={formData.searchTimeout}
-                      onChange={(e) =>
-                        setFormData({
-                          ...formData,
-                          searchTimeout: e.target.value,
-                        })
-                      }
-                    />
-                  </Box>
-                </Box>
-
-                <Subtitle>
-                  LDAP schema
-                  <InfoIcon>ⓘ</InfoIcon>
-                </Subtitle>
-
-                <Box
-                  sx={{
-                    display: "grid",
-                    gridTemplateColumns: "1fr 1fr",
-                    gap: "20px",
-                  }}
-                >
-                  <Box>
-                    <FieldLabel>Base DN</FieldLabel>
-                    <HCTextField
-                      type="text"
-                      label="Base DN"
-                      value={formData.baseDN}
-                      onChange={(e) =>
-                        setFormData({ ...formData, baseDN: e.target.value })
-                      }
-                    />
-                  </Box>
-                  <Box>
-                    <FieldLabel>User DN (optional)</FieldLabel>
-                    <HCTextField
-                      type="text"
-                      label="User DN"
-                      value={formData.userDN}
-                      onChange={(e) =>
-                        setFormData({ ...formData, userDN: e.target.value })
-                      }
-                    />
-                  </Box>
-                  <Box>
-                    <FieldLabel>Group DN (optional)</FieldLabel>
-                    <HCTextField
-                      type="text"
-                      label="Group DN"
-                      value={formData.groupDN}
-                      onChange={(e) =>
-                        setFormData({ ...formData, groupDN: e.target.value })
-                      }
-                    />
-                  </Box>
-                  <Box sx={{ display: "flex", alignItems: "center" }}>
-                    <FormControlLabel
-                      control={
-                        <Checkbox
-                          checked={formData.sslConnection}
-                          onChange={(e) =>
-                            setFormData({
-                              ...formData,
-                              sslConnection: e.target.checked,
-                            })
-                          }
-                        />
-                      }
-                      label="SSL Connection?"
-                    />
-                  </Box>
-                </Box>
-              </>
-            )}
-
-            {activeTab === "user" && (
-              <>
-                <Subtitle>
-                  User Schema
-                  <InfoIcon>ⓘ</InfoIcon>
-                </Subtitle>
-
-                <Box
-                  sx={{
-                    display: "grid",
-                    gridTemplateColumns: "1fr 1fr",
-                    gap: "20px",
-                  }}
-                >
-                  <Box>
-                    <FieldLabel>User Object</FieldLabel>
-                    <HCTextField
-                      type="text"
-                      label="User Object"
-                      value={formData.userObject}
-                      onChange={(e) =>
-                        setFormData({ ...formData, userObject: e.target.value })
-                      }
-                    />
-                  </Box>
-                  <Box>
-                    <FieldLabel>User Filter</FieldLabel>
-                    <HCTextField
-                      type="text"
-                      label="User Filter"
-                      value={formData.userFilter}
-                      onChange={(e) =>
-                        setFormData({ ...formData, userFilter: e.target.value })
-                      }
-                    />
-                  </Box>
-                </Box>
-
-                <Subtitle>
-                  User Schema : Attributes
-                  <InfoIcon>ⓘ</InfoIcon>
-                </Subtitle>
-
-                <Box
-                  sx={{
-                    display: "grid",
-                    gridTemplateColumns: "1fr 1fr",
-                    gap: "20px",
-                  }}
-                >
-                  <Box>
-                    <FieldLabel>USER NAME</FieldLabel>
-                    <HCTextField
-                      type="text"
-                      label="Username Attribute"
-                      value={formData.userName}
-                      onChange={(e) =>
-                        setFormData({ ...formData, userName: e.target.value })
-                      }
-                    />
-                  </Box>
-                  <Box>
-                    <FieldLabel>User Object RDN</FieldLabel>
-                    <HCTextField
-                      type="text"
-                      label="User Object RDN"
-                      value={formData.userObjectRDN}
-                      onChange={(e) =>
-                        setFormData({
-                          ...formData,
-                          userObjectRDN: e.target.value,
-                        })
-                      }
-                    />
-                  </Box>
-                  <Box>
-                    <FieldLabel>First Name</FieldLabel>
-                    <HCTextField
-                      type="text"
-                      label="First Name Attribute"
-                      value={formData.firstName}
-                      onChange={(e) =>
-                        setFormData({ ...formData, firstName: e.target.value })
-                      }
-                    />
-                  </Box>
-                  <Box>
-                    <FieldLabel>Last Name</FieldLabel>
-                    <HCTextField
-                      type="text"
-                      label="Last Name Attribute"
-                      value={formData.lastName}
-                      onChange={(e) =>
-                        setFormData({ ...formData, lastName: e.target.value })
-                      }
-                    />
-                  </Box>
-                  <Box>
-                    <FieldLabel>Display Name</FieldLabel>
-                    <HCTextField
-                      type="text"
-                      label="Display Name Attribute"
-                      value={formData.displayName}
-                      onChange={(e) =>
-                        setFormData({
-                          ...formData,
-                          displayName: e.target.value,
-                        })
-                      }
-                    />
-                  </Box>
-                  <Box>
-                    <FieldLabel>Principal Name</FieldLabel>
-                    <HCTextField
-                      type="text"
-                      label="Principal Name Attribute"
-                      value={formData.principalName}
-                      onChange={(e) =>
-                        setFormData({
-                          ...formData,
-                          principalName: e.target.value,
-                        })
-                      }
-                    />
-                  </Box>
-                  <Box>
-                    <FieldLabel>Email</FieldLabel>
-                    <HCTextField
-                      type="text"
-                      label="Email Attribute"
-                      value={formData.email}
-                      onChange={(e) =>
-                        setFormData({ ...formData, email: e.target.value })
-                      }
-                    />
-                  </Box>
-                  <Box>
-                    <FieldLabel>Unique ID</FieldLabel>
-                    <HCTextField
-                      type="text"
-                      label="Unique ID Attribute"
-                      value={formData.uniqueId}
-                      onChange={(e) =>
-                        setFormData({ ...formData, uniqueId: e.target.value })
-                      }
-                    />
-                  </Box>
-                  <Box>
-                    <FieldLabel>User Groups</FieldLabel>
-                    <HCTextField
-                      type="text"
-                      label="User Groups Attribute"
-                      value={formData.userGroups}
-                      onChange={(e) =>
-                        setFormData({ ...formData, userGroups: e.target.value })
-                      }
-                    />
-                  </Box>
-                </Box>
-              </>
-            )}
-
-            {activeTab === "group" && (
-              <>
-                <Subtitle>
-                  Group Schema
-                  <InfoIcon>ⓘ</InfoIcon>
-                </Subtitle>
-
-                <Box
-                  sx={{
-                    display: "grid",
-                    gridTemplateColumns: "1fr 1fr",
-                    gap: "20px",
-                  }}
-                >
-                  <Box>
-                    <FieldLabel>Group Object</FieldLabel>
-                    <HCTextField
-                      type="text"
-                      label="Group Object"
-                      value={formData.groupObject}
-                      onChange={(e) =>
-                        setFormData({
-                          ...formData,
-                          groupObject: e.target.value,
-                        })
-                      }
-                    />
-                  </Box>
-                  <Box>
-                    <FieldLabel>Group Filter</FieldLabel>
-                    <HCTextField
-                      type="text"
-                      label="Group Filter"
-                      value={formData.groupFilter}
-                      onChange={(e) =>
-                        setFormData({
-                          ...formData,
-                          groupFilter: e.target.value,
-                        })
-                      }
-                    />
-                  </Box>
-                  <Box
-                    sx={{
-                      display: "flex",
-                      alignItems: "center",
-                      gridColumn: "1 / span 2",
-                    }}
-                  >
-                    <FormControlLabel
-                      control={
-                        <Checkbox
-                          checked={formData.fetchRecursively}
-                          onChange={(e) =>
-                            setFormData({
-                              ...formData,
-                              fetchRecursively: e.target.checked,
-                            })
-                          }
-                        />
-                      }
-                      label="Fetch group members recursively"
-                    />
-                  </Box>
-                </Box>
-
-                <Subtitle>
-                  Group Schema Attributes
-                  <InfoIcon>ⓘ</InfoIcon>
-                </Subtitle>
-
-                <Box
-                  sx={{
-                    display: "grid",
-                    gridTemplateColumns: "1fr 1fr",
-                    gap: "20px",
-                  }}
-                >
-                  <Box>
-                    <FieldLabel>Unique ID</FieldLabel>
-                    <HCTextField
-                      type="text"
-                      label="Group Unique ID Attribute"
-                      value={formData.groupUniqueId}
-                      onChange={(e) =>
-                        setFormData({
-                          ...formData,
-                          groupUniqueId: e.target.value,
-                        })
-                      }
-                    />
-                  </Box>
-                  <Box>
-                    <FieldLabel>Name</FieldLabel>
-                    <HCTextField
-                      type="text"
-                      label="Group Name Attribute"
-                      value={formData.groupName}
-                      onChange={(e) =>
-                        setFormData({ ...formData, groupName: e.target.value })
-                      }
-                    />
-                  </Box>
-                  <Box>
-                    <FieldLabel>Description</FieldLabel>
-                    <HCTextField
-                      type="text"
-                      label="Group Description Attribute"
-                      value={formData.groupDescription}
-                      onChange={(e) =>
-                        setFormData({
-                          ...formData,
-                          groupDescription: e.target.value,
-                        })
-                      }
-                    />
-                  </Box>
-                  <Box>
-                    <FieldLabel>Members</FieldLabel>
-                    <HCTextField
-                      type="text"
-                      label="Group Members Attribute"
-                      value={formData.groupMembers}
-                      onChange={(e) =>
-                        setFormData({
-                          ...formData,
-                          groupMembers: e.target.value,
-                        })
-                      }
-                    />
-                  </Box>
-                </Box>
-              </>
-            )}
-
-            <ButtonContainer>
-              <HCButton
-                hcVariant="secondary"
-                size="large"
-                text="BACK"
-                onClick={handleBack}
-              />
-              <HCButton
-                hcVariant="secondary"
-                size="large"
-                text="TEST CONNECTION"
-                onClick={handleTestConnection}
-              />
-              {(authContext?.user?.user as any)?.company_id && (
-                <HCButton
-                  hcVariant="secondary"
-                  size="large"
-                  text="SYNC NOW"
-                  onClick={handleSyncDirectory}
+          {activeTab === 0 && (
+            <form onSubmit={handleSubmit}>
+              <Card className="bg-[#d3d3d3] p-6 shadow-md space-y-6">
+                <TextField
+                  label="Email"
+                  type="email"
+                  value={userData.email}
+                  onChange={(e) => handleInputChange("email", e.target.value)}
+                  placeholder="user@example.com"
+                  required
                 />
-              )}
-              <HCButton
-                hcVariant="primary"
-                size="large"
-                text="SAVE"
-                onClick={handleSave}
-              />
-            </ButtonContainer>
-          </FormBox>
-        </FormSection>
-      </DancingBotGridComponent>
-    </Container>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <TextField
+                    label="First Name"
+                    value={userData.firstname}
+                    onChange={(e) =>
+                      handleInputChange("firstname", e.target.value)
+                    }
+                    required
+                  />
+
+                  <TextField
+                    label="Last Name"
+                    value={userData.lastname}
+                    onChange={(e) =>
+                      handleInputChange("lastname", e.target.value)
+                    }
+                    required
+                  />
+                </div>
+
+                <TextField
+                  label="Password"
+                  type="password"
+                  value={userData.password}
+                  onChange={(e) =>
+                    handleInputChange("password", e.target.value)
+                  }
+                  placeholder="Minimum 8 characters"
+                  required
+                />
+
+                <div>
+                  <h3 className="text-lg font-semibold mb-3">Roles</h3>
+                  <div className="space-y-2">
+                    <CheckBox
+                      label="Administrator"
+                      checked={userData.isAdmin}
+                      onChange={(checked) =>
+                        handleInputChange("isAdmin", checked)
+                      }
+                    />
+                    <CheckBox
+                      label="Collector"
+                      checked={userData.isCollector}
+                      onChange={(checked) =>
+                        handleInputChange("isCollector", checked)
+                      }
+                    />
+                    <CheckBox
+                      label="Helper"
+                      checked={userData.isHelper}
+                      onChange={(checked) =>
+                        handleInputChange("isHelper", checked)
+                      }
+                    />
+                    <CheckBox
+                      label="Validator"
+                      checked={userData.isValidator}
+                      onChange={(checked) =>
+                        handleInputChange("isValidator", checked)
+                      }
+                    />
+                    <CheckBox
+                      label="Expert"
+                      checked={userData.isExpert}
+                      onChange={(checked) =>
+                        handleInputChange("isExpert", checked)
+                      }
+                    />
+                  </div>
+                </div>
+              </Card>
+
+              <div className="flex justify-end gap-4 mt-6">
+                <Button
+                  variant="outline"
+                  type="button"
+                  onClick={handleCancel}
+                  size="lg"
+                >
+                  Cancel
+                </Button>
+                <Button
+                  type="submit"
+                  disabled={loading}
+                  className="bg-[#e66334] hover:bg-[#FF8234]"
+                  size="lg"
+                >
+                  Create User
+                </Button>
+              </div>
+            </form>
+          )}
+
+          {activeTab === 1 && (
+            <Card className="bg-[#d3d3d3] p-6 shadow-md">
+              <h3 className="text-lg font-semibold mb-4">
+                Import Users from CSV
+              </h3>
+              <p className="text-gray-600 mb-4">
+                Upload a CSV file to import multiple users at once.
+              </p>
+              <input type="file" accept=".csv" className="mb-4" />
+              <Button className="bg-[#e66334] hover:bg-[#FF8234]" size="lg">
+                Import
+              </Button>
+            </Card>
+          )}
+        </div>
+      </div>
+    </div>
   );
 };
 

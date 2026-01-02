@@ -1,336 +1,227 @@
-import React, { useState, useEffect } from 'react';
-import { styled } from '@mui/material';
-import { HCButton, HCLoader, HCTextField, error as showError, success } from 'generic-components';
-import { useAuthContext } from '../../hooks/useAuthContext';
-import { VAULT_API_URL } from '../../config';
-import { LoaderContainer } from '../../components';
-import { getTodayISO, formatDateForDisplay } from '../../utils/dateUtils';
+import React, { useState, useEffect } from "react";
+import { Button } from "@/components/ui/button";
+import { TextField } from "@/components/forms/text-field";
+import { Loader } from "@/components/feedback/loader";
+import { Card } from "@/components/ui/card";
+import { SegmentTabs } from "@/components/layout/segment-tabs";
+import { toast } from "sonner";
+import { useAuthContext } from "@/hooks/useAuthContext";
+import Api from "@/services/Instance";
+import { AxiosError } from "axios";
 
 interface OrganisationDetails {
-    firstName: string;
-    lastName: string;
-    email: string;
-    telephone: string;
-    company: string;
-    registeredSince: string;
+  firstName: string;
+  lastName: string;
+  email: string;
+  telephone: string;
+  company: string;
+  registeredSince: string;
 }
 
-const Container = styled('div')({
-    width: '100%',
-    maxWidth: '1200px',
-    margin: '0 auto',
-    padding: '0 20px',
-});
+const OrganisationDetailsPage: React.FC = () => {
+  const [activeTab, setActiveTab] = useState(0);
+  const [loading, setLoading] = useState(false);
+  const authContext = useAuthContext();
 
-export const FormSection = styled('div')({
-    flex: 2,
-    display: 'flex',
-    flexDirection: 'column',
-    gap: '0px',
-});
+  const [formData, setFormData] = useState<OrganisationDetails>({
+    firstName: "",
+    lastName: "",
+    email: "",
+    telephone: "",
+    company: "",
+    registeredSince: new Date().toISOString().split("T")[0],
+  });
 
-export const FormBox = styled('div')({
-    backgroundColor: '#d3d3d3',
-    padding: '25px',
-    borderRadius: '0px 8px 8px 8px',
-    border: '1px solid #e66334',
-    boxShadow: '0 4px 8px rgba(0, 0, 0, 0.1)',
-    display: 'flex',
-    flexDirection: 'column',
-    height: 'min-content',
-});
+  const tabs = [
+    { label: "Details", value: 0 },
+    { label: "License", value: 1 },
+  ];
 
-export const TabContainer = styled('div')({
-    display: 'flex',
-    gap: '2px',
-    marginTop: '20px',
-});
+  useEffect(() => {
+    if (authContext?.user?.user?.id) {
+      fetchCompanyContactDetails(authContext.user.user.id);
+    }
+  }, [authContext?.user]);
 
-export const Tab = styled('div')<{ active: boolean }>(({ active }) => ({
-    padding: '10px 20px',
-    cursor: 'pointer',
-    backgroundColor: active ? '#e66334' : '#d3d3d3',
-    color: active ? 'white' : 'black',
-    borderRadius: '4px 4px 0 0',
-    '&:hover': {
-        backgroundColor: active ? '#e66334' : '#c3c3c3',
-    },
-}));
-
-export const ButtonContainer = styled('div')({
-    display: 'flex',
-    justifyContent: 'center',
-    gap: '20px',
-    marginTop: '20px',
-});
-
-export const FormRow = styled('div')({
-    display: 'grid',
-    gridTemplateColumns: '1fr 1fr',
-    gap: '20px',
-    marginBottom: '20px',
-});
-
-function OrganisationDetailsPage() {
-    const [activeTab, setActiveTab] = useState<'details' | 'license'>('details');
-    const [loading, setLoading] = useState(false);
-    const authContext = useAuthContext();
-    const [formData, setFormData] = useState<OrganisationDetails>({
-        firstName: '',
-        lastName: '',
-        email: '',
-        telephone: '',
-        company: '',
-        registeredSince: getTodayISO(),
-    });
-
-    const [displayDate, setDisplayDate] = useState<string>(formatDateForDisplay(getTodayISO()));
-
-    useEffect(() => {
-        if (authContext?.user?.user?.id) {
-            fetchCompanyContactDetails(authContext.user.user.id);
+  const fetchCompanyContactDetails = async (userId: string) => {
+    try {
+      setLoading(true);
+      const response = await Api.post(
+        "/api/v1/companies/getcompanycontactdetails",
+        {
+          userid: userId,
         }
-    }, [authContext?.user]);
+      );
 
-    const fetchCompanyContactDetails = async (userId: string) => {
-        try {
-            setLoading(true);
-            const response = await fetch(`${VAULT_API_URL}/api/company/contact_details`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${authContext?.user?.token || ''}`
-                },
-                body: JSON.stringify({ user_id: userId }),
-            });
+      if (response.data) {
+        setFormData({
+          firstName: response.data.firstname || "",
+          lastName: response.data.lastname || "",
+          email: response.data.email || "",
+          telephone: response.data.telephone || "",
+          company: response.data.companyname || "",
+          registeredSince:
+            response.data.registeredsince || formData.registeredSince,
+        });
+      }
+    } catch (err) {
+      console.error("Error fetching company details:", err);
+      if (!(err instanceof AxiosError && err.response?.status === 401)) {
+        toast.error("Failed to load company details.");
+      }
+    } finally {
+      setLoading(false);
+    }
+  };
 
-            if (!response.ok) {
-                const errorData = await response.json().catch(() => ({}));
-                const errorMessage = errorData.detail || 'Failed to fetch company contact details';
-                console.error(errorMessage);
-                showError(errorMessage);
-                return;
-            }
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
 
-            const data = await response.json();
-            
-            if (data) {
-                setFormData({
-                    firstName: data.firstName || '',
-                    lastName: data.lastName || '',
-                    email: data.email || '',
-                    telephone: data.telephone || '',
-                    company: data.company || '',
-                    registeredSince: data.registeredSince || getTodayISO()
-                });
-                
-                setDisplayDate(formatDateForDisplay(data.registeredSince || getTodayISO()));
-            }
-        } catch (err) {
-            console.error('Error fetching company contact details:', err);
-            showError('Failed to fetch company contact details');
-        } finally {
-            setLoading(false);
-        }
-    };
+    try {
+      setLoading(true);
+      const userId = authContext?.user?.user?.id;
 
-    const validateForm = (): boolean => {
-        const requiredFields = ['firstName', 'lastName', 'email', 'telephone'];
-        const missingFields = requiredFields.filter(field => !formData[field as keyof OrganisationDetails]);
+      await Api.post("/api/v1/companies/updatecompanycontactdetails", {
+        userid: userId,
+        firstname: formData.firstName,
+        lastname: formData.lastName,
+        email: formData.email,
+        telephone: formData.telephone,
+        companyname: formData.company,
+      });
 
-        if (missingFields.length > 0) {
-            const formattedFields = missingFields.map(field =>
-                field.replace(/([A-Z])/g, ' $1').toLowerCase().trim()
-            ).join(', ');
+      toast.success("Company details updated successfully.");
+    } catch (err) {
+      console.error("Error saving company details:", err);
+      if (!(err instanceof AxiosError && err.response?.status === 401)) {
+        toast.error("Failed to save company details.");
+      }
+    } finally {
+      setLoading(false);
+    }
+  };
 
-            showError(`Please fill in the following required fields: ${formattedFields}`);
-            return false;
-        }
+  const handleReset = () => {
+    if (authContext?.user?.user?.id) {
+      fetchCompanyContactDetails(authContext.user.user.id);
+    }
+  };
 
-        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-        if (!emailRegex.test(formData.email)) {
-            showError('Please enter a valid email address');
-            return false;
-        }
+  return (
+    <div className="max-w-4xl mx-auto p-6">
+      {loading && (
+        <div className="fixed top-0 left-0 w-full h-full bg-white/80 z-[1000] flex justify-center items-center">
+          <Loader />
+        </div>
+      )}
 
-        return true;
-    };
+      <SegmentTabs
+        tabs={tabs}
+        value={activeTab}
+        onChange={setActiveTab}
+        className="mb-6"
+      />
 
-    const handleSubmit = async (e: React.FormEvent) => {
-        e.preventDefault();
+      <form onSubmit={handleSubmit}>
+        <Card className="bg-[#d3d3d3] p-6 shadow-md">
+          {activeTab === 0 && (
+            <div className="space-y-6">
+              <h3 className="text-xl font-bold mb-4">
+                Organisation Contact Details
+              </h3>
 
-        if (!authContext?.isLoggedIn) {
-            showError('You must be logged in to continue');
-            return;
-        }
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <TextField
+                  label="First Name"
+                  value={formData.firstName}
+                  onChange={(e) =>
+                    setFormData({ ...formData, firstName: e.target.value })
+                  }
+                  required
+                />
 
-        if (!validateForm()) {
-            return;
-        }
+                <TextField
+                  label="Last Name"
+                  value={formData.lastName}
+                  onChange={(e) =>
+                    setFormData({ ...formData, lastName: e.target.value })
+                  }
+                  required
+                />
+              </div>
 
-        const dataToSend = {
-            user_id: authContext?.user?.user?.id,
-            firstName: formData.firstName,
-            lastName: formData.lastName,
-            email: formData.email,
-            telephone: formData.telephone
-        };
+              <TextField
+                label="Email"
+                type="email"
+                value={formData.email}
+                onChange={(e) =>
+                  setFormData({ ...formData, email: e.target.value })
+                }
+                required
+              />
 
-        try {
-            setLoading(true);
-            
-            const response = await fetch(`${VAULT_API_URL}/api/company/update_contact_details`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${authContext?.user?.token || ''}`
-                },
-                body: JSON.stringify(dataToSend),
-            });
+              <TextField
+                label="Telephone"
+                type="tel"
+                value={formData.telephone}
+                onChange={(e) =>
+                  setFormData({ ...formData, telephone: e.target.value })
+                }
+                required
+              />
 
-            if (!response.ok) {
-                const errorData = await response.json().catch(() => ({}));
-                const errorMessage = errorData.detail || 'Failed to save company contact details';
-                showError(errorMessage);
-                return;
-            }
+              <TextField
+                label="Company Name"
+                value={formData.company}
+                onChange={(e) =>
+                  setFormData({ ...formData, company: e.target.value })
+                }
+                required
+              />
 
-            const responseData = await response.json();
-            
-            // Update form data with response
-            setFormData({
-                firstName: responseData.firstName || '',
-                lastName: responseData.lastName || '',
-                email: responseData.email || '',
-                telephone: responseData.telephone || '',
-                company: responseData.company || '',
-                registeredSince: responseData.registeredSince || getTodayISO()
-            });
-            
-            success('Company contact details have been updated successfully');
-        } catch (err) {
-            console.error('Error saving company contact details:', err);
-            showError('Failed to save company contact details');
-        } finally {
-            setLoading(false);
-        }
-    };
+              <TextField
+                label="Registered Since"
+                type="date"
+                value={formData.registeredSince}
+                onChange={(e) =>
+                  setFormData({ ...formData, registeredSince: e.target.value })
+                }
+                disabled
+              />
+            </div>
+          )}
 
-    const handleReset = () => {
-        if (authContext?.user?.user?.id) {
-            fetchCompanyContactDetails(authContext.user.user.id);
-        } else {
-            setFormData({
-                firstName: '',
-                lastName: '',
-                email: '',
-                telephone: '',
-                company: '',
-                registeredSince: getTodayISO(),
-            });
-            setDisplayDate(formatDateForDisplay(getTodayISO()));
-        }
-    };
+          {activeTab === 1 && (
+            <div className="space-y-6">
+              <h3 className="text-xl font-bold mb-4">License Information</h3>
+              <p className="text-gray-600">
+                License information will be displayed here.
+              </p>
+            </div>
+          )}
+        </Card>
 
-    return (
-        <Container>
-            {loading && (
-                <LoaderContainer>
-                    <HCLoader />
-                </LoaderContainer>
-            )}
-            { !authContext ? <HCLoader /> : (
-                <>
-                    <TabContainer>
-                        <Tab
-                            active={activeTab === 'details'}
-                            onClick={() => setActiveTab('details')}
-                        >
-                        Details
-                        </Tab>
-                    </TabContainer>
-
-                    <FormSection>
-                        <FormBox>
-                            <h3 style={{ margin: '0 0 20px 0', color: '#333' }}>Edit Your Company Contact Details</h3>
-                            <form onSubmit={handleSubmit}>
-                                {activeTab === 'details' ? (
-                                    <>
-                                        <FormRow>
-                                            <HCTextField
-                                                type="text"
-                                                label="First Name"
-                                                value={formData.firstName}
-                                                onChange={(e) => setFormData({...formData, firstName: e.target.value})}
-                                                required
-                                            />
-                                            <HCTextField
-                                                type="text"
-                                                label="Last Name"
-                                                value={formData.lastName}
-                                                onChange={(e) => setFormData({...formData, lastName: e.target.value})}
-                                                required
-                                            />
-                                        </FormRow>
-                                        <FormRow>
-                                            <HCTextField
-                                                type="text"
-                                                label="Email"
-                                                value={formData.email}
-                                                onChange={(e) => setFormData({...formData, email: e.target.value})}
-                                                required
-                                            />
-                                            <HCTextField
-                                                type="text"
-                                                label="Telephone Number"
-                                                value={formData.telephone}
-                                                onChange={(e) => setFormData({...formData, telephone: e.target.value})}
-                                                required
-                                            />
-                                        </FormRow>
-                                        <FormRow>
-                                            <HCTextField
-                                                type="text"
-                                                label="Company"
-                                                value={formData.company}
-                                                disabled
-                                            />
-                                        </FormRow>
-                                        <FormRow>
-                                            <HCTextField
-                                                type="text"
-                                                label="Registered Since"
-                                                value={displayDate}
-                                                disabled
-                                            />
-                                        </FormRow>
-                                    </>
-                                ) : null}
-
-                                <ButtonContainer>
-                                    <HCButton
-                                        sx={{mt: 2}}
-                                        hcVariant="secondary"
-                                        size="large"
-                                        text="Cancel"
-                                        type="reset"
-                                        onClick={handleReset}
-                                    />
-                                    <HCButton
-                                        sx={{mt: 2, background: '#e66334', ':hover': { background: '#FF8234' }}}
-                                        hcVariant="primary"
-                                        size="large"
-                                        text="Save"
-                                        type="submit"
-                                    />
-                                </ButtonContainer>
-                            </form>
-                        </FormBox>
-                    </FormSection>
-                </>
-            )}
-        </Container>
-    );
-}
+        <div className="flex justify-end gap-4 mt-6">
+          <Button
+            variant="outline"
+            type="reset"
+            onClick={handleReset}
+            size="lg"
+          >
+            Cancel
+          </Button>
+          <Button
+            type="submit"
+            disabled={loading}
+            className="bg-[#e66334] hover:bg-[#FF8234]"
+            size="lg"
+          >
+            Save
+          </Button>
+        </div>
+      </form>
+    </div>
+  );
+};
 
 export default OrganisationDetailsPage;
