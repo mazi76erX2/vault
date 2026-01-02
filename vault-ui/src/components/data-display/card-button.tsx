@@ -1,13 +1,6 @@
-import * as React from "react";
-import {
-  Card,
-  CardHeader,
-  CardTitle,
-  CardDescription,
-  CardContent,
-} from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { cn } from "@/lib/utils";
+import * as React from 'react';
+import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card';
+import { cn } from '@/lib/utils';
 
 export interface CardButtonProps {
   title: string;
@@ -17,36 +10,35 @@ export interface CardButtonProps {
   disabled?: boolean;
   className?: string;
   children?: React.ReactNode;
+  selected?: boolean;
 }
 
 export const CardButton = React.forwardRef<HTMLDivElement, CardButtonProps>(
-  (
-    { title, description, icon, onClick, disabled, className, children },
-    ref
-  ) => {
+  ({ title, description, icon, onClick, disabled, className, children, selected }, ref) => {
     return (
       <Card
         ref={ref}
         className={cn(
-          "cursor-pointer transition-all hover:shadow-md",
-          disabled && "opacity-50 cursor-not-allowed",
-          className
+          'cursor-pointer transition-all hover:shadow-md',
+          disabled && 'opacity-50 cursor-not-allowed',
+          selected && 'ring-2 ring-primary',
+          className,
         )}
         onClick={disabled ? undefined : onClick}
       >
         <CardHeader>
-          <div className="flex items-center gap-4">
-            {icon && <div className="text-primary">{icon}</div>}
-            <div>
-              <CardTitle>{title}</CardTitle>
-              {description && <CardDescription>{description}</CardDescription>}
+          <div className="flex items-start gap-4">
+            {icon && <div className="text-primary shrink-0">{icon}</div>}
+            <div className="flex-1">
+              <CardTitle className="text-lg">{title}</CardTitle>
+              {description && <CardDescription className="mt-1">{description}</CardDescription>}
             </div>
           </div>
         </CardHeader>
         {children && <CardContent>{children}</CardContent>}
       </Card>
     );
-  }
+  },
 );
 
-CardButton.displayName = "CardButton";
+CardButton.displayName = 'CardButton';

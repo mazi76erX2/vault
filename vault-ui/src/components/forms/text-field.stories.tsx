@@ -1,82 +1,66 @@
-import type { Meta, StoryObj } from "@storybook/react";
-import { TextField } from "./text-field";
-import { Mail, Search, Eye } from "lucide-react";
+import type { Meta, StoryObj } from '@storybook/react';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import React from 'react';
+
+// Create a wrapper component for better story display
+const TextFieldWrapper = ({ label, ...props }: any) => (
+  <div className="w-[350px] space-y-2">
+    {label && <Label htmlFor={props.id}>{label}</Label>}
+    <Input {...props} />
+  </div>
+);
 
 const meta = {
-  title: "Components/Forms/TextField",
-  component: TextField,
+  title: 'Forms/TextField',
+  component: TextFieldWrapper,
   parameters: {
-    layout: "centered",
+    layout: 'centered',
   },
-  tags: ["autodocs"],
-} satisfies Meta<typeof TextField>;
+} satisfies Meta<typeof TextFieldWrapper>;
 
 export default meta;
 type Story = StoryObj<typeof meta>;
 
-export const Basic: Story = {
+export const Default: Story = {
   args: {
-    label: "Username",
-    placeholder: "Enter username",
+    label: 'Username',
+    placeholder: 'Enter username',
+    id: 'username',
   },
 };
 
-export const Required: Story = {
+export const Email: Story = {
   args: {
-    label: "Email",
-    placeholder: "Enter email",
-    required: true,
-    type: "email",
+    label: 'Email',
+    type: 'email',
+    placeholder: 'Enter email',
+    id: 'email',
   },
 };
 
-export const WithHelperText: Story = {
+export const Password: Story = {
   args: {
-    label: "Password",
-    type: "password",
-    helperText: "Must be at least 8 characters",
+    label: 'Password',
+    type: 'password',
+    placeholder: 'Enter password',
+    id: 'password',
   },
 };
 
-export const WithError: Story = {
+export const Disabled: Story = {
   args: {
-    label: "Email",
-    placeholder: "Enter email",
-    error: "Invalid email address",
-    value: "invalid-email",
+    label: 'Disabled',
+    placeholder: 'Cannot edit',
+    disabled: true,
+    id: 'disabled',
   },
 };
 
-export const WithStartIcon: Story = {
+export const WithValue: Story = {
   args: {
-    label: "Search",
-    placeholder: "Search...",
-    startIcon: <Search className="h-4 w-4" />,
-  },
-};
-
-export const WithEndIcon: Story = {
-  args: {
-    label: "Email",
-    placeholder: "Enter email",
-    endIcon: <Mail className="h-4 w-4" />,
-  },
-};
-
-export const Multiline: Story = {
-  args: {
-    label: "Description",
-    placeholder: "Enter description",
-    multiline: true,
-    rows: 4,
-  },
-};
-
-export const WithAction: Story = {
-  args: {
-    label: "Password",
-    type: "password",
-    endIcon: <Eye className="h-4 w-4" />,
-    onAction: () => alert("Toggle password visibility"),
+    label: 'Username',
+    value: 'johndoe',
+    id: 'with-value',
   },
 };

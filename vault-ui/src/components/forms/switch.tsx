@@ -1,108 +1,56 @@
 import * as React from "react";
-import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { Switch as ShadSwitch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { cn } from "@/lib/utils";
 
-export interface RadioOption {
-  id: string;
-  label: string;
-  disabled?: boolean;
-}
-
-type RadioSize = "small" | "medium" | "large";
-
-export interface RadioGroupProps {
+export interface SwitchProps {
   label?: string;
-  options: RadioOption[];
-  value?: string;
-  onChange?: (value: string) => void;
+  checked?: boolean;
   disabled?: boolean;
-  size?: RadioSize;
-  orientation?: "horizontal" | "vertical";
+  onChange?: (checked: boolean) => void;
   required?: boolean;
-  error?: string;
   helperText?: string;
+  id?: string;
+  className?: string;
 }
 
-const sizeMap: Record<RadioSize, string> = {
-  small: "h-4 w-4",
-  medium: "h-5 w-5",
-  large: "h-6 w-6",
-};
-
-export const RadioButtonGroup = React.forwardRef<
-  HTMLDivElement,
-  RadioGroupProps
->(
+export const Switch = React.forwardRef<HTMLButtonElement, SwitchProps>(
   (
-    {
-      label,
-      options,
-      value,
-      onChange,
-      disabled,
-      size = "medium",
-      orientation = "vertical",
-      required,
-      error,
-      helperText,
-    },
+    { label, checked, disabled, onChange, required, helperText, id, className },
     ref
   ) => {
+    const switchId = id || label?.toLowerCase().replace(/\s+/g, "-");
+
     return (
-      <div className="space-y-3" ref={ref}>
-        {label && (
-          <Label
-            className={cn(
-              required &&
-                'after:content-["*"] after:ml-0.5 after:text-destructive'
-            )}
-          >
-            {label}
-          </Label>
-        )}
-        <RadioGroup
-          value={value}
-          onValueChange={onChange}
-          disabled={disabled}
-          className={cn(
-            orientation === "horizontal" && "flex flex-row space-x-4"
+      <div className={cn("space-y-2", className)}>
+        <div className="flex items-center space-x-2">
+          <ShadSwitch
+            id={switchId}
+            checked={checked}
+            disabled={disabled}
+            onCheckedChange={onChange}
+            ref={ref}
+          />
+          {label && (
+            <Label
+              htmlFor={switchId}
+              className={cn(
+                "cursor-pointer",
+                required &&
+                  'after:content-["*"] after:ml-0.5 after:text-destructive',
+                disabled && "cursor-not-allowed opacity-50"
+              )}
+            >
+              {label}
+            </Label>
           )}
-        >
-          {options.map((option) => (
-            <div key={option.id} className="flex items-center space-x-2">
-              <RadioGroupItem
-                value={option.id}
-                id={option.id}
-                disabled={option.disabled || disabled}
-                className={sizeMap[size]}
-              />
-              <Label
-                htmlFor={option.id}
-                className={cn(
-                  "cursor-pointer",
-                  (option.disabled || disabled) &&
-                    "cursor-not-allowed opacity-50"
-                )}
-              >
-                {option.label}
-              </Label>
-            </div>
-          ))}
-        </RadioGroup>
-        {(error || helperText) && (
-          <p
-            className={cn(
-              "text-sm",
-              error ? "text-destructive" : "text-muted-foreground"
-            )}
-          >
-            {error || helperText}
-          </p>
+        </div>
+        {helperText && (
+          <p className="text-sm text-muted-foreground">{helperText}</p>
         )}
       </div>
     );
   }
 );
 
-RadioButtonGroup.displayName = "RadioButtonGroup";
+Switch.displayName = "Switch";

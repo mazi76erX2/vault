@@ -17,6 +17,8 @@ export interface NumberFieldProps {
   error?: string;
   helperText?: string;
   showControls?: boolean;
+  placeholder?: string;
+  className?: string;
 }
 
 export const NumberField = React.forwardRef<HTMLInputElement, NumberFieldProps>(
@@ -33,6 +35,8 @@ export const NumberField = React.forwardRef<HTMLInputElement, NumberFieldProps>(
       error,
       helperText,
       showControls = true,
+      placeholder,
+      className,
     },
     ref
   ) => {
@@ -51,7 +55,7 @@ export const NumberField = React.forwardRef<HTMLInputElement, NumberFieldProps>(
     };
 
     return (
-      <div className="space-y-2">
+      <div className={cn("space-y-2", className)}>
         {label && (
           <Label
             className={cn(
@@ -70,7 +74,7 @@ export const NumberField = React.forwardRef<HTMLInputElement, NumberFieldProps>(
               size="icon"
               onClick={handleDecrement}
               disabled={disabled || (min !== undefined && (value || 0) <= min)}
-              className="h-10 w-10"
+              className="h-10 w-10 shrink-0"
             >
               <Minus className="h-4 w-4" />
             </Button>
@@ -79,12 +83,16 @@ export const NumberField = React.forwardRef<HTMLInputElement, NumberFieldProps>(
             ref={ref}
             type="number"
             value={value}
-            onChange={(e) => onChange?.(parseFloat(e.target.value))}
+            onChange={(e) => onChange?.(parseFloat(e.target.value) || 0)}
             min={min}
             max={max}
             step={step}
             disabled={disabled}
-            className={cn(error && "border-destructive", "text-center")}
+            placeholder={placeholder}
+            className={cn(
+              error && "border-destructive",
+              showControls && "text-center"
+            )}
           />
           {showControls && (
             <Button
@@ -93,7 +101,7 @@ export const NumberField = React.forwardRef<HTMLInputElement, NumberFieldProps>(
               size="icon"
               onClick={handleIncrement}
               disabled={disabled || (max !== undefined && (value || 0) >= max)}
-              className="h-10 w-10"
+              className="h-10 w-10 shrink-0"
             >
               <Plus className="h-4 w-4" />
             </Button>

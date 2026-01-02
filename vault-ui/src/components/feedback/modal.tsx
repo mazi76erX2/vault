@@ -1,5 +1,4 @@
-// src/components/feedback/modal.tsx
-import * as React from "react";
+import * as React from 'react';
 import {
   Dialog,
   DialogContent,
@@ -7,8 +6,8 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from "@/components/ui/dialog";
-import { Button } from "@/components/ui/button";
+} from '@/components/ui/dialog';
+import { Button } from '@/components/ui/button';
 
 export interface ModalProps {
   open: boolean;
@@ -18,7 +17,16 @@ export interface ModalProps {
   children: React.ReactNode;
   footer?: React.ReactNode;
   showCloseButton?: boolean;
+  size?: 'sm' | 'md' | 'lg' | 'xl' | 'full';
 }
+
+const sizeClasses = {
+  sm: 'max-w-sm',
+  md: 'max-w-md',
+  lg: 'max-w-lg',
+  xl: 'max-w-xl',
+  full: 'max-w-7xl',
+};
 
 export const Modal: React.FC<ModalProps> = ({
   open,
@@ -28,10 +36,11 @@ export const Modal: React.FC<ModalProps> = ({
   children,
   footer,
   showCloseButton = true,
+  size = 'md',
 }) => {
   return (
     <Dialog open={open} onOpenChange={onClose}>
-      <DialogContent>
+      <DialogContent className={sizeClasses[size]}>
         <DialogHeader>
           <DialogTitle>{title}</DialogTitle>
           {description && <DialogDescription>{description}</DialogDescription>}
