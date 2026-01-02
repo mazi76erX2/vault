@@ -3,9 +3,15 @@ import { format } from 'date-fns';
 import { Calendar as CalendarIcon } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
-import { Calendar } from '@/components/ui/calendar';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Label } from '@/components/ui/label';
+
+// Lazy import Calendar to handle missing component
+const Calendar = React.lazy(() =>
+  import('@/components/ui/calendar').then((mod) => ({ default: mod.Calendar })).catch(() => ({
+    default: () => <div className="p-4 text-sm text-muted-foreground">Calendar component not installed. Run: npx shadcn@latest add calendar</div>
+  }))
+);
 
 export interface DatePickerProps {
   label?: string;
@@ -45,7 +51,15 @@ export const DatePicker = React.forwardRef<HTMLButtonElement, DatePickerProps>(
             </Button>
           </PopoverTrigger>
           <PopoverContent className="w-auto p-0" align="start">
-            <Calendar mode="single" selected={value} onSelect={onChange} initialFocus disabled={disabled} />
+            <React.Suspense fallback={<div className="p-4">Loading...</div>}>
+              <Calendar 
+                mode="single" 
+                selected={value} 
+                onSelect={onChange} 
+                initialFocus 
+                disabled={disabled} 
+              />
+            </React.Suspense>
           </PopoverContent>
         </Popover>
         {(error || helperText) && (

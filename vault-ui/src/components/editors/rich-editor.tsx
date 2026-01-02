@@ -4,10 +4,6 @@ import { RichTextPlugin } from '@lexical/react/LexicalRichTextPlugin';
 import { ContentEditable } from '@lexical/react/LexicalContentEditable';
 import { HistoryPlugin } from '@lexical/react/LexicalHistoryPlugin';
 import { LexicalErrorBoundary } from '@lexical/react/LexicalErrorBoundary';
-import { HeadingNode, QuoteNode } from '@lexical/rich-text';
-import { ListItemNode, ListNode } from '@lexical/list';
-import { CodeHighlightNode, CodeNode } from '@lexical/code';
-import { LinkNode } from '@lexical/link';
 import { Label } from '@/components/ui/label';
 import { cn } from '@/lib/utils';
 
@@ -26,16 +22,6 @@ export interface RichEditorProps {
 
 const theme = {
   paragraph: 'mb-2',
-  heading: {
-    h1: 'text-3xl font-bold mb-4',
-    h2: 'text-2xl font-bold mb-3',
-    h3: 'text-xl font-bold mb-2',
-  },
-  list: {
-    ul: 'list-disc list-inside mb-2',
-    ol: 'list-decimal list-inside mb-2',
-  },
-  link: 'text-primary underline',
   text: {
     bold: 'font-bold',
     italic: 'italic',
@@ -43,27 +29,12 @@ const theme = {
   },
 };
 
-const editorConfig = {
-  namespace: 'RichEditor',
-  theme,
-  onError(error: Error) {
-    console.error(error);
-  },
-  nodes: [
-    HeadingNode,
-    ListNode,
-    ListItemNode,
-    QuoteNode,
-    CodeNode,
-    CodeHighlightNode,
-    LinkNode,
-  ],
+const onError = (error: Error) => {
+  console.error('Lexical error:', error);
 };
 
 export const RichEditor: React.FC<RichEditorProps> = ({
   label,
-  value,
-  onChange,
   placeholder = 'Enter text...',
   readOnly,
   required,
@@ -72,6 +43,13 @@ export const RichEditor: React.FC<RichEditorProps> = ({
   className,
   minHeight = '200px',
 }) => {
+  const initialConfig = {
+    namespace: 'RichEditor',
+    theme,
+    onError,
+    editable: !readOnly,
+  };
+
   return (
     <div className={cn('space-y-2', className)}>
       {label && (
@@ -80,7 +58,7 @@ export const RichEditor: React.FC<RichEditorProps> = ({
         </Label>
       )}
 
-      <LexicalComposer initialConfig={editorConfig}>
+      <LexicalComposer initialConfig={initialConfig}>
         <div
           className={cn(
             'relative border rounded-md',
@@ -91,7 +69,7 @@ export const RichEditor: React.FC<RichEditorProps> = ({
             contentEditable={
               <ContentEditable
                 className={cn(
-                  'min-h-[200px] outline-none p-4 prose prose-sm max-w-none',
+                  'outline-none p-4',
                   readOnly && 'opacity-50 cursor-not-allowed',
                 )}
                 style={{ minHeight }}
@@ -99,7 +77,7 @@ export const RichEditor: React.FC<RichEditorProps> = ({
               />
             }
             placeholder={
-              <div className="absolute top-4 left-4 text-muted-foreground pointer-events-none">
+              <div className="absolute top-4 left-4 text-muted-foreground pointer-events-none select-none">
                 {placeholder}
               </div>
             }

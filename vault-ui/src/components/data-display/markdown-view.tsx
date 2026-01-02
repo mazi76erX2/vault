@@ -3,7 +3,6 @@ import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import rehypeHighlight from 'rehype-highlight';
 import { cn } from '@/lib/utils';
-import 'highlight.js/styles/github-dark.css';
 
 export interface MarkdownViewProps {
   content: string;

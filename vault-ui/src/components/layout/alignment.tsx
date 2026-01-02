@@ -6,7 +6,7 @@ export interface AlignmentProps {
   horizontal?: 'left' | 'center' | 'right' | 'between' | 'around' | 'evenly';
   vertical?: 'top' | 'center' | 'bottom' | 'stretch';
   direction?: 'row' | 'column';
-  gap?: number;
+  gap?: 0 | 1 | 2 | 3 | 4 | 5 | 6 | 8 | 10 | 12 | 16;
   className?: string;
 }
 
@@ -26,6 +26,20 @@ const verticalMap = {
   stretch: 'items-stretch',
 };
 
+const gapMap = {
+  0: 'gap-0',
+  1: 'gap-1',
+  2: 'gap-2',
+  3: 'gap-3',
+  4: 'gap-4',
+  5: 'gap-5',
+  6: 'gap-6',
+  8: 'gap-8',
+  10: 'gap-10',
+  12: 'gap-12',
+  16: 'gap-16',
+};
+
 export const Alignment: React.FC<AlignmentProps> = ({
   children,
   horizontal = 'left',
@@ -41,7 +55,7 @@ export const Alignment: React.FC<AlignmentProps> = ({
         direction === 'column' ? 'flex-col' : 'flex-row',
         horizontalMap[horizontal],
         verticalMap[vertical],
-        \`gap-\${gap}\`,
+        gapMap[gap],
         className,
       )}
     >
