@@ -1,2 +1,4 @@
 supabase-vault/
 supabase/
+qdrant_storage/
+postgres_data/

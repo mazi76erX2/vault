@@ -1,251 +1,328 @@
-# Vault Project Makefile
-# ====================
+# ====================================================================================
+# Vault Project - Unified Makefile
+# ====================================================================================
+# Knowledge Management System with PostgreSQL + pgvector, Ollama, and FastAPI
+# ====================================================================================
+
+# Configuration
+# ====================================================================================
+DB_NAME = vault_db
+DB_USER = $(shell whoami)
+DB_HOST = localhost
+DB_PORT = 5432
+PYTHON := .venv/bin/python
+UV := uv
+
+# PostgreSQL commands
+PSQL = psql -d $(DB_NAME)
+PSQL_POSTGRES = psql -d postgres
+
+# Colors for output
+BLUE := \033[36m
+GREEN := \033[32m
+YELLOW := \033[33m
+RED := \033[31m
+RESET := \033[0m
+
+# ====================================================================================
+# Help
+# ====================================================================================
 
 .PHONY: help
 help: ## Show this help message
-	@echo "Vault - Knowledge Management System"
+	@echo "$(BLUE)Vault - Knowledge Management System$(RESET)"
 	@echo "===================================="
 	@echo ""
-	@echo "Available targets:"
-	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | sort | awk 'BEGIN {FS = ":.*?## "}; {printf "  \033[36m%-20s\033[0m %s\n", $$1, $$2}'
+	@echo "$(GREEN)Available targets:$(RESET)"
+	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | sort | awk 'BEGIN {FS = ":.*?## "}; {printf "  $(BLUE)%-30s$(RESET) %s\n", $$1, $$2}'
+	@echo ""
 
-# ====================
-# Local Development (UV)
-# ====================
+# ====================================================================================
+# Environment Setup
+# ====================================================================================
 
-.PHONY: install
+.PHONY: install install-dev venv init setup-local setup-docker setup-ollama
 install: ## Install dependencies with UV
-	@echo "Installing dependencies with UV..."
-	uv sync --all-extras
+	@echo "$(GREEN)Installing dependencies with UV...$(RESET)"
+	$(UV) sync --all-extras
 
-.PHONY: install-dev
 install-dev: ## Install dev dependencies
-	@echo "Installing development dependencies..."
-	uv sync --all-extras --dev
+	@echo "$(GREEN)Installing development dependencies...$(RESET)"
+	$(UV) sync --all-extras --dev
 
-.PHONY: venv
 venv: ## Create virtual environment with UV
-	@echo "Creating virtual environment..."
-	uv venv
+	@echo "$(GREEN)Creating virtual environment...$(RESET)"
+	$(UV) venv
 
-.PHONY: run-local
+setup-local: venv install db-create db-extensions migrations-upgrade ## Setup local development environment
+	@echo "$(GREEN)✅ Local environment ready!$(RESET)"
+	@echo "Run 'make run-local' to start the server"
+
+setup-docker: ## Setup Docker development environment
+	@echo "$(GREEN)Setting up Docker environment...$(RESET)"
+	cp .env.example .env || true
+	@echo "$(YELLOW)⚠️  Please update .env with your configuration$(RESET)"
+	@echo "Then run: make dev-build && make dev-watch"
+
+setup-ollama: ollama-pull ## Setup Ollama with required models
+	@echo "$(GREEN)✅ Ollama models installed!$(RESET)"
+
+init: setup-local setup-ollama ## Initialize complete development environment
+	@echo "$(GREEN)✅ Development environment initialized!$(RESET)"
+	@echo ""
+	@echo "Next steps:"
+	@echo "  1. Update .env with your configuration"
+	@echo "  2. Run 'make dev-watch' for Docker development"
+	@echo "  3. Or run 'make run-local' for local development"
+
+# ====================================================================================
+# Local Development
+# ====================================================================================
+
+.PHONY: run-local shell
 run-local: ## Run FastAPI locally with hot reload
-	@echo "Starting FastAPI server locally..."
-	uv run uvicorn main:app --host 0.0.0.0 --port 7860 --reload
+	@echo "$(GREEN)Starting FastAPI server locally...$(RESET)"
+	$(UV) run uvicorn main:app --host 0.0.0.0 --port 7860 --reload
 
-.PHONY: shell
 shell: ## Open Python shell with project context
-	uv run python
+	$(UV) run python
 
-# ====================
+# ====================================================================================
 # Docker Development
-# ====================
+# ====================================================================================
 
-.PHONY: dev-up
+.PHONY: dev-up dev-watch dev-build dev-logs dev-logs-backend dev-down dev-restart dev-shell dev-python verify-ldap
 dev-up: ## Start development environment with Docker Compose
-	@echo "Starting development environment..."
+	@echo "$(GREEN)Starting development environment...$(RESET)"
 	docker compose -f docker-compose.dev.yml up -d
 
-.PHONY: dev-watch
 dev-watch: ## Start development with hot reload (watch mode)
-	@echo "Starting development with watch mode..."
+	@echo "$(GREEN)Starting development with watch mode...$(RESET)"
 	docker compose -f docker-compose.dev.yml up --watch
 
-.PHONY: dev-build
 dev-build: ## Build development Docker image
-	@echo "Building development image..."
+	@echo "$(GREEN)Building development image...$(RESET)"
 	docker compose -f docker-compose.dev.yml build --no-cache
 
-.PHONY: dev-logs
 dev-logs: ## Follow development logs
 	docker compose -f docker-compose.dev.yml logs -f
 
-.PHONY: dev-logs-backend
 dev-logs-backend: ## Follow backend logs only
 	docker compose -f docker-compose.dev.yml logs -f backend
 
-.PHONY: dev-down
 dev-down: ## Stop development environment
 	docker compose -f docker-compose.dev.yml down
 
-.PHONY: dev-restart
 dev-restart: ## Restart development environment
 	docker compose -f docker-compose.dev.yml restart
 
-.PHONY: dev-shell
 dev-shell: ## Open shell in backend container
 	docker compose -f docker-compose.dev.yml exec backend /bin/bash
 
-.PHONY: dev-python
 dev-python: ## Open Python shell in backend container
 	docker compose -f docker-compose.dev.yml exec backend /app/.venv/bin/python
 
-.PHONY: verify-ldap
 verify-ldap: ## Verify python-ldap is installed correctly
-	@echo "Verifying python-ldap installation..."
+	@echo "$(GREEN)Verifying python-ldap installation...$(RESET)"
 	docker compose -f docker-compose.dev.yml exec backend /app/.venv/bin/python -c "import ldap; print('✅ python-ldap OK')"
 
-
-# ====================
+# ====================================================================================
 # Docker Production
-# ====================
+# ====================================================================================
 
-.PHONY: prod-up
+.PHONY: prod-up prod-build prod-logs prod-down prod-restart
 prod-up: ## Start production environment
-	@echo "Starting production environment..."
+	@echo "$(GREEN)Starting production environment...$(RESET)"
 	docker compose up -d
 
-.PHONY: prod-build
 prod-build: ## Build production Docker image
-	@echo "Building production image..."
+	@echo "$(GREEN)Building production image...$(RESET)"
 	docker compose build --no-cache
 
-.PHONY: prod-logs
 prod-logs: ## Follow production logs
 	docker compose logs -f
 
-.PHONY: prod-down
 prod-down: ## Stop production environment
 	docker compose down
 
-.PHONY: prod-restart
 prod-restart: ## Restart production environment
 	docker compose restart
 
-# ====================
-# Database Operations
-# ====================
+# ====================================================================================
+# Database Operations (Local PostgreSQL)
+# ====================================================================================
 
-.PHONY: db-shell
-db-shell: ## Connect to PostgreSQL shell
-	docker compose exec postgres psql -U postgres -d vault
+.PHONY: db-create db-drop db-reset db-extensions db-shell db-check db-list-extensions db-backup db-restore
+db-create: ## Create the vault_db database
+	@echo "$(GREEN)Creating database $(DB_NAME)...$(RESET)"
+	@$(PSQL_POSTGRES) -c "CREATE DATABASE $(DB_NAME);" 2>/dev/null || echo "$(YELLOW)Database already exists$(RESET)"
 
-.PHONY: db-migrate
-db-migrate: ## Run database migrations
-	@echo "Running database migrations..."
-	docker compose exec backend /app/.venv/bin/alembic upgrade head
+db-drop: ## Drop the vault_db database
+	@echo "$(RED)Dropping database $(DB_NAME)...$(RESET)"
+	@$(PSQL_POSTGRES) -c "DROP DATABASE IF EXISTS $(DB_NAME);"
 
-.PHONY: db-reset
-db-reset: ## Reset database (WARNING: deletes all data)
-	@echo "⚠️  This will delete all data. Press Ctrl+C to cancel..."
-	@sleep 3
-	docker compose down -v
-	docker compose up -d postgres
-	@sleep 5
-	$(MAKE) db-migrate
+db-reset: db-drop db-create db-extensions migrations-upgrade ## Reset database (WARNING: deletes all data)
+	@echo "$(GREEN)Database reset complete$(RESET)"
 
-.PHONY: db-backup
+db-extensions: ## Install pgvector and uuid-ossp extensions
+	@echo "$(GREEN)Installing PostgreSQL extensions...$(RESET)"
+	@$(PSQL) -c 'CREATE EXTENSION IF NOT EXISTS vector;'
+	@$(PSQL) -c 'CREATE EXTENSION IF NOT EXISTS "uuid-ossp";'
+	@echo "$(GREEN)Extensions installed successfully$(RESET)"
+
+db-shell: ## Open psql shell to vault_db
+	@$(PSQL)
+
+db-check: ## Check database connection and extensions
+	@echo "$(GREEN)Checking database connection...$(RESET)"
+	@$(PSQL) -c "SELECT version();"
+	@$(PSQL) -c "SELECT extname, extversion FROM pg_extension WHERE extname IN ('vector', 'uuid-ossp');"
+
+db-list-extensions: ## List all installed extensions
+	@$(PSQL) -c '\dx'
+
 db-backup: ## Backup database to ./backups/
-	@echo "Backing up database..."
+	@echo "$(GREEN)Backing up database...$(RESET)"
 	@mkdir -p backups
-	docker compose exec -T postgres pg_dump -U postgres vault > backups/vault_$(shell date +%Y%m%d_%H%M%S).sql
-	@echo "Backup saved to backups/"
+	@pg_dump -U $(DB_USER) -h $(DB_HOST) $(DB_NAME) > backups/vault_$(shell date +%Y%m%d_%H%M%S).sql
+	@echo "$(GREEN)Backup saved to backups/$(RESET)"
 
-.PHONY: db-restore
 db-restore: ## Restore database from backup (usage: make db-restore FILE=backups/vault_xxx.sql)
 	@if [ -z "$(FILE)" ]; then \
-		echo "Usage: make db-restore FILE=backups/vault_xxx.sql"; \
+		echo "$(RED)Usage: make db-restore FILE=backups/vault_xxx.sql$(RESET)"; \
 		exit 1; \
 	fi
-	@echo "Restoring database from $(FILE)..."
-	docker compose exec -T postgres psql -U postgres vault < $(FILE)
+	@echo "$(GREEN)Restoring database from $(FILE)...$(RESET)"
+	@psql -U $(DB_USER) -h $(DB_HOST) $(DB_NAME) < $(FILE)
 
-# ====================
-# Qdrant Operations
-# ====================
+# ====================================================================================
+# Alembic Migrations
+# ====================================================================================
 
-.PHONY: qdrant-shell
-qdrant-shell: ## Open Qdrant web UI (http://localhost:6333/dashboard)
-	@echo "Opening Qdrant at http://localhost:6333/dashboard"
-	@open http://localhost:6333/dashboard || xdg-open http://localhost:6333/dashboard || start http://localhost:6333/dashboard
+.PHONY: migrations-create migrations-upgrade migrations-downgrade migrations-history migrations-current migrations-stamp
+migrations-create: ## Create new migration (usage: make migrations-create MSG="description")
+	@if [ -z "$(MSG)" ]; then \
+		echo "$(RED)Usage: make migrations-create MSG=\"description\"$(RESET)"; \
+		exit 1; \
+	fi
+	@echo "$(GREEN)Creating new migration...$(RESET)"
+	@$(UV) run alembic revision --autogenerate -m "$(MSG)"
 
-.PHONY: qdrant-reset
-qdrant-reset: ## Reset Qdrant collections (deletes all vectors)
-	@echo "⚠️  This will delete all Qdrant data. Press Ctrl+C to cancel..."
-	@sleep 3
-	docker compose down qdrant
-	rm -rf ./qdrant_storage
-	docker compose up -d qdrant
+migrations-upgrade: ## Upgrade database to latest migration
+	@echo "$(GREEN)Upgrading database to latest migration...$(RESET)"
+	@$(UV) run alembic upgrade head
 
-# ====================
+migrations-downgrade: ## Downgrade database by 1 revision
+	@echo "$(YELLOW)Downgrading database by 1 revision...$(RESET)"
+	@$(UV) run alembic downgrade -1
+
+migrations-history: ## Show migration history
+	@$(UV) run alembic history
+
+migrations-current: ## Show current migration version
+	@$(UV) run alembic current
+
+migrations-stamp: ## Stamp database with specific revision (usage: make migrations-stamp REV=head)
+	@$(UV) run alembic stamp $(REV)
+
+# ====================================================================================
 # Ollama Operations
-# ====================
+# ====================================================================================
 
-.PHONY: ollama-pull
+.PHONY: ollama-pull ollama-list ollama-serve ollama-stop
 ollama-pull: ## Pull required Ollama models
-	@echo "Pulling Ollama models..."
+	@echo "$(GREEN)Pulling Ollama models...$(RESET)"
 	ollama pull llama2
 	ollama pull nomic-embed-text
 
-.PHONY: ollama-list
 ollama-list: ## List installed Ollama models
-	ollama list
+	@ollama list
 
-.PHONY: ollama-serve
 ollama-serve: ## Start Ollama server (if not running)
-	@echo "Starting Ollama server..."
-	ollama serve
+	@echo "$(GREEN)Starting Ollama server...$(RESET)"
+	@ollama serve &
 
-# ====================
+ollama-stop: ## Stop Ollama server
+	@pkill -f "ollama serve" || echo "$(YELLOW)Ollama not running$(RESET)"
+
+# ====================================================================================
+# Vector Operations (pgvector)
+# ====================================================================================
+
+.PHONY: vector-index vector-test
+vector-index: ## Create HNSW indexes for vector search
+	@echo "$(GREEN)Creating vector indexes...$(RESET)"
+	@$(PSQL) -c "CREATE INDEX IF NOT EXISTS idx_documents_embedding_hnsw ON documents USING hnsw (embedding vector_cosine_ops) WITH (m = 16, ef_construction = 64);"
+	@$(PSQL) -c "CREATE INDEX IF NOT EXISTS idx_chat_messages_embedding_hnsw ON chat_messages_helper USING hnsw (embedding vector_cosine_ops) WITH (m = 16, ef_construction = 64);"
+	@echo "$(GREEN)Vector indexes created$(RESET)"
+
+vector-test: ## Test vector similarity search
+	@echo "$(GREEN)Testing vector search...$(RESET)"
+	@$(UV) run python -c "from app.services.vector_service import VectorService; print('Vector service OK')"
+
+# ====================================================================================
 # Code Quality
-# ====================
+# ====================================================================================
 
-.PHONY: lint
+.PHONY: lint lint-fix format format-check format-ruff type-check
 lint: ## Run linting with ruff
-	@echo "Running linter..."
-	uv run ruff check app/ main.py
+	@echo "$(GREEN)Running linter...$(RESET)"
+	$(UV) run ruff check app/ main.py
 
-.PHONY: lint-fix
 lint-fix: ## Fix linting issues automatically
-	@echo "Fixing linting issues..."
-	uv run ruff check --fix app/ main.py
+	@echo "$(GREEN)Fixing linting issues...$(RESET)"
+	$(UV) run ruff check --fix app/ main.py
 
-.PHONY: format-ruff
-format-ruff: ## Format code with ruff
-	@echo "Formatting code..."
-	uv run ruff format app/ main.py
+format: ## Format code with ruff, isort, and black
+	@echo "$(GREEN)Formatting code...$(RESET)"
+	$(UV) run ruff check --fix --unsafe-fixes app/ main.py
+	$(UV) run isort app/ main.py
+	$(UV) run black app/ main.py
 
-.PHONY: format-check
+format-ruff: ## Format code with ruff only
+	@echo "$(GREEN)Formatting code with ruff...$(RESET)"
+	$(UV) run ruff format app/ main.py
+
 format-check: ## Check code formatting
-	@echo "Checking code formatting..."
-	uv run ruff format --check app/ main.py
+	@echo "$(GREEN)Checking code formatting...$(RESET)"
+	$(UV) run ruff format --check app/ main.py
 
-.PHONY: type-check
 type-check: ## Run type checking with mypy
-	@echo "Running type checker..."
-	uv run mypy app/ main.py
+	@echo "$(GREEN)Running type checker...$(RESET)"
+	$(UV) run mypy app/ main.py
 
-.PHONY: format
-format: ## Check code formatting
-	@echo "Checking code formatting..."
-	uv run ruff check --fix --unsafe-fixes src app/ main.py && isort app/ main.py && black app/ main.py
-
-# ====================
+# ====================================================================================
 # Testing
-# ====================
+# ====================================================================================
 
-.PHONY: test
+.PHONY: test test-cov test-watch test-unit test-integration
 test: ## Run tests with pytest
-	@echo "Running tests..."
-	uv run pytest
+	@echo "$(GREEN)Running tests...$(RESET)"
+	$(UV) run pytest
 
-.PHONY: test-cov
 test-cov: ## Run tests with coverage report
-	@echo "Running tests with coverage..."
-	uv run pytest --cov=app --cov-report=html --cov-report=term
+	@echo "$(GREEN)Running tests with coverage...$(RESET)"
+	$(UV) run pytest --cov=app --cov-report=html --cov-report=term
 
-.PHONY: test-watch
 test-watch: ## Run tests in watch mode
-	@echo "Running tests in watch mode..."
-	uv run pytest-watch
+	@echo "$(GREEN)Running tests in watch mode...$(RESET)"
+	$(UV) run pytest-watch
 
-# ====================
+test-unit: ## Run unit tests only
+	@echo "$(GREEN)Running unit tests...$(RESET)"
+	$(UV) run pytest tests/unit/
+
+test-integration: ## Run integration tests only
+	@echo "$(GREEN)Running integration tests...$(RESET)"
+	$(UV) run pytest tests/integration/
+
+# ====================================================================================
 # Cleaning
-# ====================
+# ====================================================================================
 
-.PHONY: clean
+.PHONY: clean clean-docker clean-all clean-db clean-pyc
 clean: ## Clean temporary files and caches
-	@echo "Cleaning temporary files..."
+	@echo "$(GREEN)Cleaning temporary files...$(RESET)"
 	find . -type d -name "__pycache__" -exec rm -rf {} + 2>/dev/null || true
 	find . -type f -name "*.pyc" -delete 2>/dev/null || true
 	find . -type f -name "*.pyo" -delete 2>/dev/null || true
@@ -255,62 +332,83 @@ clean: ## Clean temporary files and caches
 	find . -type d -name ".mypy_cache" -exec rm -rf {} + 2>/dev/null || true
 	rm -rf htmlcov/ .coverage
 
-.PHONY: clean-docker
+clean-pyc: ## Clean Python cache files
+	@echo "$(GREEN)Cleaning Python cache...$(RESET)"
+	find . -type f -name "*.pyc" -delete
+	find . -type d -name "__pycache__" -exec rm -rf {} + 2>/dev/null || true
+
 clean-docker: ## Clean Docker volumes and images
-	@echo "⚠️  This will remove all Docker volumes and images. Press Ctrl+C to cancel..."
+	@echo "$(YELLOW)⚠️  This will remove all Docker volumes and images. Press Ctrl+C to cancel...$(RESET)"
 	@sleep 3
 	docker compose down -v --rmi all
 
-.PHONY: clean-all
-clean-all: clean clean-docker ## Clean everything (code + Docker)
+clean-db: ## Clean database files (for Docker setup)
+	@echo "$(YELLOW)⚠️  This will delete database files. Press Ctrl+C to cancel...$(RESET)"
+	@sleep 3
+	rm -rf postgres_data/
+
+clean-all: clean clean-docker clean-db ## Clean everything (code + Docker + DB)
+	@echo "$(RED)⚠️  This will remove everything. Press Ctrl+C to cancel...$(RESET)"
+	@sleep 5
 	rm -rf .venv uv.lock
-	rm -rf postgres_data/ qdrant_storage/ uploads/ logs/
+	rm -rf qdrant_storage/ uploads/ logs/ backups/
 
-# ====================
-# Setup & Initialization
-# ====================
-
-.PHONY: setup-local
-setup-local: venv install ## Setup local development environment
-	@echo "✅ Local environment ready!"
-	@echo "Run 'make run-local' to start the server"
-
-.PHONY: setup-docker
-setup-docker: ## Setup Docker development environment
-	@echo "Setting up Docker environment..."
-	cp .env.example .env || true
-	@echo "⚠️  Please update .env with your configuration"
-	@echo "Then run: make dev-build && make dev-watch"
-
-.PHONY: setup-ollama
-setup-ollama: ollama-pull ## Setup Ollama with required models
-	@echo "✅ Ollama models installed!"
-
-.PHONY: init
-init: setup-local setup-ollama ## Initialize complete development environment
-	@echo "✅ Development environment initialized!"
-	@echo ""
-	@echo "Next steps:"
-	@echo "  1. Update .env with your configuration"
-	@echo "  2. Run 'make dev-watch' for Docker development"
-	@echo "  3. Or run 'make run-local' for local development"
-
-# ====================
+# ====================================================================================
 # Monitoring & Health
-# ====================
+# ====================================================================================
 
-.PHONY: status
+.PHONY: status health logs-all
 status: ## Show status of all services
-	@echo "=== Docker Services ==="
-	@docker compose ps
+	@echo "$(BLUE)=== Docker Services ===$(RESET)"
+	@docker compose ps || echo "$(YELLOW)Docker not running$(RESET)"
 	@echo ""
-	@echo "=== Ollama Status ==="
-	@curl -s http://localhost:11434/api/tags | jq -r '.models[].name' || echo "Ollama not running"
+	@echo "$(BLUE)=== Ollama Status ===$(RESET)"
+	@curl -s http://localhost:11434/api/tags 2>/dev/null | grep -q "models" && echo "$(GREEN)✅ Ollama running$(RESET)" || echo "$(RED)❌ Ollama not running$(RESET)"
+	@echo ""
+	@echo "$(BLUE)=== Database ===$(RESET)"
+	@pg_isready -h $(DB_HOST) -p $(DB_PORT) -U $(DB_USER) -d $(DB_NAME) && echo "$(GREEN)✅ PostgreSQL ready$(RESET)" || echo "$(RED)❌ PostgreSQL not ready$(RESET)"
 
-.PHONY: health
 health: ## Check health of all services
-	@echo "Checking service health..."
-	@echo -n "Backend: " && curl -sf http://localhost:7860/health && echo "✅" || echo "❌"
-	@echo -n "Qdrant: " && curl -sf http://localhost:6333/collections && echo "✅" || echo "❌"
-	@echo -n "PostgreSQL: " && docker compose exec -T postgres pg_isready -U postgres && echo "✅" || echo "❌"
-	@echo -n "Ollama: " && curl -sf http://localhost:11434/api/tags > /dev/null && echo "✅" || ec
+	@echo "$(GREEN)Checking service health...$(RESET)"
+	@echo -n "Backend: " && curl -sf http://localhost:7860/health > /dev/null 2>&1 && echo "$(GREEN)✅$(RESET)" || echo "$(RED)❌$(RESET)"
+	@echo -n "PostgreSQL: " && pg_isready -h $(DB_HOST) -p $(DB_PORT) -U $(DB_USER) > /dev/null 2>&1 && echo "$(GREEN)✅$(RESET)" || echo "$(RED)❌$(RESET)"
+	@echo -n "Ollama: " && curl -sf http://localhost:11434/api/tags > /dev/null 2>&1 && echo "$(GREEN)✅$(RESET)" || echo "$(RED)❌$(RESET)"
+
+logs-all: ## Tail all application logs
+	@tail -f logs/*.log 2>/dev/null || echo "$(YELLOW)No log files found$(RESET)"
+
+# ====================================================================================
+# Quick Start Commands
+# ====================================================================================
+
+.PHONY: quick-start quick-dev quick-prod
+quick-start: init ## Quick start - setup everything and run locally
+	@echo "$(GREEN)✅ Setup complete! Starting server...$(RESET)"
+	$(MAKE) run-local
+
+quick-dev: db-create db-extensions migrations-upgrade ## Quick dev start (assumes dependencies installed)
+	@echo "$(GREEN)Starting development server...$(RESET)"
+	$(MAKE) run-local
+
+quick-prod: prod-build prod-up ## Quick production start
+	@echo "$(GREEN)Production environment started$(RESET)"
+	@echo "Check status with: make status"
+
+# ====================================================================================
+# Utility Commands
+# ====================================================================================
+
+.PHONY: seed-data create-admin show-schema
+seed-data: ## Seed database with sample data
+	@echo "$(GREEN)Seeding database...$(RESET)"
+	$(UV) run python scripts/seed_data.py
+
+create-admin: ## Create admin user (interactive)
+	@echo "$(GREEN)Creating admin user...$(RESET)"
+	$(UV) run python scripts/create_admin.py
+
+show-schema: ## Show database schema
+	@echo "$(GREEN)Database Schema:$(RESET)"
+	@$(PSQL) -c "\dt" -c "\d+ profiles" -c "\d+ documents"
+
+.DEFAULT_GOAL := help

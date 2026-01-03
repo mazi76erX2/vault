@@ -1,62 +1,40 @@
-import os
-from collections.abc import Generator
+from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession, async_sessionmaker
+from sqlalchemy.orm import declarative_base
+from .config import settings
 
-from sqlalchemy import create_engine
-from sqlalchemy.orm import Session, sessionmaker
+# Validate the DATABASE_URL
+if not settings.DATABASE_URL.startswith("postgresql+asyncpg://"):
+    raise ValueError(
+        f"DATABASE_URL must use asyncpg driver for async operations. "
+        f"Current: {settings.DATABASE_URL}. "
+        f"Expected format: postgresql+asyncpg://user:pass@host:port/dbname"
+    )
 
-from app.core.config import settings
-from app.db.baseclass import Base
+# Async engine for runtime (asyncpg)
+async_engine = create_async_engine(
+    settings.DATABASE_URL,
+    echo=True,
+    future=True,
+    pool_pre_ping=True,
+)
 
-try:
-    from supabase import Client, create_client  # type: ignore
-except Exception:  # pragma: no cover
-    Client = object  # type: ignore
-    create_client = None  # type: ignore
+# Async session maker
+async_session_maker = async_sessionmaker(
+    async_engine,
+    class_=AsyncSession,
+    expire_on_commit=False
+)
 
+Base = declarative_base()
 
-DATABASE_URL = os.getenv("DATABASE_URL", settings.database_url)
-
-engine = create_engine(DATABASE_URL, pool_pre_ping=True)
-SessionLocal = sessionmaker(bind=engine, autocommit=False, autoflush=False)
-
-
-# Supabase client (anon key) - for regular user operations with RLS
-supabase: Client | None = None
-if create_client and settings.supabase_key and settings.supabase_url:
-    try:
-        supabase = create_client(
-            settings.supabase_url,
-            settings.supabase_key,
-        )
-    except Exception as e:
-        print(f"Warning: Could not initialize Supabase client: {e}")
-
-
-# Supabase admin client (service role key) - for admin operations, bypasses RLS
-supabase_admin: Client | None = None
-if create_client and settings.supabase_service_key and settings.supabase_url:
-    try:
-        supabase_admin = create_client(
-            settings.supabase_url,
-            settings.supabase_service_key,
-        )
-    except Exception as e:
-        print(f"Warning: Could not initialize Supabase admin client: {e}")
-
-
-# Fallback: if no anon key but service key exists, use service key for regular client
-if supabase is None and supabase_admin is not None:
-    supabase = supabase_admin
-
-
-def get_db() -> Generator[Session]:
-    db = SessionLocal()
-    try:
-        yield db
-    finally:
-        db.close()
-
-
-def init_db() -> None:
-    """Initialize database tables."""
-    Base.metadata.create_all(bind=engine)
+# Dependency for FastAPI
+async def get_async_db():
+    async with async_session_maker() as session:
+        try:
+            yield session
+            await session.commit()
+        except Exception:
+            await session.rollback()
+            raise
+        finally:
+            await session.close()

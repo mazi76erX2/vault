@@ -127,5 +127,6 @@ venv/
 # Vector databases
 postgres_data/
 qdrant_data/
+qdrant_storage/
 weaviate_data/
 milvus_data/

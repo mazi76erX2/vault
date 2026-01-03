@@ -1,114 +1,26 @@
-from __future__ import annotations
+from fastapi import APIRouter, Depends, HTTPException, status
+from sqlalchemy.ext.asyncio import AsyncSession
+from app.database import get_async_db  # Remove supabase import
+from app.schemas import UserCreate, UserResponse
+from app.services.auth_service import AuthService
 
-from fastapi import APIRouter, HTTPException, Request, status
-from pydantic import BaseModel, EmailStr
+router = APIRouter(prefix="/auth", tags=["authentication"])
 
-from app.database import supabase
-from app.services.auth_service import CurrentUser, _extract_bearer_token, get_current_user
+@router.post("/signup", response_model=UserResponse)
+async def signup(
+    user_data: UserCreate,
+    db: AsyncSession = Depends(get_async_db)
+):
+    """Register a new user"""
+    auth_service = AuthService(db)
+    return await auth_service.create_user(user_data)
 
-router = APIRouter(prefix="/api/v1/auth", tags=["auth"])
-
-
-class LoginRequest(BaseModel):
-    email: EmailStr
-    password: str
-
-
-class UserOut(BaseModel):
-    id: str
-    email: str | None = None
-
-
-class LoginResponse(BaseModel):
-    user: UserOut
-    token: str
-    refreshToken: str | None = None
-
-
-class RefreshTokenRequest(BaseModel):
-    refreshToken: str
-
-
-class RefreshTokenResponse(BaseModel):
-    user: UserOut
-    token: str
-    refreshToken: str | None = None
-
-
-@router.post("/login", response_model=LoginResponse)
-async def login(req: LoginRequest):
-    if supabase is None:
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Supabase client not configured (set SUPABASE_URL and SUPABASE_KEY)",
-        )
-
-    try:
-        auth_resp = supabase.auth.sign_in_with_password(
-            {"email": str(req.email), "password": req.password}
-        )
-        if not auth_resp or not auth_resp.user or not auth_resp.session:
-            raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid credentials"
-            )
-
-        return LoginResponse(
-            user=UserOut(id=auth_resp.user.id, email=auth_resp.user.email),
-            token=auth_resp.session.access_token,
-            refreshToken=auth_resp.session.refresh_token,
-        )
-    except HTTPException:
-        raise
-    except Exception as e:
-        msg = str(e)
-        if "SSL" in msg or "connect" in msg.lower():
-            msg = "Failed to connect to authentication service. Please try again."
-        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=msg) from e
-
-
-@router.post("/refresh", response_model=RefreshTokenResponse)
-async def refresh(req: RefreshTokenRequest):
-    if supabase is None:
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Supabase client not configured (set SUPABASE_URL and SUPABASE_KEY)",
-        )
-
-    try:
-        refresh_resp = supabase.auth.refresh_session(req.refreshToken)
-        if not refresh_resp or not refresh_resp.user or not refresh_resp.session:
-            raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid refresh token"
-            )
-
-        return RefreshTokenResponse(
-            user=UserOut(id=refresh_resp.user.id, email=refresh_resp.user.email),
-            token=refresh_resp.session.access_token,
-            refreshToken=refresh_resp.session.refresh_token,
-        )
-    except HTTPException:
-        raise
-    except Exception as e:
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail=f"Could not refresh token: {e}",
-        ) from e
-
-
-@router.post("/logout")
-async def logout(request: Request):
-    if supabase is None:
-        return {"status": "ok"}
-
-    token = _extract_bearer_token(request)
-    try:
-        supabase.auth.sign_out(jwt=token)
-    except Exception:
-        pass
-    return {"status": "ok"}
-
-
-@router.get("/me", response_model=UserOut)
-async def me(request: Request):
-    user: CurrentUser = get_current_user(request)
-    return UserOut(id=user.user_id, email=user.email)
+@router.post("/login")
+async def login(
+    email: str,
+    password: str,
+    db: AsyncSession = Depends(get_async_db)
+):
+    """Login user"""
+    auth_service = AuthService(db)
+    return await auth_service.authenticate_user(email, password)
