@@ -3,8 +3,8 @@ import { useLocation, useNavigate } from "react-router-dom";
 import {
   ChevronDown,
   ChevronUp,
-  ContactPage,
-  TableChart,
+  Contact,
+  Table,
   Palette,
   LayoutDashboard,
   AppWindow,
@@ -49,13 +49,13 @@ export const MenuListItems: React.FC<MenuListItemsProps> = ({ open }) => {
     {
       title: "Organisational Details",
       to: "/users/OrganisationDetailsPage",
-      icon: <ContactPage className="w-5 h-5" />,
+      icon: <Contact className="w-5 h-5" />,
       shouldHide: !isAdmin,
     },
     {
       title: "User Management",
       to: "/users/UserManagementPage",
-      icon: <TableChart className="w-5 h-5" />,
+      icon: <Table className="w-5 h-5" />,
       shouldHide: !isAdmin,
     },
     {

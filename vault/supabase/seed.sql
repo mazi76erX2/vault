@@ -19,7 +19,7 @@ VALUES
 ON CONFLICT (name) DO NOTHING;
 
 -- Insert basic roles
-INSERT INTO public.roles (id, name, description)
+INSERT INTO public.user_roles (id, name, description)
 VALUES 
     ('b86db406-e7b5-4cc0-ad2c-39cf0557f367', 'Administrator', 'Full system administrator'),
     ('c97eb507-f8c6-5dd1-be3d-40df0668f468', 'Manager', 'Department manager'),
