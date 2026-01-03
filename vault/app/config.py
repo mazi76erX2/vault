@@ -1,69 +1,63 @@
-from pydantic_settings import BaseSettings, SettingsConfigDict
+"""
+Application Configuration
+Environment variables and settings
+"""
+
+import os
 from typing import List
+from pydantic_settings import BaseSettings
+
 
 class Settings(BaseSettings):
-    # Database - Use asyncpg for async operations
-    DATABASE_URL: str = "postgresql+asyncpg://postgres:postgres@localhost:5432/vault_db"
-    DATABASE_URL_SYNC: str = "postgresql+psycopg2://postgres:postgres@localhost:5432/vault_db"
+    """Application settings"""
     
-    # Ollama
-    OLLAMA_HOST: str = "http://localhost:11434"
-    OLLAMA_MODEL: str = "llama2"
-    OLLAMA_EMBED_MODEL: str = "nomic-embed-text"
-    OLLAMA_CHAT_MODEL: str = "llama2"
+    # App
+    APP_NAME: str = "Vault API"
+    VERSION: str = "2.0.0"
+    DEBUG: bool = os.getenv("DEBUG", "False").lower() == "true"
     
-    # Qdrant (optional - we're using pgvector primarily)
-    QDRANT_HOST: str = "localhost"
-    QDRANT_PORT: int = 6333
-    QDRANT_COLLECTION: str = "vault"
+    # Frontend URL (for password reset links)
+    FRONTEND_URL: str = os.getenv("FRONTEND_URL", "http://localhost:3000")
     
-    # Supabase (for backward compatibility, not used in local setup)
-    SUPABASE_URL: str = "http://localhost:8000"
-    SUPABASE_ANON_KEY: str = "your-anon-key-here"
-    SUPABASE_SERVICE_KEY: str = "your-service-key-here"
-    SUPABASE_JWT_SECRET: str = "your-jwt-secret-here"
+    # Database
+    DATABASE_URL: str = os.getenv(
+        "DATABASE_URL",
+        "postgresql+asyncpg://postgres:postgres@localhost:5432/vault"
+    )
     
-    # Vector dimensions (depends on your Ollama embedding model)
-    VECTOR_DIMENSIONS: int = 768
-    
-    # Logging
-    LOG_LEVEL: str = "INFO"
-    DEBUG: bool = True
-    TESTING: bool = False
-    
-    # Security
-    SECRET_KEY: str = "your-secret-key-change-this-in-production"
-    JWT_SECRET: str = "your-jwt-secret-change-in-production"
+    # JWT Settings
+    SECRET_KEY: str = os.getenv(
+        "SECRET_KEY",
+        "09d25e094faa6ca2556c818166b7a9563b93f7099f6f0f4caa6cf63b88e8d3e7"  # Change in production!
+    )
     ALGORITHM: str = "HS256"
-    ACCESS_TOKEN_EXPIRE_MINUTES: int = 30
-    
-    # File uploads
-    UPLOAD_DIR: str = "./uploads"
-    
-    # Email/SMTP
-    SMTP_HOST: str = "smtp.gmail.com"
-    SMTP_PORT: int = 587
-    SMTP_USER: str = "your-email@gmail.com"
-    SMTP_PASSWORD: str = "your-app-password"
-    FROM_EMAIL: str = "noreply@vault.com"
+    ACCESS_TOKEN_EXPIRE_MINUTES: int = int(os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES", "30"))
+    REFRESH_TOKEN_EXPIRE_DAYS: int = int(os.getenv("REFRESH_TOKEN_EXPIRE_DAYS", "7"))
     
     # CORS
-    CORS_ORIGINS: str = "http://localhost:8081,http://localhost:3000,http://localhost:8082"
+    CORS_ORIGINS: str = os.getenv(
+        "CORS_ORIGINS",
+        "http://localhost:3000,http://localhost:8081,http://localhost:8082"
+    )
     
     @property
     def cors_origins_list(self) -> List[str]:
-        """Convert CORS_ORIGINS string to list"""
         return [origin.strip() for origin in self.CORS_ORIGINS.split(",")]
     
-    # RAG/Retrieval
-    RETRIEVAL_SIMILARITY_THRESHOLD: float = 0.5
-    MAX_RETRIEVAL_DOCS: int = 5
+    # Email Settings
+    SMTP_HOST: str = os.getenv("SMTP_HOST", "smtp.gmail.com")
+    SMTP_PORT: int = int(os.getenv("SMTP_PORT", "587"))
+    SMTP_USER: str = os.getenv("SMTP_USER", "")
+    SMTP_PASSWORD: str = os.getenv("SMTP_PASSWORD", "")
+    SMTP_FROM: str = os.getenv("SMTP_FROM", "noreply@vault.com")
     
-    model_config = SettingsConfigDict(
-        env_file=".env",
-        env_file_encoding="utf-8",
-        case_sensitive=False,
-        extra="ignore"
-    )
+    # File Upload
+    UPLOAD_DIR: str = os.getenv("UPLOAD_DIR", "./uploads")
+    MAX_UPLOAD_SIZE: int = int(os.getenv("MAX_UPLOAD_SIZE", str(10 * 1024 * 1024)))  # 10MB
+    
+    class Config:
+        env_file = ".env"
+        case_sensitive = True
+
 
 settings = Settings()

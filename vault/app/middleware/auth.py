@@ -1,141 +1,134 @@
-from fastapi import HTTPException, Request, status
-from gotrue import UserResponse
+"""
+Authentication Middleware
+JWT token verification and user context
+"""
 
-from app.database import supabase
+import logging
+from typing import Optional
+
+from fastapi import Depends, HTTPException, status
+from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from app.database import get_async_db
+from app.services.auth_service import AuthService
+
+logger = logging.getLogger(__name__)
+
+# Security scheme
+security = HTTPBearer()
 
 
-def _extract_bearer_token(request: Request) -> str:
-    """Extract JWT token from Authorization header."""
-    auth = request.headers.get("Authorization") or request.headers.get("authorization")
-    if not auth or not auth.startswith("Bearer "):
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Invalid or missing token",
-        )
-    return auth.split("Bearer ", 1)[1].strip()
-
-
-def verify_token(request: Request) -> UserResponse:
+async def verify_token(
+    credentials: HTTPAuthorizationCredentials = Depends(security),
+    db: AsyncSession = Depends(get_async_db)
+) -> dict:
     """
-    Verify JWT token and return user information.
-
-    Args:
-        request: FastAPI request object
-
-    Returns:
-        UserResponse object with user information
-
-    Raises:
-        HTTPException: If token is invalid or verification fails
+    Verify JWT token and return user data
+    Replaces: Supabase auth verification
     """
-    token = _extract_bearer_token(request)
     try:
-        user: UserResponse = supabase.auth.get_user(token)
-        if not user or not getattr(user, "user", None) or not getattr(user.user, "id", None):
+        token = credentials.credentials
+        
+        # Decode token
+        payload = AuthService.decode_token(token)
+        user_id = payload.get("sub")
+        
+        if not user_id:
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
-                detail="Unauthorized: invalid token",
+                detail="Invalid token payload",
+                headers={"WWW-Authenticate": "Bearer"},
             )
-        return user
-    except HTTPException:
-        raise
-    except Exception as e:
+        
+        # Get user with roles
+        user_data = await AuthService.get_user_with_roles(db, user_id)
+        
+        if not user_data:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="User not found",
+                headers={"WWW-Authenticate": "Bearer"},
+            )
+        
+        return user_data
+        
+    except ValueError as e:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail=f"Token verification failed: {str(e)}",
+            detail=str(e),
+            headers={"WWW-Authenticate": "Bearer"},
         )
-
-
-def verify_token_with_tenant(request: Request, company_id: str | None = None) -> UserResponse:
-    """
-    Verify JWT token and optionally check tenant/company association.
-
-    This function provides multi-tenant isolation by verifying that the authenticated
-    user belongs to the specified company.
-
-    Args:
-        request: FastAPI request object
-        company_id: Optional company ID to verify user belongs to this tenant
-
-    Returns:
-        UserResponse object with user information
-
-    Raises:
-        HTTPException: If token is invalid, verification fails, or user doesn't belong to company
-    """
-    # First verify the token
-    user = verify_token(request)
-
-    # If company_id is provided, verify user belongs to that company
-    if company_id:
-        try:
-            user_id = user.user.id
-
-            # Query user's profile to get their company_id
-            response = (
-                supabase.table("profiles")
-                .select("company_id, company_name")
-                .eq("id", user_id)
-                .single()
-                .execute()
-            )
-
-            if not response.data:
-                raise HTTPException(
-                    status_code=status.HTTP_404_NOT_FOUND,
-                    detail="User profile not found",
-                )
-
-            user_company_id = str(response.data.get("company_id"))
-
-            # Check if user belongs to the requested company
-            if user_company_id != str(company_id):
-                raise HTTPException(
-                    status_code=status.HTTP_403_FORBIDDEN,
-                    detail=f"Access denied: User does not belong to company {company_id}",
-                )
-
-        except HTTPException:
-            raise
-        except Exception as e:
-            raise HTTPException(
-                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                detail=f"Error verifying tenant access: {str(e)}",
-            )
-
-    return user
-
-
-def get_user_company_id(user: UserResponse) -> str | None:
-    """
-    Get the company_id for a given user.
-
-    Args:
-        user: UserResponse object
-
-    Returns:
-        Company ID as string, or None if not found
-    """
-    try:
-        user_id = user.user.id
-
-        response = (
-            supabase.table("profiles").select("company_id").eq("id", user_id).single().execute()
-        )
-
-        if response.data and response.data.get("company_id"):
-            return str(response.data["company_id"])
-
-        return None
-
     except Exception as e:
-        print(f"Error getting user company_id: {str(e)}")
-        return None
+        logger.error(f"Error verifying token: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Could not validate credentials",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
 
 
-# Export all functions
-__all__ = [
-    "verify_token",
-    "verify_token_with_tenant",
-    "get_user_company_id",
-]
+async def verify_token_with_tenant(
+    credentials: HTTPAuthorizationCredentials = Depends(security),
+    db: AsyncSession = Depends(get_async_db)
+) -> dict:
+    """
+    Verify JWT token and enforce tenant isolation
+    """
+    user_data = await verify_token(credentials, db)
+    
+    if not user_data.get("company_reg_no"):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="User is not associated with any tenant"
+        )
+    
+    return user_data
+
+
+async def get_current_user(
+    credentials: HTTPAuthorizationCredentials = Depends(security),
+    db: AsyncSession = Depends(get_async_db)
+) -> dict:
+    """Dependency to get current authenticated user"""
+    return await verify_token(credentials, db)
+
+
+async def get_current_active_user(
+    current_user: dict = Depends(get_current_user)
+) -> dict:
+    """Get current active user (checks status)"""
+    if current_user["profile"]["status"] != "active":
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="User account is inactive"
+        )
+    return current_user
+
+
+def require_roles(required_roles: list[str]):
+    """
+    Dependency to check if user has required roles
+    Usage: dependencies=[Depends(require_roles(["Administrator"]))]
+    """
+    async def role_checker(
+        current_user: dict = Depends(get_current_user)
+    ) -> dict:
+        user_roles = current_user.get("roles", [])
+        
+        if not any(role in user_roles for role in required_roles):
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail=f"Insufficient privileges. Required roles: {', '.join(required_roles)}"
+            )
+        
+        return current_user
+    
+    return role_checker
+
+
+async def get_user_company_id(
+    current_user: dict = Depends(get_current_user)
+) -> Optional[int]:
+    """Get current user's company ID"""
+    return current_user["profile"].get("company_id")

@@ -1,3 +1,6 @@
+"""
+User Model - Maps to Supabase auth.users
+"""
 import uuid
 from datetime import datetime
 
@@ -18,7 +21,7 @@ class User(Base):
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     email = Column(Text, unique=True, nullable=False, index=True)
-    encrypted_password = Column(Text)
+    encrypted_password = Column(Text)  # Supabase uses this field name
     email_confirmed_at = Column(TIMESTAMP(timezone=True))
     invited_at = Column(TIMESTAMP(timezone=True))
     confirmation_token = Column(Text)
@@ -47,6 +50,23 @@ class User(Base):
     reauthentication_sent_at = Column(TIMESTAMP(timezone=True))
     is_sso_user = Column(Boolean, default=False)
     deleted_at = Column(TIMESTAMP(timezone=True))
+    
+    # Helper properties
+    @property
+    def is_active(self):
+        """User is active if not deleted and not banned"""
+        return (
+            self.deleted_at is None and 
+            (self.banned_until is None or self.banned_until < datetime.utcnow())
+        )
+    
+    @property
+    def email_confirmed(self):
+        """Check if email is confirmed"""
+        return self.email_confirmed_at is not None or self.confirmed_at is not None
 
     # Relationships
     profile = relationship("Profile", back_populates="user", uselist=False)
+    
+    def __repr__(self):
+        return f"<User(id={self.id}, email={self.email})>"
