@@ -1,14 +1,14 @@
 """
 Storage service using Cloudinary
-Handles file uploads for company logos, bot profile pictures, etc.
+Replaces Supabase Storage for company logos and bot profile pictures
 """
 
+import base64
 import logging
-from typing import Optional
 
 import cloudinary
 import cloudinary.uploader
-from fastapi import UploadFile
+from fastapi import HTTPException
 
 from app.config import settings
 
@@ -27,120 +27,140 @@ class StorageService:
     """Service for handling file uploads to Cloudinary"""
 
     @staticmethod
-    async def upload_company_logo(
-        file: UploadFile, company_reg_no: str
-    ) -> dict[str, str]:
+    def upload_logo(logo_data: str, company_name: str) -> str:
         """
-        Upload company logo to Cloudinary
-        
-        Args:
-            file: The uploaded file
-            company_reg_no: Company registration number for organizing files
-            
-        Returns:
-            dict with 'url' and 'public_id'
-        """
-        try:
-            # Read file content
-            contents = await file.read()
-            
-            # Upload to Cloudinary with organized folder structure
-            result = cloudinary.uploader.upload(
-                contents,
-                folder=f"vault/companies/{company_reg_no}/logos",
-                public_id=f"logo_{company_reg_no}",
-                overwrite=True,  # Replace if exists
-                resource_type="image",
-                format="png",  # Convert to PNG
-                transformation=[
-                    {"width": 500, "height": 500, "crop": "limit"},  # Max dimensions
-                    {"quality": "auto"},  # Auto quality
-                ],
-            )
-            
-            logger.info(f"Uploaded logo for company {company_reg_no}: {result['secure_url']}")
-            
-            return {
-                "url": result["secure_url"],
-                "public_id": result["public_id"],
-            }
-            
-        except Exception as e:
-            logger.error(f"Error uploading logo for {company_reg_no}: {e}")
-            raise
+        Upload company logo to Cloudinary from base64 data
 
-    @staticmethod
-    async def upload_bot_profile_picture(
-        file: UploadFile, company_reg_no: str
-    ) -> dict[str, str]:
-        """
-        Upload bot profile picture to Cloudinary
-        
         Args:
-            file: The uploaded file
-            company_reg_no: Company registration number
-            
+            logo_data: Base64 encoded image (data:image/png;base64,...)
+            company_name: Company name for folder organization
+
         Returns:
-            dict with 'url' and 'public_id'
+            Public URL of uploaded logo
         """
         try:
-            contents = await file.read()
-            
+            # Parse base64 data
+            if not logo_data.startswith("data:image"):
+                raise ValueError("Invalid image data format")
+
+            _, logo_base64 = logo_data.split(";base64,")
+            logo_binary = base64.b64decode(logo_base64)
+
+            # Clean company name for folder
+            company_folder = company_name.lower().replace(" ", "-")
+
+            # Upload to Cloudinary
             result = cloudinary.uploader.upload(
-                contents,
-                folder=f"vault/companies/{company_reg_no}/bot",
-                public_id=f"bot_profile_{company_reg_no}",
+                logo_binary,
+                folder=f"vault/companies/{company_folder}",
+                public_id="logo",
                 overwrite=True,
                 resource_type="image",
                 format="png",
                 transformation=[
-                    {"width": 200, "height": 200, "crop": "fill", "gravity": "face"},  # Square crop
+                    {"width": 500, "height": 500, "crop": "limit"},
                     {"quality": "auto"},
                 ],
             )
-            
-            logger.info(f"Uploaded bot profile for company {company_reg_no}: {result['secure_url']}")
-            
-            return {
-                "url": result["secure_url"],
-                "public_id": result["public_id"],
-            }
-            
+
+            logger.info(f"Logo uploaded for company {company_name}: {result['secure_url']}")
+            return result["secure_url"]
+
         except Exception as e:
-            logger.error(f"Error uploading bot profile for {company_reg_no}: {e}")
-            raise
+            logger.error(f"Error uploading logo for {company_name}: {e}")
+            raise HTTPException(status_code=500, detail=f"Error uploading logo: {str(e)}")
 
     @staticmethod
-    async def delete_file(public_id: str) -> bool:
+    def upload_bot_profile(bot_pic_data: str, company_name: str) -> str:
         """
-        Delete a file from Cloudinary
-        
+        Upload bot profile picture to Cloudinary from base64 data
+
         Args:
-            public_id: The Cloudinary public ID of the file
-            
+            bot_pic_data: Base64 encoded image
+            company_name: Company name for folder organization
+
         Returns:
-            True if successful
+            Public URL of uploaded bot profile picture
         """
         try:
-            result = cloudinary.uploader.destroy(public_id)
-            logger.info(f"Deleted file {public_id}: {result}")
-            return result.get("result") == "ok"
+            if not bot_pic_data.startswith("data:image"):
+                raise ValueError("Invalid image data format")
+
+            _, bot_pic_base64 = bot_pic_data.split(";base64,")
+            bot_pic_binary = base64.b64decode(bot_pic_base64)
+
+            company_folder = company_name.lower().replace(" ", "-")
+
+            result = cloudinary.uploader.upload(
+                bot_pic_binary,
+                folder=f"vault/companies/{company_folder}",
+                public_id="bot_profile",
+                overwrite=True,
+                resource_type="image",
+                format="png",
+                transformation=[
+                    {"width": 200, "height": 200, "crop": "fill", "gravity": "face"},
+                    {"quality": "auto"},
+                ],
+            )
+
+            logger.info(f"Bot profile uploaded for {company_name}: {result['secure_url']}")
+            return result["secure_url"]
+
         except Exception as e:
-            logger.error(f"Error deleting file {public_id}: {e}")
-            raise
+            logger.error(f"Error uploading bot profile for {company_name}: {e}")
+            raise HTTPException(
+                status_code=500, detail=f"Error uploading bot profile picture: {str(e)}"
+            )
 
     @staticmethod
-    def get_public_url(public_id: str, transformation: Optional[dict] = None) -> str:
+    def get_logo_url(company_name: str) -> str | None:
         """
-        Get public URL for a Cloudinary asset
-        
+        Get logo URL for a company (for backward compatibility)
+
         Args:
-            public_id: The Cloudinary public ID
-            transformation: Optional transformation parameters
-            
+            company_name: Company name
+
         Returns:
-            Public URL
+            Public URL or None
         """
-        if transformation:
-            return cloudinary.CloudinaryImage(public_id).build_url(**transformation)
-        return cloudinary.CloudinaryImage(public_id).build_url()
+        try:
+            company_folder = company_name.lower().replace(" ", "-")
+            public_id = f"vault/companies/{company_folder}/logo"
+
+            return cloudinary.CloudinaryImage(public_id).build_url(
+                format="png",
+                transformation=[
+                    {"width": 500, "height": 500, "crop": "limit"},
+                    {"quality": "auto"},
+                ],
+            )
+        except Exception as e:
+            logger.warning(f"Error generating logo URL for {company_name}: {e}")
+            return None
+
+    @staticmethod
+    def get_bot_profile_url(company_name: str) -> str | None:
+        """
+        Get bot profile URL for a company (for backward compatibility)
+
+        Args:
+            company_name: Company name
+
+        Returns:
+            Public URL or None
+        """
+        try:
+            company_folder = company_name.lower().replace(" ", "-")
+            public_id = f"vault/companies/{company_folder}/bot_profile"
+
+            return cloudinary.CloudinaryImage(public_id).build_url(
+                format="png",
+                transformation=[
+                    {"width": 200, "height": 200, "crop": "fill"},
+                    {"quality": "auto"},
+                ],
+            )
+        except Exception as e:
+            logger.warning(f"Error generating bot profile URL for {company_name}: {e}")
+            return None

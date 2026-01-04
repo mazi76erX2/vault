@@ -1,11 +1,10 @@
 """
 main.py - FastAPI Application Entry Point
-Updated for Ollama + Qdrant + pgvector stack
+Fully migrated to SQLAlchemy + Cloudinary + Ollama + Qdrant
 Local-first architecture for knowledge management
-Migration completed: December 2025
+Migration completed: January 2026
 """
 
-import base64
 import logging
 import os
 import random
@@ -25,105 +24,53 @@ from fastapi import (
 )
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
-from gotrue.types import UserResponse
 from pydantic import BaseModel, EmailStr
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
 
 import app.email_service as email_service
 from app.api.auth import router as auth_router
-# from app.api.collector import router as collector_router TODO: Migrate to SQLaclhemy
-# from app.api.expert import router as expert_router
-# from app.api.helper import router as helper_router
-# from app.api.validator import router as validator_router
 from app.connection_manager import connection_manager
 from app.connectors.store_data_in_kb import store_in_kb
 from app.constants.constants import SEVERITY_LEVEL_MAP
+from app.database import get_async_db
+from app.db.enums import DepartmentEnum
 from app.email_service import send_welcome_email
-# from app.ldap import router as ldap_router
-from app.logger_config import setup_logging  # Import the logging setup
+from app.logger_config import setup_logging
 from app.middleware.auth import verify_token, verify_token_with_tenant
-from app.services.auth_service import get_current_user
+from app.models import Company, Document, Profile, Role, Session, User, UserRole
+from app.services.auth_service import AuthService
+from app.services.storage import StorageService
 from app.services.tenant_service import TenantService
-
-# from app.schemas.user import UserBase
 
 ws_router = APIRouter()
 
-# Initialize logging before importing other modules
+# Initialize logging
 setup_logging()
 
 logger = logging.getLogger(__name__)
 UPLOAD_DIR = os.getenv("UPLOAD_DIR", "./uploads")
 
 
-def ensure_storage_bucket_exists(bucket_name: str) -> bool:
-    """
-    Ensure that a storage bucket exists in Supabase, create it if it doesn't.
-
-    Args:
-        bucket_name: The name of the bucket to check/create
-
-    Returns:
-        bool: True if bucket exists or was created successfully, False otherwise
-    """
-    try:
-        # Check if bucket exists
-        try:
-            bucket_info = supabase_admin.storage.get_bucket(bucket_name)
-            if bucket_info:
-                logger.info(f"Storage bucket '{bucket_name}' already exists.")
-                return True
-        except Exception:
-            # Bucket doesn't exist, we'll try to create it
-            logger.info(f"Storage bucket '{bucket_name}' doesn't exist, will create it.")
-
-        # Create the bucket
-        try:
-            create_result = supabase_admin.storage.create_bucket(bucket_name, {"public": True})
-            if create_result:
-                logger.info(f"Successfully created storage bucket '{bucket_name}'.")
-                return True
-        except Exception as create_error:
-            error_msg = str(create_error).lower()
-            if "409" in error_msg or "duplicate" in error_msg or "already exists" in error_msg:
-                logger.info(f"Bucket '{bucket_name}' already exists.")
-                return True
-            else:
-                logger.error(f"Failed to create bucket '{bucket_name}': {create_error}")
-                return False
-
-        return True
-
-    except Exception as e:
-        logger.error(f"Unexpected error in bucket check for '{bucket_name}': {e}")
-        return False
-
-
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    # Run on app startup
+    """Application lifespan manager."""
     logger.info("Application startup: Logging system initialized.")
     yield
-    # Run on app shutdown
     logger.info("Application shutdown: Logging system finalized.")
 
 
 app = FastAPI(lifespan=lifespan)
 app.include_router(auth_router)
-# app.include_router(collector_router)
-# app.include_router(helper_router)
-# app.include_router(validator_router)
-# app.include_router(expert_router)
-# app.include_router(ldap_router)
 
 
-# Role-based access dependency
 def require_roles(roles: list[str]):
-    """
-    Decorator to check if the current user has the required roles.
-    """
+    """Decorator to check if the current user has the required roles."""
 
-    def role_checker(current_user=Depends(get_current_user)):
-        user_roles = getattr(current_user, "roles", [])
+    async def role_checker(
+        current_user: dict = Depends(verify_token), db: AsyncSession = Depends(get_async_db)
+    ):
+        user_roles = current_user.get("roles", [])
         if not any(r in user_roles for r in roles):
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN, detail="Insufficient privileges"
@@ -133,31 +80,21 @@ def require_roles(roles: list[str]):
     return role_checker
 
 
-app.include_router(collector_router, dependencies=[Depends(require_roles(["Collector"]))])
-app.include_router(helper_router, dependencies=[Depends(require_roles(["Helper"]))])
-app.include_router(ldap_router, dependencies=[Depends(require_roles(["Administrator"]))])
-
-
 origins = [
-    "http://localhost:8081",  # Vite default port
-    "http://localhost:3000",  # Common React port
+    "http://localhost:8081",
+    "http://localhost:3000",
     "http://81.28.6.125:8000",
     "http://localhost:8082",
     "https://vaulttesting.highcoordination.de",
     "https://demovault.highcoordination.de",
 ]
+
 app.add_middleware(
     CORSMiddleware,
     allow_origins=origins,
     allow_credentials=True,
     allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
-    allow_headers=[
-        "Content-Type",
-        "Authorization",
-        "Accept",
-        "Origin",
-        "X-Requested-With",
-    ],
+    allow_headers=["Content-Type", "Authorization", "Accept", "Origin", "X-Requested-With"],
     expose_headers=["Content-Type", "Authorization"],
     max_age=3600,
 )
@@ -166,8 +103,12 @@ manager = connection_manager()
 app.include_router(ws_router)
 
 
+# ==================== WEBSOCKET ====================
+
+
 @app.websocket("/ws/{client_id}")
 async def websocket_endpoint(websocket: WebSocket, client_id: str):
+    """WebSocket endpoint for real-time communication."""
     await manager.connect(client_id, websocket)
     try:
         while True:
@@ -179,122 +120,56 @@ async def websocket_endpoint(websocket: WebSocket, client_id: str):
         await manager.broadcast(f"Client {client_id} left the chat")
 
 
+# ==================== KNOWLEDGE BASE ====================
+
+
 @app.post("/api/console/store_in_kb")
-def store_knowledge(data: dict):
+async def store_knowledge(data: dict, db: AsyncSession = Depends(get_async_db)):
+    """Store validated document in knowledge base."""
     document_id = data.get("doc_id")
-    logger.info("Received document id: %s", document_id)
-    response = supabase.table("documents").select("*").eq("doc_id", document_id).execute()
-    documents = response.data
-    logger.info("Received document : %s", response.data)
+    logger.info(f"Received document id: {document_id}")
 
-    response_message = ""
+    stmt = select(Document).where(Document.doc_id == document_id)
+    result = await db.execute(stmt)
+    document = result.scalar_one_or_none()
 
-    if documents:  # Ensure data was returned
-        # Retrieve the 'summary' column value (assuming only one document is returned)
-        document = documents[0]
-        summary_values = document.get("summary", "N/A")
-        severity_levels = document.get("severity_levels", "N/A")
-        title = document.get("title", "N/A")
-        link = document.get("link", "N/A")
-        severity_level_int = SEVERITY_LEVEL_MAP.get(severity_levels, 1)
-        doc_to_store = {
-            "file_name": link,
-            "content": summary_values,
-            "file_title": title,
-            "level": severity_level_int,
-        }
-        store_in_kb(doc_to_store)
-        response_message = "Document validated and stored in the Knowledge Base"
+    if not document:
+        logger.info("No documents found.")
+        return {"response": "No documents found."}
 
-        logger.info("%s", response_message)
+    severity_level_int = SEVERITY_LEVEL_MAP.get(document.severity_levels, 1)
+    doc_to_store = {
+        "file_name": document.link,
+        "content": document.summary or "N/A",
+        "file_title": document.title,
+        "level": severity_level_int,
+    }
+    store_in_kb(doc_to_store)
 
-    else:
-        response_message = "No documents found."
-
-        logger.info("%s", response_message)
-
-    return {"response": response_message}
+    logger.info("Document validated and stored in the Knowledge Base")
+    return {"response": "Document validated and stored in the Knowledge Base"}
 
 
-@app.post("/api/feedback/thumbs_up")
-def thumbs_up(data: dict):
-    # Handle thumbs-up feedback
-    pass
-
-
-@app.post("/api/documents/upload")
-def upload_document(doc_data: dict):
-    # Save document metadata and content
-    pass
-
-
-@app.get("/api/documents")
-def list_documents():
-    # Return stored documents
-    pass
-
-
-@app.post("/api/chat/feedback")
-def submit_feedback(user_feedback: dict):
-    # Log feedback in your DB, or update RL model
-    pass
-
-
-# @app.post("/documents/assign")
-# def assign_document(doc_id: int, reviewer_id: int, current_user: User = Depends(get_current_user),
-#                     db: Session = Depends(get_db)):
-#     # Check if user has manager or admin role
-#     if current_user.role not in [RoleEnum.manager, RoleEnum.admin]:
-#         raise HTTPException(status_code=403, detail="You are not allowed to assign documents.")
-
-#     # Proceed with assignment logic
-#     doc = db.query(Document).filter_by(doc_id=doc_id).first()
-#     if not doc:
-#         raise HTTPException(status_code=404, detail="Document not found.")
-
-#     # Set doc's reviewer_id
-#     doc.reviewer_id = reviewer_id
-#     doc.status = "assigned"
-#     db.commit()
-#     return {"detail": "Document assigned successfully."}
-
-# @app.post("/documents/validate")
-# def validate_document(doc_id: int, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
-#     # Check if user has reviewer or admin role
-#     if current_user.role not in [RoleEnum.reviewer, RoleEnum.admin]:
-#         raise HTTPException(status_code=403, detail="You are not allowed to validate documents.")
-
-#     doc = db.query(Document).filter_by(doc_id=doc_id).first()
-#     if not doc:
-#         raise HTTPException(status_code=404, detail="Document not found.")
-
-#     # Proceed with validation logic
-#     doc.status = "validated"
-#     db.commit()
-#     return {"detail": "Document validated successfully."}
+# ==================== UTILITY ENDPOINTS ====================
 
 
 @app.get("/download-logs", response_class=FileResponse)
 def download_logs():
-    """
-    Endpoint to download the backend log file.
-    """
+    """Download backend log file."""
     return FileResponse("backend_logs.log", media_type="text/plain", filename="backend_logs.log")
 
 
 @app.get("/api/users/departments")
-def get_departments():
-    """
-    Endpoint to departments enumerated type from supabase.
-    """
-    logger.info("Getting departments from supabase")
-    departments_response = supabase.rpc("get_enum_values", {"enum_name": "department"}).execute()
-    departments_data = departments_response.data
-    logger.info("departments: %s", departments_data)
-    return departments_data
+async def get_departments():
+    """Get all department enum values."""
+    departments = [dept.value for dept in DepartmentEnum]
+    logger.info(f"departments: {departments}")
+    return departments
 
 
-# ConsoleMainPage - get validator flag
+# ==================== USER INFO ====================
+
+
 class UserInfo(BaseModel):
     user_id: str
     is_validator: bool
@@ -302,96 +177,80 @@ class UserInfo(BaseModel):
 
 
 @app.get("/api/console-main/user-info/{user_id}", response_model=UserInfo)
-async def console_main_get_user_info(user_id: str):
+async def console_main_get_user_info(user_id: str, db: AsyncSession = Depends(get_async_db)):
+    """Get user validation and expert status."""
     try:
-        validator_response = (
-            supabase.from_("profiles")
-            .select("isValidator")
-            .eq("id", user_id)
-            .maybe_single()
-            .execute()
-        )
+        stmt = select(Profile.is_validator).where(Profile.id == user_id)
+        result = await db.execute(stmt)
+        is_validator = result.scalar_one_or_none() or False
+
+        stmt = select(Document.doc_id).where(Document.reviewer == user_id).limit(1)
+        result = await db.execute(stmt)
+        is_expert = result.scalar_one_or_none() is not None
+
+        return UserInfo(user_id=user_id, is_validator=is_validator, is_expert=is_expert)
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Error fetching validator flag: {str(e)}")
-
-    try:
-        documents_response = (
-            supabase.from_("documents").select("doc_id").eq("reviewer", user_id).execute()
-        )
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Error fetching documents: {str(e)}")
-
-    is_validator = validator_response.data["isValidator"] if validator_response.data else False
-    is_expert = len(documents_response.data) > 0 if documents_response.data else False
-
-    return UserInfo(user_id=user_id, is_validator=is_validator, is_expert=is_expert)
+        logger.error(f"Error fetching user info: {e}")
+        raise HTTPException(status_code=500, detail=f"Error fetching user info: {str(e)}")
 
 
-# AdminsPage - get users
+# ==================== ADMIN ENDPOINTS ====================
+
+
 @app.get("/api/admin/users")
-def admin_get_users(current_user=Depends(verify_token_with_tenant)):
+async def admin_get_users(
+    current_user: dict = Depends(verify_token_with_tenant), db: AsyncSession = Depends(get_async_db)
+):
+    """Get all users for tenant (admin only)."""
     try:
         logger.info("admin_get_users endpoint called with tenant-aware authentication")
 
-        # Get the user's company registration number from the token
-        company_reg_no = getattr(current_user, "company_reg_no", None)
+        company_reg_no = current_user.get("company_reg_no")
         if not company_reg_no:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail="User company association not found",
             )
 
-        logger.info(f"Fetching users for tenant: {company_reg_no}")
+        profiles = await TenantService.get_tenant_profiles(db, company_reg_no)
 
-        # 1. Fetch all profiles for this tenant only
-        profiles_data = TenantService.get_tenant_profiles(company_reg_no)
-
-        if not profiles_data:
+        if not profiles:
             return []
 
-        user_ids = [profile["id"] for profile in profiles_data]
+        user_ids = [str(profile["id"]) for profile in profiles]
 
-        # 2. Fetch all roles defined in the system
-        all_roles_response = supabase.table("roles").select("id, name").execute()
-        role_name_to_id_map = {}
-        if all_roles_response.data:
-            {role["id"]: role["name"] for role in all_roles_response.data}
-            role_name_to_id_map = {role["name"]: role["id"] for role in all_roles_response.data}
-        else:
-            logger.warning("No roles found in the roles table.")
+        # Get all roles
+        stmt = select(Role.id, Role.name)
+        result = await db.execute(stmt)
+        roles = result.all()
+        role_name_to_id = {role.name: str(role.id) for role in roles}
 
-        # 3. Fetch user_roles for all users in this tenant
-        user_roles_response = (
-            supabase.table("user_roles")
-            .select("user_id, role_id")
-            .in_("user_id", user_ids)
-            .eq("company_reg_no", company_reg_no)  # Ensure tenant isolation
-            .execute()
+        # Get user roles for this tenant
+        stmt = select(UserRole.user_id, UserRole.role_id).where(
+            UserRole.user_id.in_(user_ids), UserRole.company_reg_no == company_reg_no
         )
-        user_roles_assignments = {}
-        if user_roles_response.data:
-            for assignment in user_roles_response.data:
-                user_id_key = assignment["user_id"]
-                role_id = assignment["role_id"]
-                if user_id_key not in user_roles_assignments:
-                    user_roles_assignments[user_id_key] = []
-                user_roles_assignments[user_id_key].append(role_id)
+        result = await db.execute(stmt)
+        user_role_rows = result.all()
 
-        # 4. Augment profiles_data with role booleans and company registered_since
+        user_roles_map = {}
+        for row in user_role_rows:
+            user_id = str(row.user_id)
+            if user_id not in user_roles_map:
+                user_roles_map[user_id] = []
+            user_roles_map[user_id].append(str(row.role_id))
+
         augmented_users = []
-        for profile in profiles_data:
-            user_id = profile["id"]
-            assigned_role_ids = user_roles_assignments.get(user_id, [])
+        for profile in profiles:
+            user_id = str(profile["id"])
+            assigned_role_ids = user_roles_map.get(user_id, [])
 
-            profile["is_admin"] = role_name_to_id_map.get("Administrator") in assigned_role_ids
-            profile["is_validator"] = profile.get("isValidator", False) or (
-                role_name_to_id_map.get("Validator") in assigned_role_ids
+            profile["is_admin"] = role_name_to_id.get("Administrator") in assigned_role_ids
+            profile["is_validator"] = profile.get("is_validator", False) or (
+                role_name_to_id.get("Validator") in assigned_role_ids
             )
-            profile["is_expert"] = role_name_to_id_map.get("Expert") in assigned_role_ids
-            profile["is_collector"] = role_name_to_id_map.get("Collector") in assigned_role_ids
-            profile["is_helper"] = role_name_to_id_map.get("Helper") in assigned_role_ids
-
-            # Get registered_since from the profile
+            profile["is_expert"] = role_name_to_id.get("Expert") in assigned_role_ids
+            profile["is_collector"] = role_name_to_id.get("Collector") in assigned_role_ids
+            profile["is_helper"] = role_name_to_id.get("Helper") in assigned_role_ids
             profile["registered_since"] = profile.get("created_at")
             profile["security_level"] = profile.get("user_access")
 
@@ -407,28 +266,33 @@ def admin_get_users(current_user=Depends(verify_token_with_tenant)):
         raise HTTPException(status_code=500, detail=f"Error fetching users: {str(e)}")
 
 
+# ==================== USER PROFILE ====================
+
+
 @app.post("/api/user/profile")
-async def get_user_profile(data: dict, current_user=Depends(verify_token_with_tenant)):
+async def get_user_profile(
+    data: dict,
+    current_user: dict = Depends(verify_token_with_tenant),
+    db: AsyncSession = Depends(get_async_db),
+):
+    """Get user profile."""
     try:
         user_id = data.get("user_id")
         if not user_id:
             raise HTTPException(status_code=400, detail="user_id is required")
 
-        # Get the user's company registration number from the token
-        company_reg_no = getattr(current_user, "company_reg_no", None)
+        company_reg_no = current_user.get("company_reg_no")
         if not company_reg_no:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail="User company association not found",
             )
 
-        # Fetch the user's profile using tenant-aware method
-        profile_data = TenantService.get_tenant_profile(user_id, company_reg_no)
+        profile_data = await TenantService.get_tenant_profile(db, user_id, company_reg_no)
 
         if not profile_data:
             raise HTTPException(status_code=404, detail="User profile not found")
 
-        # Return only safe profile data
         safe_profile_data = {
             "id": profile_data.get("id"),
             "full_name": profile_data.get("full_name"),
@@ -441,51 +305,47 @@ async def get_user_profile(data: dict, current_user=Depends(verify_token_with_te
     except HTTPException:
         raise
     except Exception as e:
-        logging.error("Error fetching user profile: %s", str(e))
+        logger.error(f"Error fetching user profile: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Error fetching user profile: {str(e)}") from e
 
 
-class UserCompanyRequest(BaseModel):
-    """Request schema for get_user_company"""
+# ==================== USER COMPANY ====================
 
+
+class UserCompanyRequest(BaseModel):
     user_id: str
 
 
-# Response schema for get_user_company
 class CompanyDetails(BaseModel):
-    """Response schema for get_user_company"""
-
     id: str
     name: str
     registered_since: str
 
 
 class GetUserCompanyResponse(BaseModel):
-    """Response schema for get_user_company"""
-
     company: CompanyDetails
 
 
 @app.post("/api/user/company", response_model=GetUserCompanyResponse)
 async def get_user_company(
-    request: UserCompanyRequest, current_user=Depends(verify_token_with_tenant)
+    request: UserCompanyRequest,
+    current_user: dict = Depends(verify_token_with_tenant),
+    db: AsyncSession = Depends(get_async_db),
 ):
-    """Get the company details for an admin user."""
+    """Get company details for a user."""
     user_id = request.user_id
     if not user_id:
         raise HTTPException(status_code=400, detail="user_id is required")
 
     try:
-        # Get the user's company registration number from the token
-        company_reg_no = getattr(current_user, "company_reg_no", None)
+        company_reg_no = current_user.get("company_reg_no")
         if not company_reg_no:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail="User company association not found",
             )
 
-        # Validate that the requested user belongs to the same tenant
-        profile = TenantService.get_tenant_profile(user_id, company_reg_no)
+        profile = await TenantService.get_tenant_profile(db, user_id, company_reg_no)
         if not profile:
             raise HTTPException(
                 status_code=404,
@@ -496,46 +356,49 @@ async def get_user_company(
         if not company_id:
             raise HTTPException(status_code=404, detail="User has no associated company")
 
-        company = (
-            supabase.table("companies")
-            .select("id", "name", "registered_since")
-            .eq("id", company_id)
-            .eq("company_reg_no", company_reg_no)  # Ensure tenant isolation
-            .single()
-            .execute()
-            .data
+        stmt = select(Company).where(
+            Company.id == company_id, Company.company_reg_no == company_reg_no
         )
+        result = await db.execute(stmt)
+        company = result.scalar_one_or_none()
 
         if not company:
             raise HTTPException(status_code=404, detail="Company not found")
 
-        name = profile.get("company_name") or company["name"]
+        name = profile.get("company_name") or company.name
 
         if not profile.get("company_name"):
             try:
-                TenantService.update_tenant_profile(
+                await TenantService.update_tenant_profile(
+                    db,
                     user_id,
-                    {"company_name": name, "updated_at": datetime.now().isoformat()},
+                    {"company_name": name, "updated_at": datetime.utcnow()},
                     company_reg_no,
                 )
-                logger.info("Updated profile for user %s with company name %s", user_id, name)
+                logger.info(f"Updated profile for user {user_id} with company name {name}")
             except Exception as err:
-                logger.warning("Failed to update profile for user %s: %s", user_id, err)
+                logger.warning(f"Failed to update profile for user {user_id}: {err}")
 
-        company["name"] = name
-        # Convert company ID to string
-        company["id"] = str(company["id"])
-        return {"company": company}
+        return {
+            "company": {
+                "id": str(company.id),
+                "name": name,
+                "registered_since": (
+                    company.registered_since.isoformat() if company.registered_since else ""
+                ),
+            }
+        }
     except HTTPException:
         raise
     except Exception as e:
-        logger.error("Error fetching user company: %s", e)
+        logger.error(f"Error fetching user company: {e}")
         raise HTTPException(status_code=500, detail="Error fetching user company") from e
 
 
-class OrganisationDetails(BaseModel):
-    """Organisation details model."""
+# ==================== UPDATE USER DETAILS ====================
 
+
+class OrganisationDetails(BaseModel):
     firstName: str
     lastName: str
     email: str
@@ -545,10 +408,7 @@ class OrganisationDetails(BaseModel):
     user_id: str | None = None
 
 
-# Request schema for update_user_details
 class UpdateUserDetailsRequest(BaseModel):
-    """Request schema for update_user_details"""
-
     firstName: str
     lastName: str
     email: EmailStr
@@ -562,72 +422,43 @@ class UpdateUserDetailsRequest(BaseModel):
 @app.post("/api/user/update_user_details", response_model=OrganisationDetails)
 async def update_user_details(
     request: UpdateUserDetailsRequest,
-    current_user: UserResponse = Depends(verify_token_with_tenant),
+    current_user: dict = Depends(verify_token_with_tenant),
+    db: AsyncSession = Depends(get_async_db),
 ):
-    """Update or add user details. Only accessible by users with the Administrator role."""
+    """Update or add user details (Administrator only)."""
     try:
-        # Get the user's company registration number from the token
-        company_reg_no = getattr(current_user, "company_reg_no", None)
+        company_reg_no = current_user.get("company_reg_no")
         if not company_reg_no:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail="User company association not found",
             )
 
-        # --- Admin Check - Updated to use tenant-aware role-based authentication ---
-        try:
-            # Get current user's roles from user_roles table (tenant-scoped)
-            user_roles_response = (
-                supabase.table("user_roles")
-                .select("role_id")
-                .eq("user_id", current_user.user.id)
-                .eq("company_reg_no", company_reg_no)  # Ensure tenant scope
-                .execute()
+        # Admin check using SQLAlchemy
+        current_user_id = current_user.get("user_id")
+        stmt = (
+            select(UserRole.role_id)
+            .join(Role)
+            .where(
+                UserRole.user_id == current_user_id,
+                UserRole.company_reg_no == company_reg_no,
+                Role.name == "Administrator",
+            )
+        )
+        result = await db.execute(stmt)
+        is_admin = result.scalar_one_or_none() is not None
+
+        if not is_admin:
+            logger.warning(
+                f"User {current_user_id} attempted to access admin endpoint "
+                f"without Administrator role in tenant {company_reg_no}."
+            )
+            raise HTTPException(
+                status_code=403,
+                detail="User does not have permission to perform this action. Administrator role required.",
             )
 
-            user_role_ids = (
-                [ur["role_id"] for ur in user_roles_response.data]
-                if user_roles_response.data
-                else []
-            )
-
-            # Get Administrator role ID
-            admin_role_response = (
-                supabase.table("roles").select("id").eq("name", "Administrator").execute()
-            )
-
-            if not admin_role_response.data:
-                logger.error("Administrator role not found in roles table")
-                raise HTTPException(
-                    status_code=500,
-                    detail="System error: Administrator role not configured.",
-                )
-
-            admin_role_id = admin_role_response.data[0]["id"]
-
-            # Check if user has Administrator role within this tenant
-            if admin_role_id not in user_role_ids:
-                logger.warning(
-                    f"User {current_user.user.email} (ID: {current_user.user.id}) "
-                    f"attempted to access admin endpoint without Administrator role in tenant {company_reg_no}."
-                )
-                raise HTTPException(
-                    status_code=403,
-                    detail="User does not have permission to perform this action. Administrator role required.",
-                )
-
-            logger.info(
-                f"Admin user {current_user.user.email} accessing update_user_details for tenant {company_reg_no}."
-            )
-        except HTTPException:
-            raise
-        except Exception as role_check_error:
-            logger.error(f"Error checking user roles: {role_check_error}")
-            raise HTTPException(status_code=500, detail="Error verifying user permissions.")
-        # --- End Admin Check ---
-
-        current_date = datetime.now().isoformat()
-
+        current_date = datetime.utcnow()
         first_name = request.firstName
         last_name = request.lastName
         requested_company_name = request.company
@@ -637,29 +468,25 @@ async def update_user_details(
         requested_username = request.username
         requested_roles = request.roles
 
-        # For tenant-aware operations, we'll use the company_reg_no instead of company_id
-        db_company_id_for_profile = None  # Keep this null for now
-        response_registered_since = current_date
-
         logger.info(
-            f"Processing user update/creation for tenant {company_reg_no}. Company name: '{requested_company_name}'."
+            f"Processing user update/creation for tenant {company_reg_no}. "
+            f"Company name: '{requested_company_name}'."
         )
 
         db_user_id = None
         is_existing_profile = False
 
         if user_id_from_request:
-            # Check if profile exists within this tenant
-            existing_profile = TenantService.get_tenant_profile(
-                user_id_from_request, company_reg_no
+            existing_profile = await TenantService.get_tenant_profile(
+                db, user_id_from_request, company_reg_no
             )
             if existing_profile:
                 is_existing_profile = True
                 db_user_id = existing_profile["id"]
 
-                # Check email uniqueness within tenant
+                # Check email uniqueness
                 if email != existing_profile["email"]:
-                    tenant_profiles = TenantService.get_tenant_profiles(company_reg_no)
+                    tenant_profiles = await TenantService.get_tenant_profiles(db, company_reg_no)
                     for profile in tenant_profiles:
                         if profile["email"] == email and profile["id"] != db_user_id:
                             raise HTTPException(
@@ -667,7 +494,7 @@ async def update_user_details(
                                 detail=f"Email '{email}' is already in use by another user in your organization.",
                             )
 
-                # Check username uniqueness within tenant
+                # Check username uniqueness
                 if requested_username and requested_username != existing_profile.get("username"):
                     for profile in tenant_profiles:
                         if (
@@ -684,14 +511,12 @@ async def update_user_details(
                     detail=f"User with ID '{user_id_from_request}' not found in your organization.",
                 )
         else:
-            # Check if email exists within tenant
-            tenant_profiles = TenantService.get_tenant_profiles(company_reg_no)
+            tenant_profiles = await TenantService.get_tenant_profiles(db, company_reg_no)
             for profile in tenant_profiles:
                 if profile["email"] == email:
                     is_existing_profile = True
                     db_user_id = profile["id"]
 
-                    # Check username uniqueness within tenant
                     if requested_username and requested_username != profile.get("username"):
                         for other_profile in tenant_profiles:
                             if (
@@ -705,9 +530,7 @@ async def update_user_details(
                     break
 
             if not is_existing_profile:
-                # Generate username if not provided
                 if requested_username:
-                    # Check username uniqueness within tenant
                     for profile in tenant_profiles:
                         if profile.get("username") == requested_username:
                             raise HTTPException(
@@ -726,9 +549,8 @@ async def update_user_details(
             "full_name": f"{first_name} {last_name}",
             "email": email,
             "telephone": telephone,
-            "company_id": db_company_id_for_profile,
             "company_name": requested_company_name,
-            "company_reg_no": company_reg_no,  # Ensure tenant association
+            "company_reg_no": company_reg_no,
             "updated_at": current_date,
         }
         if requested_username:
@@ -758,28 +580,30 @@ async def update_user_details(
                     status_code=500,
                     detail="User ID missing for existing profile update.",
                 )
-            TenantService.update_tenant_profile(db_user_id, profile_data_to_update, company_reg_no)
+            await TenantService.update_tenant_profile(
+                db, db_user_id, profile_data_to_update, company_reg_no
+            )
             logger.info(f"Profile updated for user ID: {db_user_id} in tenant {company_reg_no}")
         else:
-            # Create new user with tenant association
             password = "".join(random.choices(string.ascii_letters + string.digits, k=12))
             if not profile_data_to_update.get("username"):
                 profile_data_to_update["username"] = requested_username
 
             try:
-                auth_response = supabase_admin.auth.admin.create_user(
-                    {
-                        "email": email,
-                        "password": password,
-                        "user_metadata": {"full_name": profile_data_to_update["full_name"]},
-                        "email_confirm": True,
-                    }
+                # Create user using AuthService
+                new_user = await AuthService.create_user(
+                    db=db,
+                    email=email,
+                    password=password,
+                    full_name=profile_data_to_update["full_name"],
                 )
-                db_user_id = auth_response.user.id
+                db_user_id = str(new_user.id)
                 profile_data_to_update["id"] = db_user_id
 
-                # Create profile with tenant association
-                TenantService.create_tenant_profile(profile_data_to_update, company_reg_no)
+                # Create profile
+                await TenantService.create_tenant_profile(
+                    db, profile_data_to_update, company_reg_no
+                )
                 logger.info(
                     f"Profile created for new user ID: {db_user_id} in tenant {company_reg_no}"
                 )
@@ -792,60 +616,52 @@ async def update_user_details(
 
                 await send_welcome_email(email, password, username_for_email)
             except Exception as e:
-                if db_user_id:
-                    try:
-                        supabase_admin.auth.admin.delete_user(db_user_id)
-                        logger.info(
-                            f"Cleaned up auth user {db_user_id} due to profile creation failure."
-                        )
-                    except Exception as e_auth_delete:
-                        logger.error(f"Failed to clean up auth user {db_user_id}: {e_auth_delete}")
+                await db.rollback()
+                logger.error(f"Error creating user account: {e}")
                 raise HTTPException(
                     status_code=500, detail=f"Error creating user account: {str(e)}"
                 )
 
-        # --- Role Handling (tenant-scoped) ---
+        # Handle roles
         if db_user_id and requested_roles is not None:
             role_ids_to_assign = []
             if requested_roles:
-                roles_from_db_response = (
-                    supabase.table("roles")
-                    .select("id, name")
-                    .in_("name", requested_roles)
-                    .execute()
-                )
-                if roles_from_db_response.data:
-                    role_map = {role["name"]: role["id"] for role in roles_from_db_response.data}
-                    for role_name in requested_roles:
-                        if role_name in role_map:
-                            role_ids_to_assign.append(role_map[role_name])
-                        else:
-                            logger.warning(
-                                f"Role name '{role_name}' not found in database. Skipping."
-                            )
+                stmt = select(Role.id, Role.name).where(Role.name.in_(requested_roles))
+                result = await db.execute(stmt)
+                roles_from_db = result.all()
 
-            # Clear existing roles for this user in this tenant
-            (
-                supabase.table("user_roles")
-                .delete()
-                .eq("user_id", db_user_id)
-                .eq("company_reg_no", company_reg_no)
-                .execute()
+                role_map = {role.name: str(role.id) for role in roles_from_db}
+                for role_name in requested_roles:
+                    if role_name in role_map:
+                        role_ids_to_assign.append(role_map[role_name])
+                    else:
+                        logger.warning(f"Role name '{role_name}' not found in database. Skipping.")
+
+            # Clear existing roles
+            stmt = select(UserRole).where(
+                UserRole.user_id == db_user_id, UserRole.company_reg_no == company_reg_no
             )
+            result = await db.execute(stmt)
+            existing_roles = result.scalars().all()
+
+            for role in existing_roles:
+                await db.delete(role)
+
             logger.info(
                 f"Cleared existing roles for user ID: {db_user_id} in tenant {company_reg_no}"
             )
 
+            # Assign new roles
             if role_ids_to_assign:
-                user_roles_to_insert = [
-                    {
-                        "user_id": db_user_id,
-                        "role_id": role_id,
-                        "company_reg_no": company_reg_no,
-                    }
-                    for role_id in role_ids_to_assign
-                ]
-                (supabase.table("user_roles").insert(user_roles_to_insert).execute())
+                for role_id in role_ids_to_assign:
+                    user_role = UserRole(
+                        user_id=db_user_id,
+                        role_id=role_id,
+                        company_reg_no=company_reg_no,
+                    )
+                    db.add(user_role)
+
+                await db.commit()
                 logger.info(
                     f"Assigned new roles to user ID: {db_user_id} in tenant {company_reg_no} - Roles: {requested_roles}"
                 )
@@ -856,7 +672,7 @@ async def update_user_details(
             "email": email,
             "telephone": telephone,
             "company": requested_company_name,
-            "registeredSince": response_registered_since,
+            "registeredSince": current_date.isoformat(),
             "user_id": db_user_id,
         }
         return response_data
@@ -864,15 +680,17 @@ async def update_user_details(
     except HTTPException:
         raise
     except Exception as e:
-        logging.error("Error updating organisation details: %s", str(e))
+        await db.rollback()
+        logger.error(f"Error updating organisation details: {str(e)}")
         raise HTTPException(
             status_code=500, detail=f"Error updating organisation details: {str(e)}"
         ) from e
 
 
-class DeleteUserResponse(BaseModel):
-    """Response schema for delete user endpoint"""
+# ==================== DELETE USER ====================
 
+
+class DeleteUserResponse(BaseModel):
     message: str
 
 
@@ -882,88 +700,79 @@ class DeleteUserResponse(BaseModel):
     response_model=DeleteUserResponse,
     dependencies=[Depends(require_roles(["Administrator"]))],
 )
-async def admin_users_delete(user_id: str):
-    """Deletes a user from the system."""
+async def admin_users_delete(user_id: str, db: AsyncSession = Depends(get_async_db)):
+    """Delete a user from the system."""
     try:
-        has_session = bool(
-            supabase.from_("sessions").select("id").eq("user_id", user_id).limit(1).execute().data
-        )
+        # Check if user has sessions
+        stmt = select(Session.id).where(Session.user_id == user_id).limit(1)
+        result = await db.execute(stmt)
+        has_session = result.scalar_one_or_none() is not None
+
         if not has_session:
             # Hard delete
-            try:
-                supabase_admin.auth.admin.delete_user(user_id)
-                logger.info("Deleted Auth user %s", user_id)
-            except Exception as err:
-                logger.error("Auth delete error for %s: %s", user_id, err)
-            try:
-                supabase.from_("profiles").delete().eq("id", user_id).execute()
-                logger.info("Deleted profile %s", user_id)
-            except Exception as err:
-                logger.error("Profile delete error for %s: %s", user_id, err)
-                raise HTTPException(
-                    status_code=500, detail=f"Error deleting user profile: {err}"
-                ) from err
+            stmt = select(User).where(User.id == user_id)
+            result = await db.execute(stmt)
+            user = result.scalar_one_or_none()
+
+            if user:
+                await db.delete(user)
+                await db.commit()
+                logger.info(f"Deleted user {user_id}")
+
+            stmt = select(Profile).where(Profile.id == user_id)
+            result = await db.execute(stmt)
+            profile = result.scalar_one_or_none()
+
+            if profile:
+                await db.delete(profile)
+                await db.commit()
+                logger.info(f"Deleted profile {user_id}")
+
             return {"message": f"User {user_id} permanently deleted."}
 
         # Soft delete
-        exists = bool(supabase.from_("profiles").select("id").eq("id", user_id).execute().data)
-        if not exists:
-            logger.warning("Profile not found for %s", user_id)
-        action = "deactivated"
-        try:
-            supabase_admin.auth.admin.update_user_by_id(
-                user_id,
-                {
-                    "ban_duration": "none",
-                    "email_confirm": False,
-                    "user_metadata": {"status": "inactive"},
-                },
-            )
-            logger.info("Deactivated auth user %s", user_id)
-        except Exception as err:
-            msg = str(err)
-            if "not found" in msg and not exists:
-                logger.warning("Auth user not found %s", user_id)
-                return {"message": f"User {user_id} was not found, considered deleted."}
-            logger.error("Auth update error for %s: %s", user_id, err)
-            raise HTTPException(status_code=500, detail=f"Failed auth update: {err}") from err
+        stmt = select(Profile).where(Profile.id == user_id)
+        result = await db.execute(stmt)
+        profile = result.scalar_one_or_none()
 
-        try:
-            res = (
-                supabase.from_("profiles")
-                .update({"status": "inactive", "updated_at": datetime.now().isoformat()})
-                .eq("id", user_id)
-                .execute()
-            )
-            if res.data:
-                logger.info("Marked profile inactive %s", user_id)
-            else:
-                logger.warning("No profile update for %s", user_id)
-        except Exception as err:
-            logger.critical("Profile update failed for %s: %s", user_id, err)
-            raise HTTPException(
-                status_code=500,
-                detail=f"User was {action} in auth but failed to update profile: {err}",
-            ) from err
+        if not profile:
+            logger.warning(f"Profile not found for {user_id}")
+            return {"message": f"User {user_id} was not found, considered deleted."}
 
-        return {"message": f"User {user_id} successfully {action}."}
+        # Update user status
+        stmt = select(User).where(User.id == user_id)
+        result = await db.execute(stmt)
+        user = result.scalar_one_or_none()
+
+        if user:
+            user.email_confirmed_at = None
+            user.banned_until = None
+
+        # Update profile status
+        profile.status = "inactive"
+        profile.updated_at = datetime.utcnow()
+
+        await db.commit()
+        logger.info(f"Deactivated user {user_id}")
+
+        return {"message": f"User {user_id} successfully deactivated."}
 
     except HTTPException:
         raise
     except Exception as err:
-        logger.error("Unexpected error for %s: %s", user_id, err)
+        await db.rollback()
+        logger.error(f"Unexpected error for {user_id}: {err}")
         raise HTTPException(status_code=500, detail=f"An unexpected error occurred: {err}") from err
 
 
-class GetCompanyThemeSettingsRequest(BaseModel):
-    """Request schema for get_company_theme_settings"""
+# ==================== COMPANY THEME SETTINGS ====================
 
+
+class GetCompanyThemeSettingsRequest(BaseModel):
     user_id: str
 
 
 class CompanyThemeSettingsResponse(BaseModel):
-    """Response schema for get_company_theme_settings"""
-
     id: str
     name: str
     user_chat_bubble_colour: str | None = None
@@ -976,34 +785,27 @@ class CompanyThemeSettingsResponse(BaseModel):
     bot_profile_picture: str | None = None
 
 
-class GetCompanyThemeSettingsResponse(BaseModel):
-    """Response schema for get_company_theme_settings"""
-
-    status: str
-    theme_settings: CompanyThemeSettingsResponse
-
-
 def ensure_color_has_hash(color_value: str) -> str:
-    """Ensure color value has # prefix if it's a valid color string."""
+    """Ensure color value has # prefix."""
     if not color_value:
         return color_value
     if color_value.startswith("#"):
         return color_value
-    # Add # prefix if it's a valid hex color (3 or 6 characters)
     if len(color_value) in [3, 6] and all(c in "0123456789ABCDEFabcdef" for c in color_value):
         return f"#{color_value}"
     return color_value
 
 
-@app.post(
-    "/api/v1/companies/get_theme_settings",
-)
-async def get_company_theme_settings(request: GetCompanyThemeSettingsRequest):
+@app.post("/api/v1/companies/get_theme_settings")
+async def get_company_theme_settings(
+    request: GetCompanyThemeSettingsRequest, db: AsyncSession = Depends(get_async_db)
+):
+    """Get company theme settings."""
     try:
         user_id = request.user_id
         logger.info(f"Fetching theme settings for user ID: {user_id}")
 
-        default_settings_response = {
+        default_settings = {
             "status": "success",
             "theme_settings": {
                 "id": "default",
@@ -1019,179 +821,47 @@ async def get_company_theme_settings(request: GetCompanyThemeSettingsRequest):
             },
         }
 
-        company_id = None  # Initialize company_id
-        try:
-            profile_response = (
-                supabase.table("profiles").select("company_id").eq("id", user_id).execute()
-            )
-            logger.info(f"Profile response: {profile_response}")
+        stmt = select(Profile.company_id).where(Profile.id == user_id)
+        result = await db.execute(stmt)
+        company_id = result.scalar_one_or_none()
 
-            if not profile_response.data or not profile_response.data[0].get("company_id"):
-                logger.warning(
-                    f"No profile or company ID found for user ID: {user_id}, returning defaults."
-                )
-                return default_settings_response
+        if not company_id:
+            logger.warning(f"No company found for user {user_id}")
+            return default_settings
 
-            company_id = profile_response.data[0]["company_id"]
-            logger.info(f"Company ID: {company_id}")
-        except Exception as profile_error:
-            logger.error(f"Error fetching user profile for {user_id}: {profile_error}")
-            return default_settings_response
+        stmt = select(Company).where(Company.id == company_id)
+        result = await db.execute(stmt)
+        company = result.scalar_one_or_none()
 
-        company_data = None
-        company_name = None
-        try:
-            company_response = (
-                supabase.table("companies")
-                .select(
-                    "id, name, user_chat_bubble_colour, bot_chat_bubble_colour, "
-                    "send_button_and_box, font, user_chat_font_colour, bot_chat_font_colour, "
-                    "logo, bot_profile_picture"
-                )
-                .eq("id", company_id)
-                .execute()
-            )
-            logger.info(f"Company response: {company_response}")
+        if not company:
+            logger.warning(f"No company found for ID {company_id}")
+            return default_settings
 
-            if not company_response.data:
-                logger.warning(
-                    f"No company found for company ID: {company_id}, returning defaults with company ID."
-                )
-                default_settings_with_id = {
-                    "id": str(company_id),
-                    "name": "Unknown Company",
-                    "userChatBubbleColor": "#007bff",
-                    "botChatBubbleColor": "#e5e5ea",
-                    "sendButtonAndBox": "#ffffff",
-                    "font": "Tahoma",
-                    "userChatFontColor": "#000000",
-                    "botChatFontColor": "#000000",
-                    "logo": None,
-                    "botProfilePicture": None,
-                }
-                return {"status": "success", "theme_settings": default_settings_with_id}
-
-            company_data = company_response.data[0]
-            company_name = company_data.get("name", "")
-            logger.info(f"Company name: {company_name}")
-
-            company_data["id"] = str(company_data["id"])
-            if company_data.get("user_chat_font_colour") is None:
-                company_data["user_chat_font_colour"] = "#000000"
-            if company_data.get("bot_chat_font_colour") is None:
-                company_data["bot_chat_font_colour"] = "#000000"
-            company_data["user_chat_bubble_colour"] = (
-                company_data.get("user_chat_bubble_colour") or "#007bff"
-            )
-            company_data["bot_chat_bubble_colour"] = (
-                company_data.get("bot_chat_bubble_colour") or "#e5e5ea"
-            )
-            company_data["send_button_and_box"] = (
-                company_data.get("send_button_and_box") or "#ffffff"
-            )
-            company_data["font"] = company_data.get("font") or "Tahoma"
-
-            logo_url = None
-            bot_profile_url = None
-
-            db_logo_path = company_data.get("logo")
-            if db_logo_path and company_name:
-                try:
-                    # Use "companies" bucket with folder structure
-                    bucket_name = "companies"
-                    company_folder = company_name.lower().replace(" ", "_")
-                    logo_response_url = supabase_admin.storage.from_(bucket_name).get_public_url(
-                        f"{company_folder}/logo.png"
-                    )
-                    if logo_response_url:
-                        logo_url = logo_response_url
-                        logger.info(f"Logo URL: {logo_url}")
-                except Exception as logo_error:
-                    logger.warning(
-                        f"Error generating or invalid logo URL for company {company_name}, path {db_logo_path}: {logo_error}"
-                    )
-
-            db_bot_profile_path = company_data.get("bot_profile_picture")
-            if db_bot_profile_path and company_name:
-                try:
-                    # Use "companies" bucket with folder structure
-                    bucket_name = "companies"
-                    company_folder = company_name.lower().replace(" ", "_")
-                    bot_profile_response_url = supabase_admin.storage.from_(
-                        bucket_name
-                    ).get_public_url(f"{company_folder}/bot_profile_picture.png")
-                    if bot_profile_response_url:
-                        bot_profile_url = bot_profile_response_url
-                        logger.info(f"Bot profile URL: {bot_profile_url}")
-                except Exception as profile_error_url:
-                    logger.warning(
-                        f"Error generating or invalid bot profile picture URL for company {company_name}, path {db_bot_profile_path}: {profile_error_url}"
-                    )
-
-            company_data["logo"] = logo_url
-            company_data["bot_profile_picture"] = bot_profile_url
-
-        except Exception as company_error:
-            logger.error(f"Error fetching company {company_id}: {company_error}")
-            default_settings_with_id_on_error = {
-                "id": str(company_id) if company_id else "default-error",
-                "name": "Error Company",
-                "userChatBubbleColor": "#007bff",
-                "botChatBubbleColor": "#e5e5ea",
-                "sendButtonAndBox": "#ffffff",
-                "font": "Tahoma",
-                "userChatFontColor": "#000000",
-                "botChatFontColor": "#000000",
-                "logo": None,
-                "botProfilePicture": None,
-            }
-            return {
-                "status": "success",
-                "theme_settings": default_settings_with_id_on_error,
-            }
-
-        # Transform property names to match frontend expectations (camelCase)
         transformed_data = {
-            "id": company_data.get("id"),
-            "name": company_data.get("name"),
+            "id": str(company.id),
+            "name": company.name,
             "userChatBubbleColor": ensure_color_has_hash(
-                company_data.get("user_chat_bubble_colour")
+                company.user_chat_bubble_colour or "#007bff"
             ),
-            "botChatBubbleColor": ensure_color_has_hash(company_data.get("bot_chat_bubble_colour")),
-            "sendButtonAndBox": ensure_color_has_hash(company_data.get("send_button_and_box")),
-            "font": company_data.get("font"),
-            "userChatFontColor": ensure_color_has_hash(company_data.get("user_chat_font_colour")),
-            "botChatFontColor": ensure_color_has_hash(company_data.get("bot_chat_font_colour")),
-            "logo": company_data.get("logo"),
-            "botProfilePicture": company_data.get("bot_profile_picture"),
+            "botChatBubbleColor": ensure_color_has_hash(
+                company.bot_chat_bubble_colour or "#e5e5ea"
+            ),
+            "sendButtonAndBox": ensure_color_has_hash(company.send_button_and_box or "#ffffff"),
+            "font": company.font or "Tahoma",
+            "userChatFontColor": ensure_color_has_hash(company.user_chat_font_colour or "#000000"),
+            "botChatFontColor": ensure_color_has_hash(company.bot_chat_font_colour or "#000000"),
+            "logo": company.logo,
+            "botProfilePicture": company.bot_profile_picture,
         }
 
         return {"status": "success", "theme_settings": transformed_data}
-    except HTTPException as http_ex:
-        logger.error(f"HTTP Exception in get_company_theme_settings: {http_ex.detail}")
-        raise
+
     except Exception as e:
-        logger.error(f"Unexpected error in get_company_theme_settings: {str(e)}")
-        safe_default_theme_settings = CompanyThemeSettingsResponse(
-            id="default_error",
-            name="Error Company",
-            user_chat_bubble_colour="#007bff",
-            bot_chat_bubble_colour="#e5e5ea",
-            send_button_and_box="#ffffff",
-            font="Tahoma",
-            user_chat_font_colour="#000000",
-            bot_chat_font_colour="#000000",
-            logo=None,
-            bot_profile_picture=None,
-        )
-        return GetCompanyThemeSettingsResponse(
-            status="error", theme_settings=safe_default_theme_settings
-        )
+        logger.error(f"Error in get_company_theme_settings: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
 
 
 class CompanyThemeSettingsPayload(BaseModel):
-    """Request schema for update_company_theme_settings"""
-
     user_chat_bubble_colour: str | None = None
     bot_chat_bubble_colour: str | None = None
     send_button_and_box: str | None = None
@@ -1209,9 +879,9 @@ class UpdateCompanyThemeSettingsRequest(BaseModel):
 
 @app.post("/api/v1/companies/update_theme_settings")
 async def update_company_theme_settings(
-    request_data: UpdateCompanyThemeSettingsRequest,
+    request_data: UpdateCompanyThemeSettingsRequest, db: AsyncSession = Depends(get_async_db)
 ):
-    """Update the theme settings for a company."""
+    """Update company theme settings with Cloudinary support."""
     try:
         user_id = request_data.user_id
         theme_settings = request_data.theme_settings
@@ -1224,31 +894,27 @@ async def update_company_theme_settings(
                 detail="Missing required fields: user_id or theme_settings",
             )
 
-        profile_response = (
-            supabase.table("profiles").select("company_id").eq("id", user_id).execute()
-        )
+        stmt = select(Profile.company_id).where(Profile.id == user_id)
+        result = await db.execute(stmt)
+        company_id = result.scalar_one_or_none()
 
-        if not profile_response.data or not profile_response.data[0].get("company_id"):
+        if not company_id:
             raise HTTPException(
                 status_code=404, detail="User profile or company association not found"
             )
 
-        company_id = profile_response.data[0]["company_id"]
+        stmt = select(Company).where(Company.id == company_id)
+        result = await db.execute(stmt)
+        company = result.scalar_one_or_none()
 
-        company_response = supabase.table("companies").select("name").eq("id", company_id).execute()
-
-        if not company_response.data:
+        if not company:
             raise HTTPException(status_code=404, detail="Company not found")
 
-        company_name = company_response.data[0].get("name")
+        company_name = company.name
         if not company_name:
-            raise HTTPException(
-                status_code=500, detail="Company name not found for the company ID."
-            )
+            raise HTTPException(status_code=500, detail="Company name not found")
 
-        update_payload_for_db = {}
-
-        # Handle text-based settings
+        # Update text-based settings
         text_settings_map = {
             "user_chat_bubble_colour": theme_settings.user_chat_bubble_colour,
             "bot_chat_bubble_colour": theme_settings.bot_chat_bubble_colour,
@@ -1257,35 +923,18 @@ async def update_company_theme_settings(
             "user_chat_font_colour": theme_settings.user_chat_font_colour,
             "bot_chat_font_colour": theme_settings.bot_chat_font_colour,
         }
-        for key, value in text_settings_map.items():
-            if key in theme_settings.model_fields_set and value is not None:
-                update_payload_for_db[key] = value
-            elif key in theme_settings.model_fields_set and value is None:  # Explicitly set to null
-                update_payload_for_db[key] = None
 
-        # Handle Logo
+        for key, value in text_settings_map.items():
+            if key in theme_settings.model_fields_set:
+                setattr(company, key, value)
+
+        # Handle Logo - CLOUDINARY
         if "logo" in theme_settings.model_fields_set:
             logo_data = theme_settings.logo
             if logo_data and logo_data.startswith("data:image"):
                 try:
-                    bucket_name = "companies"
-                    company_folder = company_name.lower().replace(" ", "_")
-                    if not ensure_storage_bucket_exists(bucket_name):
-                        raise HTTPException(
-                            status_code=500,
-                            detail=f"Failed to create or access storage bucket: {bucket_name}",
-                        )
-
-                    image_format, logo_base64 = logo_data.split(";base64,")
-                    logo_binary = base64.b64decode(logo_base64)
-                    storage_path = f"{company_folder}/logo.png"
-
-                    supabase_admin.storage.from_(bucket_name).upload(
-                        storage_path,
-                        logo_binary,
-                        {"content-type": "image/png", "upsert": "true"},
-                    )
-                    update_payload_for_db["logo"] = storage_path
+                    logo_url = StorageService.upload_logo(logo_data, company_name)
+                    company.logo = logo_url
                     logger.info(f"Logo uploaded successfully for company {company_name}")
                 except Exception as upload_error:
                     logger.error(f"Error uploading logo: {upload_error}")
@@ -1294,89 +943,46 @@ async def update_company_theme_settings(
                         detail=f"Error uploading logo: {str(upload_error)}",
                     )
             elif logo_data is None:
-                update_payload_for_db["logo"] = None
+                company.logo = None
 
-        # Handle Bot Profile Picture
+        # Handle Bot Profile Picture - CLOUDINARY
         if "bot_profile_picture" in theme_settings.model_fields_set:
             bot_pic_data = theme_settings.bot_profile_picture
-            logger.info(
-                f"Bot profile picture processing: received data type: {type(bot_pic_data)}, starts with data:image: {bot_pic_data and bot_pic_data.startswith('data:image') if bot_pic_data else 'None'}"
-            )
-
             if bot_pic_data and bot_pic_data.startswith("data:image"):
                 try:
-                    bucket_name = "companies"
-                    company_folder = company_name.lower().replace(" ", "_")
-                    logger.info(
-                        f"Bot profile picture upload: bucket={bucket_name}, folder={company_folder}"
-                    )
-
-                    if not ensure_storage_bucket_exists(bucket_name):
-                        raise HTTPException(
-                            status_code=500,
-                            detail=f"Failed to create or access storage bucket: {bucket_name}",
-                        )
-
-                    image_format, bot_pic_base64 = bot_pic_data.split(";base64,")
-                    bot_pic_binary = base64.b64decode(bot_pic_base64)
-                    storage_path = f"{company_folder}/bot_profile_picture.png"
-
-                    logger.info(
-                        f"Bot profile picture: uploading {len(bot_pic_binary)} bytes to {storage_path}"
-                    )
-
-                    supabase_admin.storage.from_(bucket_name).upload(
-                        storage_path,
-                        bot_pic_binary,
-                        {"content-type": "image/png", "upsert": "true"},
-                    )
-                    update_payload_for_db["bot_profile_picture"] = storage_path
-                    logger.info(
-                        f"Bot profile picture uploaded successfully for company {company_name}"
-                    )
+                    bot_profile_url = StorageService.upload_bot_profile(bot_pic_data, company_name)
+                    company.bot_profile_picture = bot_profile_url
+                    logger.info(f"Bot profile uploaded successfully for company {company_name}")
                 except Exception as upload_error:
-                    logger.error(f"Error uploading bot profile picture: {upload_error}")
+                    logger.error(f"Error uploading bot profile: {upload_error}")
                     raise HTTPException(
                         status_code=500,
-                        detail=f"Error uploading bot profile picture: {str(upload_error)}",
+                        detail=f"Error uploading bot profile: {str(upload_error)}",
                     )
             elif bot_pic_data is None:
-                logger.info(f"Bot profile picture set to None for company {company_name}")
-                update_payload_for_db["bot_profile_picture"] = None
-            else:
-                logger.info(
-                    f"Bot profile picture data invalid or empty for company {company_name}: {bot_pic_data[:100] if bot_pic_data else 'None'}"
-                )
-        else:
-            logger.info(
-                "Bot profile picture not in model_fields_set - no changes to bot profile picture"
-            )
+                company.bot_profile_picture = None
 
-        if update_payload_for_db:
-            (
-                supabase.table("companies")
-                .update(update_payload_for_db)
-                .eq("id", company_id)
-                .execute()
-            )
-            logger.info(f"Theme settings updated successfully for company {company_name}")
-        else:
-            logger.info(f"No changes to update for company {company_name}")
+        await db.commit()
+        await db.refresh(company)
+        logger.info(f"Theme settings updated successfully for company {company_name}")
 
         return {
             "status": "success",
             "message": "Company theme settings updated successfully",
         }
+
     except HTTPException:
         raise
     except Exception as e:
-        logger.error("Error updating company theme settings: %s", str(e))
+        await db.rollback()
+        logger.error(f"Error updating company theme settings: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e)) from e
 
 
-class EmailTestRequest(BaseModel):
-    """Request schema for test-email endpoint"""
+# ==================== EMAIL TESTING ====================
 
+
+class EmailTestRequest(BaseModel):
     recipient_email: str
     subject: str | None = "Test Email from Vault"
     content: str | None = "This is a test email from the Vault application."
@@ -1385,25 +991,19 @@ class EmailTestRequest(BaseModel):
 
 @app.post("/api/utils/test-email")
 async def test_email(request: EmailTestRequest):
-    """
-    Endpoint to test email sending functionality.
-
-    This endpoint is used for testing the email service configuration and functionality.
-    It allows developers to send a test email to verify that the email system is working properly.
-    """
+    """Test email sending functionality."""
     try:
-        # Ensure content is a string before length check or slicing
         email_content = request.content if request.content is not None else ""
 
         success = await email_service.send_test_email(
             email=request.recipient_email,
             subject=(request.subject if request.subject is not None else "Test Email from Vault"),
-            content=email_content,  # Use the guaranteed string version
+            content=email_content,
             username=request.username,
         )
 
         if success:
-            logger.info("Test email sent successfully to %s", request.recipient_email)
+            logger.info(f"Test email sent successfully to {request.recipient_email}")
             return {
                 "status": "success",
                 "message": f"Test email sent successfully to {request.recipient_email}",
@@ -1419,11 +1019,7 @@ async def test_email(request: EmailTestRequest):
             }
         else:
             error_detail = email_service.LAST_EMAIL_ERROR or "unknown error"
-            logger.error(
-                "Failed to send test email to %s: %s",
-                request.recipient_email,
-                error_detail,
-            )
+            logger.error(f"Failed to send test email to {request.recipient_email}: {error_detail}")
             return {
                 "status": "error",
                 "message": f"Failed to send test email to {request.recipient_email}",
@@ -1431,155 +1027,123 @@ async def test_email(request: EmailTestRequest):
             }
 
     except Exception as e:
-        logger.error("Error in test-email endpoint: %s", str(e))
+        logger.error(f"Error in test-email endpoint: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Error sending test email: {str(e)}") from e
 
 
-class PasswordResetRequestModel(BaseModel):
-    """Request schema for reset-password-request endpoint"""
+# ==================== PASSWORD MANAGEMENT ====================
 
+
+class PasswordResetRequestModel(BaseModel):
     email: EmailStr
 
 
 class PasswordResetResponse(BaseModel):
-    """Response schema for password reset endpoint"""
-
     status: str
     message: str
 
 
 @app.post("/api/auth/reset-password-request", response_model=PasswordResetResponse)
-async def request_password_reset(request: PasswordResetRequestModel):
-    """Production-ready password reset endpoint using Supabase recovery link."""
+async def request_password_reset(
+    request: PasswordResetRequestModel, db: AsyncSession = Depends(get_async_db)
+):
+    """Request password reset."""
     try:
-        profile_resp = (
-            supabase.from_("profiles").select("id").eq("email", request.email).single().execute()
-        )
-        if not profile_resp.data:
+        stmt = select(Profile.id).where(Profile.email == request.email)
+        result = await db.execute(stmt)
+        profile = result.scalar_one_or_none()
+
+        if not profile:
             return {
                 "status": "success",
                 "message": "If the email exists, a password reset link has been sent.",
             }
 
-        redirect_url = os.getenv("PASSWORD_RESET_REDIRECT_URL", "")
-        params = {
-            "type": "recovery",
-            "email": request.email,
-            "redirectTo": redirect_url,
-        }
-        link_resp = supabase_admin.auth.admin.generate_link(params)
-        if getattr(link_resp, "error", None):
-            logger.error("Error generating reset link for %s: %s", request.email, link_resp.error)
-            raise HTTPException(
-                status_code=500, detail="Failed to generate password reset link"
-            ) from link_resp.error
-        action_link = link_resp.data.get("action_link") if link_resp.data else None
-        if not action_link:
-            logger.error("No action link returned for %s", request.email)
-            raise HTTPException(status_code=500, detail="Failed to generate password reset link")
+        reset_token = AuthService.create_password_reset_token(request.email)
+        await email_service.send_password_reset_email(request.email, reset_token)
+        logger.info(f"Sent password reset link to {request.email}")
 
-        await email_service.send_password_reset_email(request.email, action_link)
-        logger.info("Sent password reset link to %s", request.email)
         return {
             "status": "success",
             "message": "Password reset instructions have been sent to your email",
         }
 
     except Exception as e:
-        logger.error("Error in password reset request: %s", e)
+        logger.error(f"Error in password reset request: {e}")
         raise HTTPException(
             status_code=500, detail="Error processing password reset request"
         ) from e
 
 
 class ChangePasswordModel(BaseModel):
-    """Request schema for change-password endpoint"""
-
     user_id: str
     current_password: str
     new_password: str
 
 
 @app.post("/api/auth/change-password")
-async def change_password(request: ChangePasswordModel):
-    """
-    Endpoint for authenticated users to change their password.
-    """
+async def change_password(request: ChangePasswordModel, db: AsyncSession = Depends(get_async_db)):
+    """Change user password."""
     try:
-        profile = (
-            supabase.from_("profiles")
-            .select("email")
-            .eq("id", request.user_id)
-            .single()
-            .execute()
-            .data
-        )
-        if not profile or not profile.get("email"):
-            raise HTTPException(status_code=404, detail="User not found for password change")
-        email = profile["email"]
-        auth_resp = supabase.auth.sign_in_with_password(
-            {"email": email, "password": request.current_password}
-        )
-        if getattr(auth_resp, "error", None):
-            logger.error("Authentication failed for %s: %s", request.user_id, auth_resp.error)
-            raise HTTPException(
-                status_code=401, detail="Current password is incorrect"
-            ) from auth_resp.error
+        user, profile = await AuthService.get_user_with_roles(db, request.user_id)
 
-        supabase_admin.auth.admin.update_user_by_id(
-            request.user_id, {"password": request.new_password}
-        )
+        if not user or not profile:
+            raise HTTPException(status_code=404, detail="User not found")
 
-        supabase.from_("sessions").update(
-            {"password_changed": True, "updated_at": datetime.now().isoformat()}
-        ).eq("user_id", request.user_id).execute()
+        if not AuthService.verify_password(request.current_password, user.encrypted_password):
+            raise HTTPException(status_code=401, detail="Current password is incorrect")
 
-        logger.info("Password changed successfully for %s", request.user_id)
+        user.encrypted_password = AuthService.hash_password(request.new_password)
+
+        stmt = select(Session).where(Session.user_id == request.user_id)
+        result = await db.execute(stmt)
+        session = result.scalar_one_or_none()
+
+        if session:
+            session.password_changed = True
+            session.updated_at = datetime.utcnow()
+
+        await db.commit()
+        logger.info(f"Password changed successfully for {request.user_id}")
+
         return {"status": "success", "message": "Password changed successfully"}
 
     except HTTPException:
         raise
     except Exception as e:
-        logger.error("Error changing password for %s: %s", request.user_id, e)
+        await db.rollback()
+        logger.error(f"Error changing password: {e}")
         raise HTTPException(status_code=500, detail="Error changing password") from e
 
 
 class CheckFirstLoginModel(BaseModel):
-    """Request schema for check-first-login endpoint"""
-
     user_id: str
 
 
 @app.post("/api/auth/check-first-login")
-async def check_first_login(request: CheckFirstLoginModel):
-    """
-    Endpoint to check if this is a user's first login and they need to change their password.
-    """
+async def check_first_login(
+    request: CheckFirstLoginModel, db: AsyncSession = Depends(get_async_db)
+):
+    """Check if user needs to change password on first login."""
     try:
-        # Check for a session record for this user
-        sessions_response = (
-            supabase.from_("sessions")
-            .select("id, password_changed")
-            .eq("user_id", request.user_id)
-            .order("created_at", desc=True)
+        stmt = (
+            select(Session.password_changed)
+            .where(Session.user_id == request.user_id)
+            .order_by(Session.created_at.desc())
             .limit(1)
-            .execute()
         )
+        result = await db.execute(stmt)
+        password_changed = result.scalar_one_or_none()
 
-        # If no sessions or password never changed, this is effectively a first login
-        if not sessions_response.data or not sessions_response.data[0].get(
-            "password_changed", False
-        ):
-            # Optionally create a session if one doesn't exist
-            if not sessions_response.data:
-                supabase.from_("sessions").insert(
-                    {
-                        "user_id": request.user_id,
-                        "status": "Started",
-                        "password_changed": False,
-                        "created_at": datetime.now().isoformat(),
-                    }
-                ).execute()
+        if password_changed is None or not password_changed:
+            if password_changed is None:
+                new_session = Session(
+                    user_id=request.user_id,
+                    status="Started",
+                    password_changed=False,
+                )
+                db.add(new_session)
+                await db.commit()
 
             return {
                 "status": "success",
@@ -1594,16 +1158,14 @@ async def check_first_login(request: CheckFirstLoginModel):
         }
 
     except Exception as e:
-        logger.error("Error checking first login status: %s", str(e))
+        logger.error(f"Error checking first login status: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Error checking login status: {str(e)}") from e
 
 
-# app.mount("/", StaticFiles(directory="frontend/assets", html=True), name="static")
+# ==================== COMPANY CONTACT DETAILS ====================
 
 
 class CompanyContactDetails(BaseModel):
-    """Company contact details model."""
-
     firstName: str
     lastName: str
     email: str
@@ -1613,14 +1175,10 @@ class CompanyContactDetails(BaseModel):
 
 
 class GetCompanyContactDetailsRequest(BaseModel):
-    """Request schema for get_company_contact_details"""
-
     user_id: str
 
 
 class UpdateCompanyContactDetailsRequest(BaseModel):
-    """Request schema for update_company_contact_details"""
-
     user_id: str
     firstName: str
     lastName: str
@@ -1631,186 +1189,119 @@ class UpdateCompanyContactDetailsRequest(BaseModel):
 @app.post("/api/company/contact_details", response_model=CompanyContactDetails)
 async def get_company_contact_details(
     request: GetCompanyContactDetailsRequest,
-    current_user: UserResponse = Depends(verify_token),
+    current_user: dict = Depends(verify_token),
+    db: AsyncSession = Depends(get_async_db),
 ):
-    """Get the company contact details for an admin user."""
+    """Get company contact details."""
     try:
         user_id = request.user_id
         if not user_id:
             raise HTTPException(status_code=400, detail="user_id is required")
 
-        # Get user's company
-        profile = (
-            supabase.table("profiles")
-            .select("company_id")
-            .eq("id", user_id)
-            .single()
-            .execute()
-            .data
-        )
+        stmt = select(Profile.company_id).where(Profile.id == user_id)
+        result = await db.execute(stmt)
+        company_id = result.scalar_one_or_none()
 
-        if not profile or not profile.get("company_id"):
+        if not company_id:
             raise HTTPException(status_code=404, detail="User has no associated company")
 
-        company_id = profile["company_id"]
-
-        # Get company details including contact information
-        company = (
-            supabase.table("companies")
-            .select(
-                "id",
-                "name",
-                "registered_since",
-                "contact_first_name",
-                "contact_last_name",
-                "contact_email",
-                "contact_telephone",
-            )
-            .eq("id", company_id)
-            .single()
-            .execute()
-            .data
-        )
+        stmt = select(Company).where(Company.id == company_id)
+        result = await db.execute(stmt)
+        company = result.scalar_one_or_none()
 
         if not company:
             raise HTTPException(status_code=404, detail="Company not found")
 
         return CompanyContactDetails(
-            firstName=company.get("contact_first_name") or "",
-            lastName=company.get("contact_last_name") or "",
-            email=company.get("contact_email") or "",
-            telephone=company.get("contact_telephone") or "",
-            company=company.get("name") or "",
-            registeredSince=company.get("registered_since") or "",
+            firstName=company.contact_first_name or "",
+            lastName=company.contact_last_name or "",
+            email=company.contact_email or "",
+            telephone=company.contact_telephone or "",
+            company=company.name or "",
+            registeredSince=(
+                company.registered_since.isoformat() if company.registered_since else ""
+            ),
         )
 
     except HTTPException:
         raise
     except Exception as e:
-        logger.error("Error fetching company contact details: %s", e)
+        logger.error(f"Error fetching company contact details: {e}")
         raise HTTPException(status_code=500, detail="Error fetching company contact details") from e
 
 
 @app.post("/api/company/update_contact_details", response_model=CompanyContactDetails)
 async def update_company_contact_details(
     request: UpdateCompanyContactDetailsRequest,
-    current_user: UserResponse = Depends(verify_token),
+    current_user: dict = Depends(verify_token),
+    db: AsyncSession = Depends(get_async_db),
 ):
-    """Update company contact details. Only accessible by users with the Administrator role."""
+    """Update company contact details (Administrator only)."""
     try:
-        # --- Admin Check ---
-        try:
-            # Get current user's roles from user_roles table
-            user_roles_response = (
-                supabase.table("user_roles")
-                .select("role_id")
-                .eq("user_id", current_user.user.id)
-                .execute()
+        # Admin check
+        current_user_id = current_user.get("user_id")
+        stmt = (
+            select(UserRole.role_id)
+            .join(Role)
+            .where(UserRole.user_id == current_user_id, Role.name == "Administrator")
+        )
+        result = await db.execute(stmt)
+        is_admin = result.scalar_one_or_none() is not None
+
+        if not is_admin:
+            logger.warning(
+                f"User {current_user_id} attempted to update company contact details "
+                f"without Administrator role."
             )
-
-            user_role_ids = (
-                [ur["role_id"] for ur in user_roles_response.data]
-                if user_roles_response.data
-                else []
+            raise HTTPException(
+                status_code=403,
+                detail="User does not have permission to perform this action. Administrator role required.",
             )
-
-            # Get Administrator role ID
-            admin_role_response = (
-                supabase.table("roles").select("id").eq("name", "Administrator").execute()
-            )
-
-            if not admin_role_response.data:
-                logger.error("Administrator role not found in roles table")
-                raise HTTPException(
-                    status_code=500,
-                    detail="System error: Administrator role not configured.",
-                )
-
-            admin_role_id = admin_role_response.data[0]["id"]
-
-            # Check if user has Administrator role
-            if admin_role_id not in user_role_ids:
-                logger.warning(
-                    f"User {current_user.user.email} (ID: {current_user.user.id}) "
-                    f"attempted to update company contact details without Administrator role."
-                )
-                raise HTTPException(
-                    status_code=403,
-                    detail="User does not have permission to perform this action. Administrator role required.",
-                )
-
-            logger.info(f"Admin user {current_user.user.email} updating company contact details.")
-        except HTTPException:
-            raise
-        except Exception as role_check_error:
-            logger.error(f"Error checking user roles: {role_check_error}")
-            raise HTTPException(status_code=500, detail="Error verifying user permissions.")
 
         user_id = request.user_id
         if not user_id:
             raise HTTPException(status_code=400, detail="user_id is required")
 
-        # Get user's company
-        profile = (
-            supabase.table("profiles")
-            .select("company_id")
-            .eq("id", user_id)
-            .single()
-            .execute()
-            .data
-        )
+        stmt = select(Profile.company_id).where(Profile.id == user_id)
+        result = await db.execute(stmt)
+        company_id = result.scalar_one_or_none()
 
-        if not profile or not profile.get("company_id"):
+        if not company_id:
             raise HTTPException(status_code=404, detail="User has no associated company")
 
-        company_id = profile["company_id"]
-
-        # Update company contact details
-        update_data = {
-            "contact_first_name": request.firstName,
-            "contact_last_name": request.lastName,
-            "contact_email": request.email,
-            "contact_telephone": request.telephone,
-        }
-
-        supabase.table("companies").update(update_data).eq("id", company_id).execute()
-
-        # Get updated company details to return
-        company = (
-            supabase.table("companies")
-            .select(
-                "id",
-                "name",
-                "registered_since",
-                "contact_first_name",
-                "contact_last_name",
-                "contact_email",
-                "contact_telephone",
-            )
-            .eq("id", company_id)
-            .single()
-            .execute()
-            .data
-        )
+        stmt = select(Company).where(Company.id == company_id)
+        result = await db.execute(stmt)
+        company = result.scalar_one_or_none()
 
         if not company:
-            raise HTTPException(status_code=404, detail="Company not found after update")
+            raise HTTPException(status_code=404, detail="Company not found")
+
+        company.contact_first_name = request.firstName
+        company.contact_last_name = request.lastName
+        company.contact_email = request.email
+        company.contact_telephone = request.telephone
+
+        await db.commit()
+        await db.refresh(company)
 
         logger.info(f"Company contact details updated for company ID: {company_id}")
 
         return CompanyContactDetails(
-            firstName=company.get("contact_first_name", ""),
-            lastName=company.get("contact_last_name", ""),
-            email=company.get("contact_email", ""),
-            telephone=company.get("contact_telephone", ""),
-            company=company.get("name", ""),
-            registeredSince=company.get("registered_since", ""),
+            firstName=company.contact_first_name or "",
+            lastName=company.contact_last_name or "",
+            email=company.contact_email or "",
+            telephone=company.contact_telephone or "",
+            company=company.name or "",
+            registeredSince=(
+                company.registered_since.isoformat() if company.registered_since else ""
+            ),
         )
 
     except HTTPException:
         raise
     except Exception as e:
-        logger.error("Error updating company contact details: %s", e)
+        await db.rollback()
+        logger.error(f"Error updating company contact details: {e}")
         raise HTTPException(status_code=500, detail="Error updating company contact details") from e
 
 

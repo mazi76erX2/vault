@@ -67,6 +67,13 @@ class PasswordResetRequest(BaseModel):
     email: EmailStr
 
 
+class PasswordResetResponse(BaseModel):
+    """Response schema for password reset endpoint."""
+
+    status: str
+    message: str
+
+
 class PasswordReset(BaseModel):
     """Password reset with token"""
 
@@ -94,3 +101,18 @@ class PasswordChange(BaseModel):
         if "new_password" in values and v != values["new_password"]:
             raise ValueError("Passwords do not match")
         return v
+
+
+class CheckFirstLoginModel(BaseModel):
+    """Request schema for check-first-login endpoint."""
+
+    user_id: str
+
+
+class EmailTestRequest(BaseModel):
+    """Request schema for test-email endpoint."""
+
+    recipient_email: str
+    subject: Optional[str] = "Test Email from Vault"
+    content: Optional[str] = "This is a test email from the Vault application."
+    username: Optional[str] = None
