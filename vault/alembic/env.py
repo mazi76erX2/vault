@@ -1,38 +1,40 @@
-"""
-Alembic environment configuration for database migrations
-Using synchronous engine for migrations
-"""
-
 from logging.config import fileConfig
 
-import pgvector.sqlalchemy
-from sqlalchemy import engine_from_config, pool
-
 from alembic import context
-from app.config import settings
-from app.database import Base
-# Import ALL models - This is critical for autogenerate!
-from app.models import (ChatMessage, ChatMessageCollector, Company, Document,
-                        Profile, Role, Session, User, UserRole)
+import pgvector.sqlalchemy
 
-# Alembic Config object
+from sqlalchemy import engine_from_config, pool, text
+
+# Import Base + import models so they register with Base.metadata
+from app.db.base import Base
+import app.models  # noqa: F401  (ensures model modules are imported)  [page:0]
+
 config = context.config
 
-# Convert async URL to sync URL for Alembic
-database_url = settings.DATABASE_URL
-if database_url.startswith("postgresql+asyncpg://"):
-    sync_url = database_url.replace("postgresql+asyncpg://", "postgresql+psycopg2://")
-else:
-    sync_url = database_url
-
-config.set_main_option("sqlalchemy.url", sync_url)
-
-# Interpret the config file for Python logging
+# Configure logging
 if config.config_file_name is not None:
     fileConfig(config.config_file_name)
 
-# Target metadata - This tells Alembic what tables to track
+# Database URL from settings (convert asyncpg -> sync for Alembic)
+from app.config import settings
+
+database_url = settings.DATABASE_URL
+if "postgresql+asyncpg://" in database_url:
+    database_url = database_url.replace("postgresql+asyncpg://", "postgresql://")
+
+config.set_main_option("sqlalchemy.url", database_url)
+
 target_metadata = Base.metadata
+
+
+def include_name(name: str | None, type_: str, parent_names: dict) -> bool:
+    """
+    Limit autogenerate to only the schemas you manage.
+    Include the default schema (None) + auth schema.
+    """
+    if type_ == "schema":
+        return name in (None, "auth")
+    return True
 
 
 def run_migrations_offline() -> None:
@@ -43,6 +45,9 @@ def run_migrations_offline() -> None:
         target_metadata=target_metadata,
         literal_binds=True,
         dialect_opts={"paramstyle": "named"},
+        include_schemas=True,      # important for auth schema [page:0][page:1]
+        include_name=include_name, # avoid diffing other schemas [page:0]
+        compare_type=True,
     )
 
     with context.begin_transaction():
@@ -51,16 +56,22 @@ def run_migrations_offline() -> None:
 
 def run_migrations_online() -> None:
     """Run migrations in 'online' mode."""
-    # ... existing code ...
-    
+    connectable = engine_from_config(
+        config.get_section(config.config_ini_section, {}),
+        prefix="sqlalchemy.",
+        poolclass=pool.NullPool,
+    )
+
     with connectable.connect() as connection:
-        # Create necessary schemas before migrations
+        # Ensure auth schema exists before any tables in it are created
         connection.execute(text("CREATE SCHEMA IF NOT EXISTS auth"))
-        connection.commit()
-        
+
         context.configure(
             connection=connection,
-            target_metadata=target_metadata
+            target_metadata=target_metadata,
+            include_schemas=True,      # important for auth schema [page:0][page:1]
+            include_name=include_name, # avoid diffing other schemas [page:0]
+            compare_type=True,
         )
 
         with context.begin_transaction():

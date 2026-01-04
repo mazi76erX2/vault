@@ -2,6 +2,6 @@
 Base model for all SQLAlchemy models
 """
 
-from app.database import Base
+from app.db.base import Base
 
 __all__ = ["Base"]
