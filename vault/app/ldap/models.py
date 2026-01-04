@@ -69,11 +69,11 @@ class LDAPUser(BaseModel):
 
     type: str = "user"
     name: str
-    directoryId: str
+    directory_id: str
     username: str
     email: str
-    firstName: str | None = None
-    lastName: str | None = None
+    first_name: str | None = None
+    last_name: str | None = None
 
 
 class LDAPGroup(BaseModel):
@@ -81,7 +81,7 @@ class LDAPGroup(BaseModel):
 
     type: str = "group"
     name: str
-    directoryId: str
+    directory_id: str
     username: str
     email: str = ""
     members: list[dict] = []
@@ -92,11 +92,11 @@ class LDAPSearchResult(BaseModel):
 
     type: str
     name: str
-    directoryId: str
+    directory_id: str
     username: str
     email: str | None = None
-    firstName: str | None = None
-    lastName: str | None = None
+    first_name: str | None = None
+    last_name: str | None = None
     telephone: str | None = None
     department: str | None = None
     members: list[dict] | None = None
@@ -106,7 +106,7 @@ class LDAPSearchInputModel(BaseModel):
     """Model for LDAP search input"""
 
     query: str
-    connectorId: str
+    connector_id: str
 
 
 class LoginModel(BaseModel):

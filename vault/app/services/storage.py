@@ -68,7 +68,7 @@ class StorageService:
 
         except Exception as e:
             logger.error(f"Error uploading logo for {company_name}: {e}")
-            raise HTTPException(status_code=500, detail=f"Error uploading logo: {str(e)}")
+            raise HTTPException(status_code=500, detail=f"Error uploading logo: {str(e)}") from e
 
     @staticmethod
     def upload_bot_profile(bot_pic_data: str, company_name: str) -> str:
@@ -111,7 +111,7 @@ class StorageService:
             logger.error(f"Error uploading bot profile for {company_name}: {e}")
             raise HTTPException(
                 status_code=500, detail=f"Error uploading bot profile picture: {str(e)}"
-            )
+            ) from e
 
     @staticmethod
     def get_logo_url(company_name: str) -> str | None:

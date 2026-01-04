@@ -88,12 +88,12 @@ class UpdateCompanyThemeSettingsRequest(BaseModel):
 class CompanyContactDetails(BaseModel):
     """Company contact details model."""
 
-    firstName: str
-    lastName: str
+    first_name: str
+    last_name: str
     email: str
     telephone: str
     company: str
-    registeredSince: str
+    registered_since: str
 
 
 class GetCompanyContactDetailsRequest(BaseModel):
@@ -106,7 +106,7 @@ class UpdateCompanyContactDetailsRequest(BaseModel):
     """Request schema for updatecompanycontactdetails."""
 
     user_id: str
-    firstName: str
-    lastName: str
+    first_name: str
+    last_name: str
     email: EmailStr
     telephone: str

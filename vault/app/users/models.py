@@ -1,13 +1,12 @@
-from sqlalchemy import BigInteger, Boolean, Column, DateTime, ForeignKey, String, Text, func
+from sqlalchemy import BigInteger, Boolean, Column, DateTime
 from sqlalchemy import Enum as SAEnum
+from sqlalchemy import ForeignKey, String, Text, func
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import relationship
 
 from vault.app.db.base_class import Base
-from vault.app.db.enums import (
-    DepartmentEnum,  # Import necessary enums
-    UserAccessLevelsEnum,
-)
+from vault.app.db.enums import DepartmentEnum  # Import necessary enums
+from vault.app.db.enums import UserAccessLevelsEnum
 
 # Define your User-related SQLAlchemy models here
 # For example:

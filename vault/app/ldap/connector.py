@@ -16,13 +16,14 @@ except ImportError:
         # First try relative import from the app package
         import app.ldap.mock_ldap as ldap
 
-        from .mock_ldap import *
+        # from .mock_ldap import initialize  # Unused
 
         USING_MOCK = True
     except ImportError:
         # Fallback to direct import if the module is at the same level
         import mock_ldap as ldap
-        from mock_ldap import *
+
+        # Removed star import - using explicit imports above
 
         USING_MOCK = True
     logging.warning("Using mock LDAP module - limited functionality available")
@@ -345,7 +346,7 @@ async def get_ldap_search_results(query: str, connector: LDAPConnector) -> list[
             # Always unbind
             try:
                 client.unbind_s()
-            except:
+            except Exception:
                 pass
 
     except Exception as e:
@@ -427,7 +428,7 @@ async def authenticate_ldap(connector: LDAPConnector, credentials: dict[str, str
             # Always unbind
             try:
                 client.unbind_s()
-            except:
+            except Exception:
                 pass
 
     except Exception as e:

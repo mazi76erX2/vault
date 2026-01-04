@@ -12,6 +12,7 @@ from datetime import datetime
 from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException, status
+from passlib.context import CryptContext
 from pydantic import BaseModel
 from sqlalchemy import Boolean, Column, DateTime, ForeignKey, Integer, String, Text
 from sqlalchemy.dialects.postgresql import UUID
@@ -23,12 +24,7 @@ from app.config import settings
 from app.email_service import send_welcome_email
 
 from .models import LDAPSearchInputModel, LDAPSearchResult, LoginModel
-from .service import (
-    ldap_authenticate,
-    ldap_search,
-    sync_ldap_connector,
-    test_ldap_connection,
-)
+from .service import ldap_authenticate, ldap_search, sync_ldap_connector, test_ldap_connection
 
 logger = logging.getLogger(__name__)
 
@@ -241,7 +237,6 @@ async def get_async_db() -> AsyncSession:
 # Password Hashing (for user creation)
 # ============================================================================
 
-from passlib.context import CryptContext
 
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
@@ -430,9 +425,7 @@ async def db_delete_ldap_connector(db: AsyncSession, connector_id: str) -> bool:
     return True
 
 
-async def db_get_ldap_connector(
-    db: AsyncSession, connector_id: str
-) -> LDAPConnectorModel | None:
+async def db_get_ldap_connector(db: AsyncSession, connector_id: str) -> LDAPConnectorModel | None:
     """Get an LDAP connector by ID"""
     result = await db.execute(
         select(LDAPConnectorModel).where(LDAPConnectorModel.id == connector_id)
@@ -569,7 +562,7 @@ async def create_connector(
         }
     except Exception as e:
         logger.error(f"Error creating LDAP connector: {str(e)}")
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e)) from e
 
 
 @router.put("/connectors/{connector_id}", response_model=dict[str, Any])
@@ -596,7 +589,7 @@ async def update_connector(
         raise
     except Exception as e:
         logger.error(f"Error updating LDAP connector: {str(e)}")
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e)) from e
 
 
 @router.delete("/connectors/{connector_id}", response_model=dict[str, Any])
@@ -619,7 +612,7 @@ async def delete_connector(
         raise
     except Exception as e:
         logger.error(f"Error deleting LDAP connector: {str(e)}")
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e)) from e
 
 
 @router.get("/connectors/{connector_id}", response_model=LDAPConnector)
@@ -791,7 +784,9 @@ async def create_directory_config(
         raise
     except Exception as e:
         logger.error(f"Error configuring LDAP directory: {str(e)}")
-        raise HTTPException(status_code=500, detail=f"Error configuring LDAP directory: {str(e)}")
+        raise HTTPException(
+            status_code=500, detail=f"Error configuring LDAP directory: {str(e)}"
+        ) from e
 
 
 @router.get("/directory/config/{company_id}", response_model=dict[str, Any])
@@ -852,7 +847,7 @@ async def get_directory_config(
         logger.error(f"Error fetching LDAP directory config: {str(e)}")
         raise HTTPException(
             status_code=500, detail=f"Error fetching LDAP directory config: {str(e)}"
-        )
+        ) from e
 
 
 @router.post("/directory/test-connection", response_model=dict[str, Any])
@@ -905,7 +900,9 @@ async def test_directory_connection(directory_data: dict[str, Any]):
 
     except Exception as e:
         logger.error(f"Error testing LDAP connection: {str(e)}")
-        raise HTTPException(status_code=500, detail=f"Error testing LDAP connection: {str(e)}")
+        raise HTTPException(
+            status_code=500, detail=f"Error testing LDAP connection: {str(e)}"
+        ) from e
 
 
 @router.post("/directory/sync/{company_id}", response_model=dict[str, Any])
@@ -929,7 +926,9 @@ async def sync_directory(
         raise
     except Exception as e:
         logger.error(f"Error syncing LDAP directory: {str(e)}")
-        raise HTTPException(status_code=500, detail=f"Error syncing LDAP directory: {str(e)}")
+        raise HTTPException(
+            status_code=500, detail=f"Error syncing LDAP directory: {str(e)}"
+        ) from e
 
 
 @router.get("/directory/users/{company_id}", response_model=list[dict[str, Any]])
@@ -964,7 +963,7 @@ async def get_directory_users(
         raise
     except Exception as e:
         logger.error(f"Error fetching LDAP users: {str(e)}")
-        raise HTTPException(status_code=500, detail=f"Error fetching LDAP users: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Error fetching LDAP users: {str(e)}") from e
 
 
 @router.post("/directory/import-user", response_model=dict[str, Any])
@@ -1070,13 +1069,15 @@ async def import_user_from_directory(
             raise
         except Exception as e:
             logger.error(f"Error in user import processing: {str(e)}")
-            raise HTTPException(status_code=500, detail=f"Error creating/updating user: {str(e)}")
+            raise HTTPException(
+                status_code=500, detail=f"Error creating/updating user: {str(e)}"
+            ) from e
 
     except HTTPException:
         raise
     except Exception as e:
         logger.error(f"Error importing LDAP user: {str(e)}")
-        raise HTTPException(status_code=500, detail=f"Error importing LDAP user: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Error importing LDAP user: {str(e)}") from e
 
 
 # ============================================================================
@@ -1172,7 +1173,7 @@ async def import_users_from_directory(
         raise
     except Exception as e:
         logger.error(f"Error in bulk import: {str(e)}")
-        raise HTTPException(status_code=500, detail=f"Error in bulk import: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Error in bulk import: {str(e)}") from e
 
 
 # ============================================================================
@@ -1208,7 +1209,9 @@ async def get_directory_status(
 
     except Exception as e:
         logger.error(f"Error getting directory status: {str(e)}")
-        raise HTTPException(status_code=500, detail=f"Error getting directory status: {str(e)}")
+        raise HTTPException(
+            status_code=500, detail=f"Error getting directory status: {str(e)}"
+        ) from e
 
 
 @router.post("/directory/activate/{company_id}", response_model=dict[str, Any])
@@ -1236,7 +1239,7 @@ async def activate_directory(
         raise
     except Exception as e:
         logger.error(f"Error activating directory: {str(e)}")
-        raise HTTPException(status_code=500, detail=f"Error activating directory: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Error activating directory: {str(e)}") from e
 
 
 @router.post("/directory/deactivate/{company_id}", response_model=dict[str, Any])
@@ -1264,7 +1267,9 @@ async def deactivate_directory(
         raise
     except Exception as e:
         logger.error(f"Error deactivating directory: {str(e)}")
-        raise HTTPException(status_code=500, detail=f"Error deactivating directory: {str(e)}")
+        raise HTTPException(
+            status_code=500, detail=f"Error deactivating directory: {str(e)}"
+        ) from e
 
 
 # ============================================================================

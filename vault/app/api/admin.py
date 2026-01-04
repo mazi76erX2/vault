@@ -91,7 +91,7 @@ async def admin_get_users(
         raise
     except Exception as e:
         logger.error(f"Error in admin_get_users: {str(e)}", exc_info=True)
-        raise HTTPException(status_code=500, detail=f"Error fetching users: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Error fetching users: {str(e)}") from e
 
 
 @router.post("/users/update", response_model=OrganisationDetails)
@@ -300,7 +300,7 @@ async def update_user_details(
                 logger.error(f"Error creating user account: {e}")
                 raise HTTPException(
                     status_code=500, detail=f"Error creating user account: {str(e)}"
-                )
+                ) from e
 
         # Handle roles (tenant-scoped)
         if db_user_id and requested_roles is not None:

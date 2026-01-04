@@ -91,7 +91,7 @@ async def get_documents(
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=str(e),
-        )
+        ) from e
 
 
 @router.get("/completed-documents")
@@ -135,7 +135,7 @@ async def completed_documents(
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=str(e),
-        )
+        ) from e
 
 
 @router.post("/fetch_document_by_id")
@@ -190,7 +190,7 @@ async def fetch_document_by_id(
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=str(e),
-        )
+        ) from e
 
 
 @router.post("/accept-document")
@@ -247,7 +247,7 @@ async def accept_document(
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Failed to update document",
-        )
+        ) from e
 
 
 @router.post("/reject-document")
@@ -305,7 +305,7 @@ async def reject_document(
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Failed to reject document",
-        )
+        ) from e
 
 
 @router.post("/delegate-document")
@@ -371,7 +371,7 @@ async def delegate_document(
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Failed to delegate document",
-        )
+        ) from e
 
 
 @router.get("/get_stats")
@@ -420,7 +420,7 @@ async def get_stats(
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=str(e),
-        )
+        ) from e
 
 
 @router.post("/fetch_delegators")
@@ -480,7 +480,7 @@ async def fetch_delegators(
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=str(e),
-        )
+        ) from e
 
 
 @router.post("/fetch_assigned_documents")
@@ -526,4 +526,4 @@ async def fetch_assigned_documents(
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=str(e),
-        )
+        ) from e

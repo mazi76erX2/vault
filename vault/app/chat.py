@@ -79,6 +79,7 @@ OLLAMA_EMBED_MODEL = os.environ.get("OLLAMA_EMBED_MODEL", "nomic-embed-text")
 QDRANT_HOST = os.environ.get("QDRANT_HOST", "localhost")
 QDRANT_PORT = int(os.environ.get("QDRANT_PORT", "6333"))
 QDRANT_COLLECTION = os.environ.get("QDRANT_COLLECTION", "vault")
+CHUNK_SIZE = os.environ.get("QDRANT_COLLECTION", 3000)
 
 RETRIEVAL_SIMILARITY_THRESHOLD = 0.5
 conversation_history = []
@@ -208,7 +209,7 @@ class _ClientOpenAIShim:
     chat = _Chat()
 
 
-clientOpenAI = _ClientOpenAIShim()
+client_openai = _ClientOpenAIShim()
 
 
 @ws_router.websocket("/ws/chat")
@@ -615,7 +616,7 @@ def generate_initial_questions(user_id, db: Session = None):
 
     try:
         # Generate questions using Ollama
-        completion = clientOpenAI.chat.completions.create(
+        completion = client_openai.chat.completions.create(
             model=OLLAMA_MODEL,
             messages=conversation,
             temperature=temperature_value,
@@ -688,7 +689,7 @@ def generate_response_collector(chat_prompt_id, user_answer, db: Session = None)
 
     try:
         # Generate follow-up using Ollama
-        completion = clientOpenAI.chat.completions.create(
+        completion = client_openai.chat.completions.create(
             model=OLLAMA_MODEL,
             messages=conversation_history,
             temperature=temperature_value,
@@ -757,7 +758,6 @@ def generate_summary_chat(chat_prompt_id, db: Session = None):
     logger.info(f"Cleaned chat data length: {len(chat)}")
 
     # Split into chunks to handle token limits
-    CHUNK_SIZE = 3000
     chunks = []
     current_chunk = ""
 
@@ -814,7 +814,7 @@ def generate_summary_chat(chat_prompt_id, db: Session = None):
 
         try:
             # Generate summary for chunk
-            completion = clientOpenAI.chat.completions.create(
+            completion = client_openai.chat.completions.create(
                 model=OLLAMA_MODEL,
                 messages=conversation_summary,
                 temperature=temperature_value,
@@ -862,7 +862,7 @@ def generate_tags_chat(history_sum):
     conversation.append(prompt)
 
     try:
-        completion = clientOpenAI.chat.completions.create(
+        completion = client_openai.chat.completions.create(
             model=OLLAMA_MODEL,
             messages=conversation,
             temperature=temperature_value,
@@ -906,7 +906,7 @@ def generate_topic_from_question(question: str) -> str:
     conversation.append(prompt)
 
     try:
-        completion = clientOpenAI.chat.completions.create(
+        completion = client_openai.chat.completions.create(
             model=OLLAMA_MODEL,
             messages=conversation,
             temperature=temperature_value,

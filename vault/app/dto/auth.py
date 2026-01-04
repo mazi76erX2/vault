@@ -17,4 +17,4 @@ class User(BaseModel):
 class LoginResponse(BaseModel):
     user: User
     token: str
-    refreshToken: str
+    refresh_token: str

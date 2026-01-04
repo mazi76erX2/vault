@@ -113,6 +113,6 @@ class EmailTestRequest(BaseModel):
     """Request schema for test-email endpoint."""
 
     recipient_email: str
-    subject: Optional[str] = "Test Email from Vault"
-    content: Optional[str] = "This is a test email from the Vault application."
-    username: Optional[str] = None
+    subject: str | None = "Test Email from Vault"
+    content: str | None = "This is a test email from the Vault application."
+    username: str | None = None

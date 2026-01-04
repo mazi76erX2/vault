@@ -7,13 +7,13 @@ from __future__ import annotations
 import logging
 from typing import Any
 
-from app.services.authservice import require_roles
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import get_async_db
 from app.middleware.auth import verify_token_with_tenant
 from app.models import ChatMessageHelper
+from app.services.authservice import require_roles
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/v1/helper", tags=["helper"])
@@ -68,4 +68,4 @@ async def add_new_chat_session(
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Error creating chat session: {str(e)}",
-        )
+        ) from e

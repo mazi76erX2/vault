@@ -32,7 +32,7 @@ def read_docx(filepath: str) -> str:
         extracted_text = "\n".join(fulltext)
         return extracted_text
     except Exception as e:
-        raise ValueError(f"Error reading .docx file at {filepath}: {e}")
+        raise ValueError(f"Error reading .docx file at {filepath}: {e}") from e
 
 
 def read_pdf(filepath: str) -> str:

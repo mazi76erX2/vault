@@ -184,9 +184,9 @@ class SharePointClient:
                         site_id, drive_id, item["id"], new_path, level + 1
                     )  # Recursive call for subfolders
                 elif "file" in item:
-                    file_name = item["name"]
+                    item["name"]
                     f"{self.resource_url}/v1.0/sites/{site_id}/drives/{drive_id}/items/{item['id']}/content"
-                    self.download_file(local_path, file_name)
+                    # self.download_file(local_path, file_name)  # TODO: local_path is undefined
 
     def extract_file_content(self, download_url, local_path, file_name):
         allowed_extensions = ["pdf", "docx"]
@@ -239,10 +239,10 @@ class SharePointClient:
                         file_download_url, local_folder_path, file_name
                     )
                     if content != "":
-                        doc = self.create_document(item, content)
+                        self.create_document(item, content)
                         # to do
                         #      store in KB
-                        store_in_azure_kb(doc)
+                        # store_in_azure_kb(doc)  # TODO: Function not implemented
 
     def process_folder_contents(
         self,

@@ -71,9 +71,9 @@ class AuthService:
             payload = jwt.decode(token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM])
             return payload
         except jwt.ExpiredSignatureError:
-            raise ValueError("Token has expired")
+            raise ValueError("Token has expired") from None
         except jwt.JWTError as e:
-            raise ValueError(f"Invalid token: {str(e)}")
+            raise ValueError(f"Invalid token: {str(e)}") from e
 
     @staticmethod
     async def create_user(
@@ -463,4 +463,4 @@ async def get_current_user(token: str, db: AsyncSession) -> dict:
 
     except Exception as e:
         logger.error(f"Error getting current user: {str(e)}")
-        raise ValueError("Could not validate credentials")
+        raise ValueError("Could not validate credentials") from e

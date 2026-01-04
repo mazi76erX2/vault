@@ -80,7 +80,7 @@ async def update_cv_text(
     except Exception as e:
         await db.rollback()
         logger.error(f"Error updating CV text: {e}")
-        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e))
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e)) from e
     finally:
         try:
             os.remove(filepath)
@@ -116,7 +116,7 @@ async def fetch_resume_sessions(
 
     except Exception as e:
         logger.error(f"Error fetching sessions: {e}")
-        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e))
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e)) from e
 
 
 @router.post("/fetch_user_profile")
@@ -150,7 +150,7 @@ async def fetch_user_profile(
         raise
     except Exception as e:
         logger.error(f"Error fetching profile: {e}")
-        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e))
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e)) from e
 
 
 @router.post("/update_profile")
@@ -196,7 +196,7 @@ async def update_profile(
     except Exception as e:
         await db.rollback()
         logger.error(f"Error updating profile: {e}")
-        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e))
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e)) from e
 
 
 @router.post("/fetch_chat_conversation")
@@ -236,7 +236,7 @@ async def fetch_chat_conversation(
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Failed to fetch chat conversation: {str(e)}",
-        )
+        ) from e
 
 
 @router.get("/fetch_documents_status")
@@ -285,7 +285,7 @@ async def fetch_documents_status(
         raise
     except Exception as e:
         logger.error(f"Error fetching documents: {e}")
-        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e))
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e)) from e
 
 
 @router.get("/get_validators")
@@ -307,7 +307,7 @@ async def get_validators(
 
     except Exception as e:
         logger.error(f"Error fetching validators: {e}")
-        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e))
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e)) from e
 
 
 @router.post("/get-questions")
@@ -345,7 +345,7 @@ async def get_questions(
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Error fetching questions: {str(e)}",
-        )
+        ) from e
 
 
 @router.post("/generate_questions")
@@ -412,7 +412,7 @@ async def generate_questions(
     except Exception as e:
         await db.rollback()
         logger.error(f"Error generating questions: {e}")
-        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e))
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e)) from e
 
 
 @router.post("/init_questions")
@@ -468,7 +468,7 @@ async def init_questions_from_upload(
     except Exception as e:
         await db.rollback()
         logger.error(f"Error initializing questions: {e}")
-        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e))
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e)) from e
 
 
 @router.post("/start-chat")
@@ -565,7 +565,7 @@ async def start_chat(
     except Exception as e:
         await db.rollback()
         logger.error(f"Error starting chat: {e}")
-        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e))
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e)) from e
 
 
 @router.post("/generate_question_response")
@@ -606,7 +606,7 @@ async def generate_question_response(
     except Exception as e:
         await db.rollback()
         logger.error(f"Error generating follow-up: {e}")
-        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e))
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e)) from e
 
 
 @router.post("/generate_summary")
@@ -633,7 +633,7 @@ async def generate_summary_endpoint(
 
     except Exception as e:
         logger.error(f"Error generating summary: {e}")
-        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e))
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e)) from e
 
 
 @router.post("/generate_tags")
@@ -653,7 +653,7 @@ async def generate_tags_endpoint(
         return {"tags": tags}
     except Exception as e:
         logger.error(f"Error generating tags: {e}")
-        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e))
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e)) from e
 
 
 @router.post("/update_summary")
@@ -689,7 +689,7 @@ async def update_summary(
     except Exception as e:
         await db.rollback()
         logger.error(f"Error updating summary: {e}")
-        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e))
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e)) from e
 
 
 @router.post("/continue_session", response_model=CollectorSummaryContinueResponse)
@@ -759,7 +759,7 @@ async def fetch_existing_doc(
         raise
     except Exception as e:
         logger.error(f"Error fetching document: {e}")
-        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e))
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e)) from e
 
 
 @router.post("/update_session_and_document")
@@ -826,4 +826,4 @@ async def update_session_and_document(
     except Exception as e:
         await db.rollback()
         logger.error(f"Error updating document: {e}")
-        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e))
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e)) from e

@@ -1,3 +1,4 @@
+import gradio as gr
 from chat import generate_summary_chat, generate_tags_chat
 from docx2python import docx2python
 

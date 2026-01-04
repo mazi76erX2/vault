@@ -893,7 +893,7 @@ async def ldap_search(search_data: LDAPSearchInputModel) -> list[LDAPSearchResul
                 if client:
                     try:
                         client.unbind_s()
-                    except:
+                    except Exception:
                         pass
 
                 client = get_ldap_client(connector, bypass_cert_verification=True)
@@ -1026,7 +1026,7 @@ async def ldap_search(search_data: LDAPSearchInputModel) -> list[LDAPSearchResul
             if client:
                 try:
                     client.unbind_s()
-                except:
+                except Exception:
                     pass
 
     except Exception as e:

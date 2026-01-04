@@ -13,8 +13,9 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import get_async_db
-from app.dto.expert import AcceptDocumentRequest, DocumentRow, RejectRequest
+from app.dto.expert import AcceptDocumentRequest
 from app.dto.expert import Document as DocumentDTO
+from app.dto.expert import DocumentRow, RejectRequest
 from app.middleware.auth import verify_token_with_tenant
 from app.models import Document, Profile
 
@@ -63,7 +64,7 @@ async def expert_get_documents(
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=str(e),
-        )
+        ) from e
 
 
 @router.get("/get-document/{document_id}")
@@ -115,7 +116,7 @@ async def expert_get_document(
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=str(e),
-        )
+        ) from e
 
 
 @router.post("/accept-document")
@@ -171,7 +172,7 @@ async def expert_accept_document(
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Failed to update document",
-        )
+        ) from e
 
 
 @router.put("/reject-document")
@@ -229,7 +230,7 @@ async def expert_reject_document(
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Failed to reject document",
-        )
+        ) from e
 
 
 @router.get("/completed-documents/{reviewer_id}")
@@ -276,7 +277,7 @@ async def expert_completed_documents(
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=str(e),
-        )
+        ) from e
 
 
 @router.get("/review-documents", response_model=list[DocumentRow])
@@ -320,4 +321,4 @@ async def validator_expert_review_documents(
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=str(e),
-        )
+        ) from e

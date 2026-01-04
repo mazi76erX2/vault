@@ -100,7 +100,7 @@ async def get_company_theme_settings(
 
     except Exception as e:
         logger.error(f"Error in get_company_theme_settings: {str(e)}")
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail=str(e)) from e
 
 
 @router.post("/theme/update")
@@ -169,7 +169,7 @@ async def update_company_theme_settings(
                     raise HTTPException(
                         status_code=500,
                         detail=f"Error uploading logo: {str(upload_error)}",
-                    )
+                    ) from upload_error
             elif logo_data is None:
                 company.logo = None
 
@@ -186,7 +186,7 @@ async def update_company_theme_settings(
                     raise HTTPException(
                         status_code=500,
                         detail=f"Error uploading bot profile: {str(upload_error)}",
-                    )
+                    ) from upload_error
             elif bot_pic_data is None:
                 company.bot_profile_picture = None
 
