@@ -53,6 +53,7 @@ dependencies = [
     "python-ldap>=3.4.5",
     "alembic>=1.17.2",
     "asyncpg>=0.31.0",
+    "cloudinary>=1.44.1",
 ]
 
 [project.optional-dependencies]

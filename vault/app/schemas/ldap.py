@@ -10,6 +10,7 @@ class LDAPConnectorBase(BaseModel):
     search_base: str
     search_filter: str | None = "(objectClass=person)"
 
+
 class LDAPConnectorCreate(LDAPConnectorBase):
     vault_secret_name: str  # Reference to vault secret, not the password
     company_id: int
@@ -18,6 +19,7 @@ class LDAPConnectorCreate(LDAPConnectorBase):
     timeout: int | None = 30
     page_size: int | None = 1000
     user_attributes: dict | None = None
+
 
 class LDAPConnectorUpdate(BaseModel):
     name: str | None = None
@@ -28,6 +30,7 @@ class LDAPConnectorUpdate(BaseModel):
     ssl_enabled: bool | None = None
     port: int | None = None
     status: str | None = None
+
 
 class LDAPConnectorResponse(LDAPConnectorBase):
     id: UUID4

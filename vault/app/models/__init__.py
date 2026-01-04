@@ -1,0 +1,27 @@
+"""
+Models package
+Exports all SQLAlchemy models for Alembic auto-detection
+"""
+
+from app.models.base import Base
+from app.models.chat import ChatMessage, ChatMessageCollector
+from app.models.company import Company
+from app.models.document import Document
+from app.models.profile import Profile
+from app.models.role import Role, UserRole
+from app.models.session import Session
+from app.models.user import User
+
+# Export all models
+__all__ = [
+    "Base",
+    "User",
+    "Profile",
+    "Company",
+    "Document",
+    "Session",
+    "Role",
+    "UserRole",
+    "ChatMessage",
+    "ChatMessageCollector",
+]

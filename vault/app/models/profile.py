@@ -1,16 +1,8 @@
 import enum
 
-from sqlalchemy import (
-    BigInteger,
-    Boolean,
-    CheckConstraint,
-    Column,
-    DateTime,
-    ForeignKey,
-    Text,
-    func,
-)
+from sqlalchemy import BigInteger, Boolean, CheckConstraint, Column, DateTime
 from sqlalchemy import Enum as SQLEnum
+from sqlalchemy import ForeignKey, Text, func
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import relationship
 
@@ -23,6 +15,7 @@ class UserAccessLevel(str, enum.Enum):
     EMPLOYEE = "employee"
     GUEST = "guest"
 
+
 class Department(str, enum.Enum):
     AI_CC = "AI CC"
     PLANNING = "Planning"
@@ -32,14 +25,13 @@ class Department(str, enum.Enum):
     SALES = "Sales"
     MARKETING = "Marketing"
 
+
 class Profile(Base):
     __tablename__ = "profiles"
 
     # Primary key that references auth.users
     id = Column(
-        UUID(as_uuid=True),
-        ForeignKey("auth.users.id", ondelete="CASCADE"),
-        primary_key=True
+        UUID(as_uuid=True), ForeignKey("auth.users.id", ondelete="CASCADE"), primary_key=True
     )
 
     # User information
@@ -59,7 +51,7 @@ class Profile(Base):
     is_validator = Column(Boolean, default=False)
     user_access = Column(
         SQLEnum(UserAccessLevel, name="user_access_levels", create_type=False),
-        default=UserAccessLevel.EMPLOYEE
+        default=UserAccessLevel.EMPLOYEE,
     )
     status = Column(Text, default="active")
 
@@ -67,7 +59,7 @@ class Profile(Base):
     company_id = Column(BigInteger, ForeignKey("companies.id"), index=True)
     company_reg_no = Column(Text, index=True)
     company_name = Column(Text)
-    user_type = Column(BigInteger, ForeignKey("user_types.id"))
+    # user_type = Column(BigInteger, ForeignKey("user_types.id"))
 
     # Timestamps
     created_at = Column(DateTime(timezone=True), server_default=func.now())
@@ -83,6 +75,4 @@ class Profile(Base):
     questions = relationship("Question", back_populates="user")
 
     # Constraints
-    __table_args__ = (
-        CheckConstraint("char_length(username) >= 3", name="username_length"),
-    )
+    __table_args__ = (CheckConstraint("char_length(username) >= 3", name="username_length"),)

@@ -1,8 +1,9 @@
 import enum
 import uuid
 
-from sqlalchemy import Boolean, Column, DateTime, ForeignKey, Text, func
+from sqlalchemy import Boolean, Column, DateTime
 from sqlalchemy import Enum as SQLEnum
+from sqlalchemy import ForeignKey, Text, func
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import relationship
 
@@ -15,6 +16,7 @@ class SessionStatus(str, enum.Enum):
     IN_PROGRESS = "In Progress"
     COMPLETED = "Completed"
 
+
 class Session(Base):
     __tablename__ = "sessions"
 
@@ -22,7 +24,7 @@ class Session(Base):
     user_id = Column(UUID(as_uuid=True), ForeignKey("profiles.id", ondelete="CASCADE"), index=True)
     status = Column(
         SQLEnum(SessionStatus, name="session_status_enum", create_type=False),
-        default=SessionStatus.NOT_STARTED
+        default=SessionStatus.NOT_STARTED,
     )
     password_changed = Column(Boolean, default=False)
     created_at = Column(DateTime(timezone=True), server_default=func.now())

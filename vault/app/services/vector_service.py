@@ -11,26 +11,17 @@ class VectorService:
 
     async def generate_embedding(self, text: str) -> list:
         """Generate embedding using local Ollama"""
-        response = ollama.embeddings(
-            model="nomic-embed-text",
-            prompt=text
-        )
-        return response['embedding']
+        response = ollama.embeddings(model="nomic-embed-text", prompt=text)
+        return response["embedding"]
 
     async def add_document_with_embedding(
-        self,
-        title: str,
-        content: str,
-        company_reg_no: str
+        self, title: str, content: str, company_reg_no: str
     ) -> Document:
         """Create document with vector embedding"""
         embedding = await self.generate_embedding(content)
 
         doc = Document(
-            title=title,
-            content=content,
-            embedding=embedding,
-            company_reg_no=company_reg_no
+            title=title, content=content, embedding=embedding, company_reg_no=company_reg_no
         )
 
         self.db.add(doc)
@@ -39,22 +30,16 @@ class VectorService:
         return doc
 
     async def similarity_search(
-        self,
-        query: str,
-        company_reg_no: str,
-        limit: int = 5
+        self, query: str, company_reg_no: str, limit: int = 5
     ) -> list[tuple[Document, float]]:
         """Search documents by semantic similarity"""
         query_embedding = await self.generate_embedding(query)
 
         # Cosine similarity search with tenant filtering
         stmt = (
-            select(
-                Document,
-                Document.embedding.cosine_distance(query_embedding).label('distance')
-            )
+            select(Document, Document.embedding.cosine_distance(query_embedding).label("distance"))
             .where(Document.company_reg_no == company_reg_no)
-            .order_by('distance')
+            .order_by("distance")
             .limit(limit)
         )
 

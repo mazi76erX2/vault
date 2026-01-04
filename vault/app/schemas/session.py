@@ -7,12 +7,15 @@ class SessionBase(BaseModel):
     user_id: UUID4
     status: str | None = "Not Started"
 
+
 class SessionCreate(SessionBase):
     pass
+
 
 class SessionUpdate(BaseModel):
     status: str | None = None
     password_changed: bool | None = None
+
 
 class SessionResponse(SessionBase):
     id: UUID4
@@ -22,9 +25,11 @@ class SessionResponse(SessionBase):
 
     model_config = {"from_attributes": True}
 
+
 class QuestionCreate(BaseModel):
     question_text: str
     session_id: UUID4 | None = None
+
 
 class QuestionResponse(BaseModel):
     id: UUID4

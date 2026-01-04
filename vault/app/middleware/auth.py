@@ -4,10 +4,9 @@ JWT token verification and user context
 """
 
 import logging
-from typing import Optional
 
 from fastapi import Depends, HTTPException, status
-from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
+from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import get_async_db
@@ -21,7 +20,7 @@ security = HTTPBearer()
 
 async def verify_token(
     credentials: HTTPAuthorizationCredentials = Depends(security),
-    db: AsyncSession = Depends(get_async_db)
+    db: AsyncSession = Depends(get_async_db),
 ) -> dict:
     """
     Verify JWT token and return user data
@@ -29,30 +28,30 @@ async def verify_token(
     """
     try:
         token = credentials.credentials
-        
+
         # Decode token
         payload = AuthService.decode_token(token)
         user_id = payload.get("sub")
-        
+
         if not user_id:
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
                 detail="Invalid token payload",
                 headers={"WWW-Authenticate": "Bearer"},
             )
-        
+
         # Get user with roles
         user_data = await AuthService.get_user_with_roles(db, user_id)
-        
+
         if not user_data:
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
                 detail="User not found",
                 headers={"WWW-Authenticate": "Bearer"},
             )
-        
+
         return user_data
-        
+
     except ValueError as e:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
@@ -70,38 +69,34 @@ async def verify_token(
 
 async def verify_token_with_tenant(
     credentials: HTTPAuthorizationCredentials = Depends(security),
-    db: AsyncSession = Depends(get_async_db)
+    db: AsyncSession = Depends(get_async_db),
 ) -> dict:
     """
     Verify JWT token and enforce tenant isolation
     """
     user_data = await verify_token(credentials, db)
-    
+
     if not user_data.get("company_reg_no"):
         raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="User is not associated with any tenant"
+            status_code=status.HTTP_403_FORBIDDEN, detail="User is not associated with any tenant"
         )
-    
+
     return user_data
 
 
 async def get_current_user(
     credentials: HTTPAuthorizationCredentials = Depends(security),
-    db: AsyncSession = Depends(get_async_db)
+    db: AsyncSession = Depends(get_async_db),
 ) -> dict:
     """Dependency to get current authenticated user"""
     return await verify_token(credentials, db)
 
 
-async def get_current_active_user(
-    current_user: dict = Depends(get_current_user)
-) -> dict:
+async def get_current_active_user(current_user: dict = Depends(get_current_user)) -> dict:
     """Get current active user (checks status)"""
     if current_user["profile"]["status"] != "active":
         raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="User account is inactive"
+            status_code=status.HTTP_403_FORBIDDEN, detail="User account is inactive"
         )
     return current_user
 
@@ -111,24 +106,21 @@ def require_roles(required_roles: list[str]):
     Dependency to check if user has required roles
     Usage: dependencies=[Depends(require_roles(["Administrator"]))]
     """
-    async def role_checker(
-        current_user: dict = Depends(get_current_user)
-    ) -> dict:
+
+    async def role_checker(current_user: dict = Depends(get_current_user)) -> dict:
         user_roles = current_user.get("roles", [])
-        
+
         if not any(role in user_roles for role in required_roles):
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
-                detail=f"Insufficient privileges. Required roles: {', '.join(required_roles)}"
+                detail=f"Insufficient privileges. Required roles: {', '.join(required_roles)}",
             )
-        
+
         return current_user
-    
+
     return role_checker
 
 
-async def get_user_company_id(
-    current_user: dict = Depends(get_current_user)
-) -> Optional[int]:
+async def get_user_company_id(current_user: dict = Depends(get_current_user)) -> int | None:
     """Get current user's company ID"""
     return current_user["profile"].get("company_id")

@@ -11,10 +11,12 @@ class ProfileBase(BaseModel):
     telephone: str | None = None
     field_of_expertise: str | None = None
 
+
 class ProfileCreate(ProfileBase):
     user_id: UUID4  # Must match auth.users.id
     company_id: int
     company_reg_no: str
+
 
 class ProfileUpdate(BaseModel):
     full_name: str | None = None
@@ -24,6 +26,7 @@ class ProfileUpdate(BaseModel):
     field_of_expertise: str | None = None
     years_of_experience: str | None = None
     cv_text: str | None = None
+
 
 class ProfileResponse(ProfileBase):
     id: UUID4

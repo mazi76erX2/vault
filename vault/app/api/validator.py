@@ -8,12 +8,8 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from gotrue import UserResponse
 
 from app.database import supabase
-from app.dto.validator import (
-    AcceptDocumentRequest,
-    DelegateRequest,
-    DocumentFetchRequest,
-    RejectDocumentRequest,
-)
+from app.dto.validator import (AcceptDocumentRequest, DelegateRequest,
+                               DocumentFetchRequest, RejectDocumentRequest)
 from app.middleware.auth import verify_token
 
 logger = logging.getLogger(__name__)

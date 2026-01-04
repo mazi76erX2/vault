@@ -8,8 +8,10 @@ class DocumentBase(BaseModel):
     content: str
     severity_levels: str | None = None
 
+
 class DocumentCreate(DocumentBase):
     pass
+
 
 class DocumentUpdate(BaseModel):
     title: str | None = None
@@ -17,6 +19,7 @@ class DocumentUpdate(BaseModel):
     summary: str | None = None
     status: str | None = None
     severity_levels: str | None = None
+
 
 class DocumentResponse(DocumentBase):
     doc_id: UUID4
@@ -28,7 +31,9 @@ class DocumentResponse(DocumentBase):
 
     model_config = {"from_attributes": True}
 
+
 class DocumentWithSimilarity(DocumentResponse):
     """Document with similarity score from vector search"""
+
     similarity_score: float
     distance: float

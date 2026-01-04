@@ -11,8 +11,10 @@ class CompanyBase(BaseModel):
     contact_last_name: str | None = None
     contact_telephone: str | None = None
 
+
 class CompanyCreate(CompanyBase):
     registered_since: date
+
 
 class CompanyUpdate(BaseModel):
     name: str | None = None
@@ -23,6 +25,7 @@ class CompanyUpdate(BaseModel):
     bot_chat_bubble_colour: str | None = None
     font: str | None = None
     logo: str | None = None
+
 
 class CompanyResponse(CompanyBase):
     id: int

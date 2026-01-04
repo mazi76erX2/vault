@@ -2,22 +2,16 @@ import json
 import os
 
 import pandas as pd
-from connectors.store_data_in_kb import (
-    store_confluence_in_azure_kb,
-    store_in_azure_kb,
-    store_sharepoint_in_azure_kb,
-)
+from connectors.store_data_in_kb import (store_confluence_in_azure_kb,
+                                         store_in_azure_kb,
+                                         store_sharepoint_in_azure_kb)
 from email_utils import send_email_graph
-from utils import generate_markdown_from_info, get_info_markdown_txt, get_plain_text_from_markdown
+from utils import (generate_markdown_from_info, get_info_markdown_txt,
+                   get_plain_text_from_markdown)
 
-from app.database import (
-    add_session,
-    get_user_session_by_id,
-    refresh_displayed_docs,
-    update_document,
-    update_session,
-    update_user,
-)
+from app.database import (add_session, get_user_session_by_id,
+                          refresh_displayed_docs, update_document,
+                          update_session, update_user)
 
 CLIENT_ID = os.environ["CLIENT_ID"]
 CLIENT_SECRET = os.environ["CLIENT_SECRET"]

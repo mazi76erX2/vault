@@ -12,21 +12,15 @@ from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
 from gotrue import UserResponse
 
 from app.database import supabase
-from app.dto.collector import (
-    CollectorSummaryContinueRequest,
-    CollectorSummaryContinueResponse,
-    CollectorSummaryUpdateSummaryRequest,
-    ProfileUpdateRequest,
-    StartChatRequest,
-)
+from app.dto.collector import (CollectorSummaryContinueRequest,
+                               CollectorSummaryContinueResponse,
+                               CollectorSummaryUpdateSummaryRequest,
+                               ProfileUpdateRequest, StartChatRequest)
 from app.middleware.auth import verify_token
-from app.services.collector_llm import (
-    generate_follow_up_question,
-    generate_initial_questions,
-    generate_summary,
-    generate_tags,
-    generate_topic_from_question,
-)
+from app.services.collector_llm import (generate_follow_up_question,
+                                        generate_initial_questions,
+                                        generate_summary, generate_tags,
+                                        generate_topic_from_question)
 from app.services.file_extract import extract_text
 
 router = APIRouter(prefix="/api/v1/collector", tags=["collector"])

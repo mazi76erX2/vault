@@ -1,6 +1,7 @@
 """
 User Model - Maps to Supabase auth.users
 """
+
 import uuid
 from datetime import datetime
 
@@ -16,8 +17,9 @@ class User(Base):
     Maps to auth.users schema in Supabase
     This is the authentication table managed by auth system
     """
+
     __tablename__ = "users"
-    __table_args__ = {'schema': 'auth'}
+    __table_args__ = {"schema": "auth"}
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     email = Column(Text, unique=True, nullable=False, index=True)
@@ -50,16 +52,15 @@ class User(Base):
     reauthentication_sent_at = Column(TIMESTAMP(timezone=True))
     is_sso_user = Column(Boolean, default=False)
     deleted_at = Column(TIMESTAMP(timezone=True))
-    
+
     # Helper properties
     @property
     def is_active(self):
         """User is active if not deleted and not banned"""
-        return (
-            self.deleted_at is None and 
-            (self.banned_until is None or self.banned_until < datetime.utcnow())
+        return self.deleted_at is None and (
+            self.banned_until is None or self.banned_until < datetime.utcnow()
         )
-    
+
     @property
     def email_confirmed(self):
         """Check if email is confirmed"""
@@ -67,6 +68,6 @@ class User(Base):
 
     # Relationships
     profile = relationship("Profile", back_populates="user", uselist=False)
-    
+
     def __repr__(self):
         return f"<User(id={self.id}, email={self.email})>"

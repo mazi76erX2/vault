@@ -1,4 +1,3 @@
-
 import jwt
 from fastapi import Request
 from sqlalchemy import select
@@ -8,10 +7,7 @@ from ..config import settings
 from ..models import Profile
 
 
-async def get_current_user_company(
-    request: Request,
-    db: AsyncSession
-) -> str | None:
+async def get_current_user_company(request: Request, db: AsyncSession) -> str | None:
     """
     Extract company_reg_no from the current authenticated user.
     This mimics Supabase RLS by filtering queries based on tenant.
@@ -40,6 +36,7 @@ async def get_current_user_company(
     except Exception:
         return None
 
+
 class TenantFilter:
     """
     Utility class to add tenant filtering to queries.
@@ -51,6 +48,6 @@ class TenantFilter:
 
     def filter_query(self, model, query):
         """Add company_reg_no filter to query if model has the field"""
-        if hasattr(model, 'company_reg_no'):
+        if hasattr(model, "company_reg_no"):
             return query.where(model.company_reg_no == self.company_reg_no)
         return query

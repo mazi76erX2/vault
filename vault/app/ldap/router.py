@@ -6,18 +6,12 @@ from fastapi import APIRouter, HTTPException, status
 # Import supabase for database access
 from app.database import supabase
 
-from .models import LDAPConnector, LDAPSearchInputModel, LDAPSearchResult, LoginModel
-from .service import (
-    create_ldap_connector,
-    delete_ldap_connector,
-    get_ldap_connector,
-    get_ldap_connectors,
-    ldap_authenticate,
-    ldap_search,
-    sync_ldap_connector,
-    test_ldap_connection,
-    update_ldap_connector,
-)
+from .models import (LDAPConnector, LDAPSearchInputModel, LDAPSearchResult,
+                     LoginModel)
+from .service import (create_ldap_connector, delete_ldap_connector,
+                      get_ldap_connector, get_ldap_connectors,
+                      ldap_authenticate, ldap_search, sync_ldap_connector,
+                      test_ldap_connection, update_ldap_connector)
 
 # Create router
 router = APIRouter(

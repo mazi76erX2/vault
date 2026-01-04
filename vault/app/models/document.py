@@ -2,8 +2,9 @@ import enum
 import uuid
 
 from pgvector.sqlalchemy import Vector
-from sqlalchemy import Column, DateTime, ForeignKey, Text, func
+from sqlalchemy import Column, DateTime
 from sqlalchemy import Enum as SQLEnum
+from sqlalchemy import ForeignKey, Text, func
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import relationship
 
@@ -18,6 +19,7 @@ class SecurityLevel(str, enum.Enum):
     HIGH = "High"
     CRITICAL = "Critical"
 
+
 class StatusEnum(str, enum.Enum):
     DRAFT = "Draft"
     PENDING = "Pending"
@@ -26,10 +28,12 @@ class StatusEnum(str, enum.Enum):
     VALIDATED_STORED = "Validated - Stored"
     VALIDATED_AWAITING = "Validated - Awaiting Approval"
 
+
 class DocumentStatus(str, enum.Enum):
     PENDING = "pending"
     IN_PROGRESS = "inprogress"
     COMPLETED = "completed"
+
 
 class Document(Base):
     __tablename__ = "documents"
@@ -67,7 +71,10 @@ class DocumentAssignment(Base):
     assigned_to = Column(UUID(as_uuid=True), ForeignKey("profiles.id"))
     assigned_by = Column(UUID(as_uuid=True), ForeignKey("profiles.id"))
     assigned_at = Column(DateTime(timezone=True), server_default=func.now())
-    status = Column(SQLEnum(DocumentStatus, name="document_status", create_type=False), default=DocumentStatus.PENDING)
+    status = Column(
+        SQLEnum(DocumentStatus, name="document_status", create_type=False),
+        default=DocumentStatus.PENDING,
+    )
 
     # Relationships
     document = relationship("Document", back_populates="assignments")

@@ -7,7 +7,8 @@ from fastapi import APIRouter, Depends, HTTPException
 from gotrue import UserResponse
 
 from app.database import supabase
-from app.dto.expert import AcceptDocumentRequest, Document, DocumentRow, RejectRequest
+from app.dto.expert import (AcceptDocumentRequest, Document, DocumentRow,
+                            RejectRequest)
 from app.middleware.auth import verify_token
 
 router = APIRouter(prefix="/api/v1/expert", tags=["expert"])

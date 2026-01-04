@@ -1,24 +1,39 @@
-from logging.config import fileConfig
-from sqlalchemy import engine_from_config, pool, text
-from alembic import context
-import pgvector.sqlalchemy
+"""
+Alembic environment configuration for database migrations
+Using synchronous engine for migrations
+"""
 
-# Import your models
-from app.models.base import Base
-from app.models import *  # Import all models
+from logging.config import fileConfig
+
+import pgvector.sqlalchemy
+from sqlalchemy import engine_from_config, pool
+
+from alembic import context
 from app.config import settings
+from app.database import Base
+# Import ALL models - This is critical for autogenerate!
+from app.models import (ChatMessage, ChatMessageCollector, Company, Document,
+                        Profile, Role, Session, User, UserRole)
 
 # Alembic Config object
 config = context.config
 
-# Override sqlalchemy.url from settings
-config.set_main_option('sqlalchemy.url', settings.DATABASE_URL_SYNC)
+# Convert async URL to sync URL for Alembic
+database_url = settings.DATABASE_URL
+if database_url.startswith("postgresql+asyncpg://"):
+    sync_url = database_url.replace("postgresql+asyncpg://", "postgresql+psycopg2://")
+else:
+    sync_url = database_url
+
+config.set_main_option("sqlalchemy.url", sync_url)
 
 # Interpret the config file for Python logging
 if config.config_file_name is not None:
     fileConfig(config.config_file_name)
 
+# Target metadata - This tells Alembic what tables to track
 target_metadata = Base.metadata
+
 
 def run_migrations_offline() -> None:
     """Run migrations in 'offline' mode."""
@@ -33,38 +48,24 @@ def run_migrations_offline() -> None:
     with context.begin_transaction():
         context.run_migrations()
 
-def create_vector_extension(connection):
-    """Create pgvector extension before migrations"""
-    try:
-        connection.execute(text("CREATE EXTENSION IF NOT EXISTS vector;"))
-        connection.execute(text('CREATE EXTENSION IF NOT EXISTS "uuid-ossp";'))
-        connection.commit()
-    except Exception as e:
-        print(f"Extensions may already exist: {e}")
 
 def run_migrations_online() -> None:
     """Run migrations in 'online' mode."""
-    # Register pgvector type
+    configuration = config.get_section(config.config_ini_section, {})
+    configuration["sqlalchemy.url"] = sync_url
+
     connectable = engine_from_config(
-        config.get_section(config.config_ini_section, {}),
+        configuration,
         prefix="sqlalchemy.",
         poolclass=pool.NullPool,
     )
 
     with connectable.connect() as connection:
-        # Ensure pgvector extension exists
-        create_vector_extension(connection)
-        
-        # Register vector type for Alembic
-        connection.dialect.ischema_names["vector"] = pgvector.sqlalchemy.Vector
-        
-        context.configure(
-            connection=connection,
-            target_metadata=target_metadata
-        )
+        context.configure(connection=connection, target_metadata=target_metadata)
 
         with context.begin_transaction():
             context.run_migrations()
+
 
 if context.is_offline_mode():
     run_migrations_offline()
