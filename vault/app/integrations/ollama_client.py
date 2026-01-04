@@ -2,11 +2,9 @@ import os
 
 import ollama
 
-from app.core.config import settings
-
-OLLAMA_HOST = os.getenv("OLLAMA_HOST", settings.ollama_host)
-EMBED_MODEL = os.getenv("OLLAMA_EMBED_MODEL", settings.ollama_embed_model)
-CHAT_MODEL = os.getenv("OLLAMA_CHAT_MODEL", settings.ollama_chat_model)
+OLLAMA_HOST = os.getenv("OLLAMA_HOST", "http://localhost:11434")
+EMBED_MODEL = os.getenv("OLLAMA_EMBED_MODEL", "nomic-embed-text")
+CHAT_MODEL = os.getenv("OLLAMA_CHAT_MODEL", "llama3.2")
 
 _client = ollama.Client(host=OLLAMA_HOST)
 

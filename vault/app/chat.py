@@ -79,7 +79,7 @@ OLLAMA_EMBED_MODEL = os.environ.get("OLLAMA_EMBED_MODEL", "nomic-embed-text")
 QDRANT_HOST = os.environ.get("QDRANT_HOST", "localhost")
 QDRANT_PORT = int(os.environ.get("QDRANT_PORT", "6333"))
 QDRANT_COLLECTION = os.environ.get("QDRANT_COLLECTION", "vault")
-CHUNK_SIZE = os.environ.get("QDRANT_COLLECTION", 3000)
+chunk_size = os.environ.get("QDRANT_COLLECTION", 3000)
 
 RETRIEVAL_SIMILARITY_THRESHOLD = 0.5
 conversation_history = []
@@ -769,7 +769,7 @@ def generate_summary_chat(chat_prompt_id, db: Session = None):
         else:
             qa_pair = f"Collector assistant:\n{chat[i]['content']}\n\n"
 
-        if len(current_chunk) + len(qa_pair) > CHUNK_SIZE:
+        if len(current_chunk) + len(qa_pair) > chunk_size:
             chunks.append(current_chunk)
             current_chunk = ""
         current_chunk += qa_pair

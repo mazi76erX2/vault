@@ -24,7 +24,7 @@ from app.dto.collector import (
     StartChatRequest,
 )
 from app.middleware.auth import verify_token_with_tenant
-from app.models import ChatMessageCollector, Document, Profile, Questions, Session
+from app.models import ChatMessageCollector, Document, Profile, Question, Session
 from app.services.collector_llm import (
     generate_follow_up_question,
     generate_initial_questions,
@@ -322,14 +322,14 @@ async def get_questions(
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Missing user_id")
 
     try:
-        stmt = select(Questions).where(Questions.user_id == user_id)
+        stmt = select(Question).where(Question.user_id == user_id)
         result = await db.execute(stmt)
         question_row = result.scalar_one_or_none()
 
         if not question_row:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
-                detail="No questions found. Click 'Generate' to create new questions or 'Upload Questions' to import from a file.",
+                detail="No questions found. Click 'Generate' to create new questions or 'Upload Question' to import from a file.",
             )
 
         return {
@@ -382,7 +382,7 @@ async def generate_questions(
         status_list = ["Not Started" for _ in questions]
 
         # Upsert questions
-        stmt = select(Questions).where(Questions.user_id == user_id)
+        stmt = select(Question).where(Question.user_id == user_id)
         result = await db.execute(stmt)
         existing = result.scalar_one_or_none()
 
@@ -393,13 +393,13 @@ async def generate_questions(
                 existing.topics = topics
             existing.created_at = datetime.now()
         else:
-            new_questions = Questions(
+            new_questions = Question(
                 user_id=user_id,
                 questions=questions,
                 status=status_list,
                 created_at=datetime.now(),
             )
-            if hasattr(Questions, "topics"):
+            if hasattr(Question, "topics"):
                 new_questions.topics = topics
             db.add(new_questions)
 
@@ -435,7 +435,7 @@ async def init_questions_from_upload(
         topics = [generate_topic_from_question(q) for q in questions_list]
         status_list = ["Not Started" for _ in questions_list]
 
-        stmt = select(Questions).where(Questions.user_id == user_id)
+        stmt = select(Question).where(Question.user_id == user_id)
         result = await db.execute(stmt)
         existing = result.scalar_one_or_none()
 
@@ -446,20 +446,20 @@ async def init_questions_from_upload(
                 existing.topics = topics
             existing.created_at = datetime.now()
         else:
-            new_questions = Questions(
+            new_questions = Question(
                 user_id=user_id,
                 questions=questions_list,
                 status=status_list,
                 created_at=datetime.now(),
             )
-            if hasattr(Questions, "topics"):
+            if hasattr(Question, "topics"):
                 new_questions.topics = topics
             db.add(new_questions)
 
         await db.commit()
 
         return {
-            "message": "Questions initialized successfully",
+            "message": "Question initialized successfully",
             "questions": questions_list,
             "status": status_list,
             "topics": topics,
@@ -541,7 +541,7 @@ async def start_chat(
 
         # Update question status (best-effort)
         try:
-            stmt = select(Questions).where(Questions.user_id == user_id)
+            stmt = select(Question).where(Question.user_id == user_id)
             result = await db.execute(stmt)
             q_row = result.scalar_one_or_none()
 

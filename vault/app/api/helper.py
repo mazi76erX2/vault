@@ -12,8 +12,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import get_async_db
 from app.middleware.auth import verify_token_with_tenant
-from app.models import ChatMessageHelper
-from app.services.authservice import require_roles
+from app.models import ChatMessage
+from app.services.auth_service import require_roles
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/v1/helper", tags=["helper"])
@@ -50,7 +50,7 @@ async def add_new_chat_session(
 
     try:
         # Create new chat session
-        chat_session = ChatMessageHelper(user_id=user_id)
+        chat_session = ChatMessage(user_id=user_id)
         db.add(chat_session)
         await db.commit()
         await db.refresh(chat_session)

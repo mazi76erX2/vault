@@ -16,7 +16,7 @@ except ImportError:
         # First try relative import from the app package
         import app.ldap.mock_ldap as ldap
 
-        # from .mock_ldap import initialize  # Unused
+        # # from .mock_ldap import initialize  # Unused  # Unused
 
         USING_MOCK = True
     except ImportError:

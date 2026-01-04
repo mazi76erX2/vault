@@ -3,6 +3,7 @@ main.py - FastAPI Application Entry Point
 Slim orchestrator that imports modular routers
 """
 
+import logging
 from contextlib import asynccontextmanager
 
 import uvicorn
@@ -27,7 +28,7 @@ from app.logger_config import setup_logging
 
 # Initialize logging
 setup_logging()
-logger = setup_logging.getLogger(__name__)
+logger = logging.getLogger(__name__)
 
 
 @asynccontextmanager

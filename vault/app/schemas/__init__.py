@@ -1,16 +1,23 @@
-from app.schemas.auth import (  # noqa: I001
-    PasswordChange,
+"""
+Schema exports for the application.
+Centralized import point for all Pydantic schemas.
+"""
+
+# Auth schemas
+from .auth import (
     CheckFirstLoginModel,
     EmailTestRequest,
+    PasswordChange,
     PasswordReset,
-    PasswordResetResponse,
     PasswordResetRequest,
+    PasswordResetResponse,
     TokenResponse,
-    UserLogin,
     UserCreate,
+    UserLogin,
     UserResponse,
 )
 
+# Company schemas
 from .company import (
     CompanyContactDetails,
     CompanyCreate,
@@ -24,11 +31,23 @@ from .company import (
     UpdateCompanyContactDetailsRequest,
     UpdateCompanyThemeSettingsRequest,
 )
+
+# Document schemas
 from .document import DocumentCreate, DocumentResponse, DocumentUpdate, DocumentWithSimilarity
+
+# LDAP schemas
 from .ldap import LDAPConnectorCreate, LDAPConnectorResponse, LDAPConnectorUpdate
+
+# Profile schemas
 from .profile import ProfileCreate, ProfileResponse, ProfileUpdate
+
+# Role schemas
 from .role import RoleCreate, RoleResponse, UserRoleCreate, UserRoleResponse
+
+# Session schemas
 from .session import QuestionCreate, QuestionResponse, SessionCreate, SessionResponse, SessionUpdate
+
+# User-specific schemas (NOT UserCreate/UserResponse - those are in auth)
 from .user import (
     CompanyDetails,
     DeleteUserResponse,
@@ -36,65 +55,67 @@ from .user import (
     OrganisationDetails,
     UpdateUserDetailsRequest,
     UserCompanyRequest,
-    UserCreate,
     UserInfo,
     UserProfileRequest,
     UserProfileResponse,
-    UserResponse,
 )
 
 __all__ = [
-    # Company schemas
-    "GetCompanyThemeSettingsRequest",
-    "CompanyThemeSettingsResponse",
-    "GetCompanyThemeSettingsResponse",
-    "CompanyThemeSettingsPayload",
-    "UpdateCompanyThemeSettingsRequest",
-    "CompanyContactDetails",
-    "GetCompanyContactDetailsRequest",
-    "UpdateCompanyContactDetailsRequest",
-    "CompanyCreate",
-    "CompanyUpdate",
-    "CompanyResponse",
-    # User schemas
-    "UserInfo",
-    "UserProfileRequest",
-    "UserProfileResponse",
-    "UserCompanyRequest",
-    "CompanyDetails",
-    "GetUserCompanyResponse",
-    "UpdateUserDetailsRequest",
-    "OrganisationDetails",
-    "DeleteUserResponse",
+    # Auth schemas
+    "CheckFirstLoginModel",
+    "EmailTestRequest",
+    "PasswordChange",
+    "PasswordReset",
+    "PasswordResetRequest",
+    "PasswordResetResponse",
+    "TokenResponse",
     "UserCreate",
+    "UserLogin",
     "UserResponse",
-    "ProfileCreate",
-    "ProfileUpdate",
-    "ProfileResponse",
+    # Company schemas
+    "CompanyContactDetails",
+    "CompanyCreate",
+    "CompanyResponse",
+    "CompanyThemeSettingsPayload",
+    "CompanyThemeSettingsResponse",
+    "CompanyUpdate",
+    "GetCompanyContactDetailsRequest",
+    "GetCompanyThemeSettingsRequest",
+    "GetCompanyThemeSettingsResponse",
+    "UpdateCompanyContactDetailsRequest",
+    "UpdateCompanyThemeSettingsRequest",
+    # Document schemas
     "DocumentCreate",
-    "DocumentUpdate",
     "DocumentResponse",
+    "DocumentUpdate",
     "DocumentWithSimilarity",
+    # LDAP schemas
     "LDAPConnectorCreate",
-    "LDAPConnectorUpdate",
     "LDAPConnectorResponse",
+    "LDAPConnectorUpdate",
+    # Profile schemas
+    "ProfileCreate",
+    "ProfileResponse",
+    "ProfileUpdate",
+    # Role schemas
     "RoleCreate",
     "RoleResponse",
     "UserRoleCreate",
     "UserRoleResponse",
-    "SessionCreate",
-    "SessionUpdate",
-    "SessionResponse",
+    # Session schemas
     "QuestionCreate",
     "QuestionResponse",
-    # Auth schemas
-    "PasswordReset",
-    "PasswordResetResponse",
-    "PasswordChange",
-    "CheckFirstLoginModel",
-    "EmailTestRequest",
-    "PasswordResetRequest",
-    "TokenResponse",
-    "UserLogin",
-    "UserCreate",
+    "SessionCreate",
+    "SessionResponse",
+    "SessionUpdate",
+    # User-specific schemas
+    "CompanyDetails",
+    "DeleteUserResponse",
+    "GetUserCompanyResponse",
+    "OrganisationDetails",
+    "UpdateUserDetailsRequest",
+    "UserCompanyRequest",
+    "UserInfo",
+    "UserProfileRequest",
+    "UserProfileResponse",
 ]

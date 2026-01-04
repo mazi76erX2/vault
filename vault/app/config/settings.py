@@ -29,7 +29,7 @@ class Settings(BaseSettings):
     OLLAMA_HOST: str = "http://localhost:11434"
     OLLAMA_EMBED_MODEL: str = "nomic-embed-text"
     OLLAMA_CHAT_MODEL: str = "llama3.2"
-    OLLAMA_MODEL: str = "llama2"  # Legacy/fallback
+    OLLAMA_MODEL: str = "llama2"
 
     # Qdrant Configuration
     QDRANT_HOST: str = "localhost"
@@ -42,12 +42,12 @@ class Settings(BaseSettings):
     RETRIEVAL_SIMILARITY_THRESHOLD: float = 0.5
     MAX_RETRIEVAL_DOCS: int = 5
 
-    # Cloudinary (Image Upload)
+    # Cloudinary
     CLOUDINARY_CLOUD_NAME: str = ""
     CLOUDINARY_API_KEY: str = ""
     CLOUDINARY_API_SECRET: str = ""
 
-    # Email Configuration (if needed)
+    # Email
     SMTP_HOST: str = "smtp.gmail.com"
     SMTP_PORT: int = 587
     SMTP_USER: str = ""
@@ -61,7 +61,6 @@ class Settings(BaseSettings):
     class Config:
         env_file = ".env"
         case_sensitive = True
-        # Allow extra fields from .env that aren't defined
         extra = "ignore"
 
 

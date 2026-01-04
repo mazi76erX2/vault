@@ -13,9 +13,9 @@ import app.email_service as email_service
 from app.database import get_async_db
 from app.models import Profile, Session
 from app.schemas.auth import (
-    ChangePasswordModel,
     CheckFirstLoginModel,
-    PasswordResetRequestModel,
+    PasswordChange,
+    PasswordResetRequest,
     PasswordResetResponse,
 )
 from app.services.auth_service import AuthService
@@ -26,7 +26,7 @@ logger = logging.getLogger(__name__)
 
 @router.post("/reset-password-request", response_model=PasswordResetResponse)
 async def request_password_reset(
-    request: PasswordResetRequestModel, db: AsyncSession = Depends(get_async_db)
+    request: PasswordResetRequest, db: AsyncSession = Depends(get_async_db)
 ):
     """Request password reset."""
     try:
@@ -62,7 +62,7 @@ async def request_password_reset(
 
 
 @router.post("/change-password")
-async def change_password(request: ChangePasswordModel, db: AsyncSession = Depends(get_async_db)):
+async def change_password(request: PasswordChange, db: AsyncSession = Depends(get_async_db)):
     """Change user password (requires current password)."""
     try:
         # Get user

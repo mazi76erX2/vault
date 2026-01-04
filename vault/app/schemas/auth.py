@@ -3,7 +3,7 @@ Authentication Schemas
 Pydantic models for authentication requests/responses
 """
 
-from pydantic import BaseModel, EmailStr, Field, field_validator, ValidationInfo
+from pydantic import BaseModel, EmailStr, Field, ValidationInfo, field_validator
 
 
 class UserLogin(BaseModel):

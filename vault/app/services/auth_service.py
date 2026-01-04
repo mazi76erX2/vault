@@ -10,17 +10,23 @@ from datetime import datetime, timedelta
 from uuid import uuid4
 
 import jwt
+from fastapi import Depends, HTTPException, status
+from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from passlib.context import CryptContext
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import settings
+from app.database import get_async_db
 from app.models.profile import Profile
 from app.models.role import Role, UserRole
 from app.models.user import User
 from app.schemas.auth import UserCreate
 
 logger = logging.getLogger(__name__)
+
+security = HTTPBearer()
+
 
 # Password hashing context (compatible with Supabase bcrypt)
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
@@ -464,3 +470,90 @@ async def get_current_user(token: str, db: AsyncSession) -> dict:
     except Exception as e:
         logger.error(f"Error getting current user: {str(e)}")
         raise ValueError("Could not validate credentials") from e
+
+
+async def get_current_user_dependency(
+    credentials: HTTPAuthorizationCredentials = Depends(security),
+    db: AsyncSession = Depends(get_async_db),
+) -> dict:
+    """FastAPI dependency to get current user from JWT token"""
+    try:
+        token = credentials.credentials
+        payload = AuthService.decode_token(token)
+
+        if payload.get("type") != "access":
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Invalid token type",
+            )
+
+        user_id = payload.get("sub")
+        if not user_id:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Invalid token payload",
+            )
+
+        user_data = await AuthService.get_user_with_roles(db, user_id)
+
+        if not user_data:
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="User not found",
+            )
+
+        return user_data
+
+    except ValueError as e:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail=str(e),
+        ) from e
+
+
+def require_roles(*required_roles: str):
+    """
+    Dependency factory for role-based access control
+
+    Usage:
+        @router.get("/admin", dependencies=[Depends(require_roles("Administrator"))])
+        async def admin_endpoint():
+            ...
+    """
+
+    async def role_checker(current_user: dict = Depends(get_current_user_dependency)):
+        user_roles = current_user.get("roles", [])
+
+        if not any(role in user_roles for role in required_roles):
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail=f"Insufficient permissions. Required roles: {', '.join(required_roles)}",
+            )
+
+        return current_user
+
+    return role_checker
+
+
+def require_access_level(min_level: int):
+    """
+    Dependency factory for access level checking
+
+    Usage:
+        @router.get("/manager", dependencies=[Depends(require_access_level(2))])
+        async def manager_endpoint():
+            ...
+    """
+
+    async def access_checker(current_user: dict = Depends(get_current_user_dependency)):
+        user_access = current_user.get("profile", {}).get("user_access", 0)
+
+        if user_access < min_level:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Insufficient access level",
+            )
+
+        return current_user
+
+    return access_checker

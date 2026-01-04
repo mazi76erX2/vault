@@ -1,3 +1,7 @@
+"""
+Session and Question models
+"""
+
 import enum
 import uuid
 
@@ -11,6 +15,8 @@ from .base import Base
 
 
 class SessionStatus(str, enum.Enum):
+    """Session status enum"""
+
     NOT_STARTED = "Not Started"
     STARTED = "Started"
     IN_PROGRESS = "In Progress"
@@ -18,6 +24,8 @@ class SessionStatus(str, enum.Enum):
 
 
 class Session(Base):
+    """Session model"""
+
     __tablename__ = "sessions"
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
@@ -32,10 +40,12 @@ class Session(Base):
 
     # Relationships
     user = relationship("Profile", back_populates="sessions")
-    questions = relationship("Question", back_populates="session")
+    questions = relationship("Question", back_populates="session", cascade="all, delete-orphan")
 
 
 class Question(Base):
+    """Question model for sessions"""
+
     __tablename__ = "questions"
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)

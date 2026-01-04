@@ -9,10 +9,9 @@ from app.models.company import Company
 from app.models.document import Document
 from app.models.profile import Profile
 from app.models.role import Role, UserRole
-from app.models.session import Session
+from app.models.session import Question, Session
 from app.models.user import User
 
-# Export all models
 __all__ = [
     "Base",
     "User",
@@ -20,6 +19,7 @@ __all__ = [
     "Company",
     "Document",
     "Session",
+    "Question",
     "Role",
     "UserRole",
     "ChatMessage",
