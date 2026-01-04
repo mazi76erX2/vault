@@ -1,8 +1,10 @@
+"""
+Profile Model
+"""
+
 import enum
 
-from sqlalchemy import BigInteger, Boolean, CheckConstraint, Column, DateTime
-from sqlalchemy import Enum as SQLEnum
-from sqlalchemy import ForeignKey, Text, func
+from sqlalchemy import BigInteger, Boolean, Column, DateTime, ForeignKey, Text, func
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import relationship
 
@@ -10,6 +12,8 @@ from .base import Base
 
 
 class UserAccessLevel(str, enum.Enum):
+    """User access levels"""
+
     ADMIN = "admin"
     MANAGER = "manager"
     EMPLOYEE = "employee"
@@ -17,62 +21,47 @@ class UserAccessLevel(str, enum.Enum):
 
 
 class Department(str, enum.Enum):
-    AI_CC = "AI CC"
+    """Departments"""
+
+    AICC = "AI CC"
     PLANNING = "Planning"
     ANALYTICS = "Analytics"
     HR = "HR"
-    DATA_CLOUD = "Data Cloud"
+    DATACLOUD = "Data Cloud"
     SALES = "Sales"
     MARKETING = "Marketing"
 
 
 class Profile(Base):
+    """User profile model"""
+
     __tablename__ = "profiles"
 
-    # Primary key that references auth.users
-    id = Column(
-        UUID(as_uuid=True), ForeignKey("auth.users.id", ondelete="CASCADE"), primary_key=True
-    )
-
-    # User information
-    username = Column(Text, unique=True)
-    full_name = Column(Text)
-    email = Column(Text, index=True)
-    telephone = Column(Text)
-    website = Column(Text)
-
-    # Professional details
-    department = Column(SQLEnum(Department, name="department", create_type=False))
-    field_of_expertise = Column(Text)
-    years_of_experience = Column(Text)
-    cv_text = Column(Text)
-
-    # Access control
-    is_validator = Column(Boolean, default=False)
-    user_access = Column(
-        SQLEnum(UserAccessLevel, name="user_access_levels", create_type=False),
-        default=UserAccessLevel.EMPLOYEE,
-    )
+    id = Column(UUID(as_uuid=True), primary_key=True)
+    user_id = Column(UUID(as_uuid=True), ForeignKey("auth.users.id"), nullable=True)
+    email = Column(Text, nullable=False, index=True)
+    full_name = Column(Text, nullable=True)
+    username = Column(Text, unique=True, nullable=True, index=True)
+    telephone = Column(Text, nullable=True)
+    company_id = Column(BigInteger, ForeignKey("companies.id"), nullable=True)
+    company_name = Column(Text, nullable=True)
+    company_reg_no = Column(Text, nullable=True, index=True)
+    department = Column(Text, nullable=True)
+    field_of_expertise = Column(Text, nullable=True)
+    years_of_experience = Column(BigInteger, nullable=True)
+    user_access = Column(BigInteger, default=1)
     status = Column(Text, default="active")
-
-    # Multi-tenancy
-    company_id = Column(BigInteger, ForeignKey("companies.id"), index=True)
-    company_reg_no = Column(Text, index=True)
-    company_name = Column(Text)
-    # user_type = Column(BigInteger, ForeignKey("user_types.id"))
-
-    # Timestamps
+    is_validator = Column(Boolean, default=False)
+    CV_text = Column(Text, nullable=True)
+    avatar_url = Column(Text, nullable=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
 
     # Relationships
     user = relationship("User", back_populates="profile")
     company = relationship("Company", back_populates="profiles")
+    user_roles = relationship("UserRole", back_populates="profile", cascade="all, delete-orphan")
+    chatmessages = relationship("ChatMessage", back_populates="user")  # ADD THIS LINE
+    sessions = relationship("Session", back_populates="user", cascade="all, delete-orphan")
+    questions = relationship("Question", back_populates="user", cascade="all, delete-orphan")
     documents_reviewed = relationship("Document", back_populates="reviewer_profile")
-    user_roles = relationship("UserRole", back_populates="user_profile")
-    chat_messages = relationship("ChatMessage", back_populates="user")
-    sessions = relationship("Session", back_populates="user")
-    questions = relationship("Question", back_populates="user")
-
-    # Constraints
-    __table_args__ = (CheckConstraint("char_length(username) >= 3", name="username_length"),)

@@ -1015,7 +1015,7 @@ async def cleanup_expired_tokens(db: AsyncSession):
 # API Router
 # ============================================================================
 
-router = APIRouter(prefix="/api/auth", tags=["Authentication"])
+router = APIRouter(tags=["Authentication"])
 
 
 @router.post("/register", response_model=UserResponse, status_code=status.HTTP_201_CREATED)

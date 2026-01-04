@@ -47,11 +47,12 @@ dependencies = [
     "langchain-community>=0.3.7",
     # Utilities
     "aiofiles>=24.1.0",
-    "passlib[bcrypt]>=1.7.4",
     "python-ldap>=3.4.5",
     "alembic>=1.17.2",
     "asyncpg>=0.31.0",
     "cloudinary>=1.44.1",
+    "bcrypt>=5.0.0",
+    "passlib>=1.7.4",
 ]
 
 [project.optional-dependencies]

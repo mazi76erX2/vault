@@ -11,19 +11,9 @@ from sqlalchemy import engine_from_config, pool
 from alembic import context
 from app.config import settings
 from app.database import Base
-
 # Import ALL models - This is critical for autogenerate!
-from app.models import (
-    ChatMessage,
-    ChatMessageCollector,
-    Company,
-    Document,
-    Profile,
-    Role,
-    Session,
-    User,
-    UserRole,
-)
+from app.models import (ChatMessage, ChatMessageCollector, Company, Document,
+                        Profile, Role, Session, User, UserRole)
 
 # Alembic Config object
 config = context.config
@@ -61,17 +51,17 @@ def run_migrations_offline() -> None:
 
 def run_migrations_online() -> None:
     """Run migrations in 'online' mode."""
-    configuration = config.get_section(config.config_ini_section, {})
-    configuration["sqlalchemy.url"] = sync_url
-
-    connectable = engine_from_config(
-        configuration,
-        prefix="sqlalchemy.",
-        poolclass=pool.NullPool,
-    )
-
+    # ... existing code ...
+    
     with connectable.connect() as connection:
-        context.configure(connection=connection, target_metadata=target_metadata)
+        # Create necessary schemas before migrations
+        connection.execute(text("CREATE SCHEMA IF NOT EXISTS auth"))
+        connection.commit()
+        
+        context.configure(
+            connection=connection,
+            target_metadata=target_metadata
+        )
 
         with context.begin_transaction():
             context.run_migrations()

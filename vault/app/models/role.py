@@ -1,3 +1,7 @@
+"""
+Role and UserRole Models
+"""
+
 import uuid
 
 from sqlalchemy import Column, DateTime, ForeignKey, Text, func
@@ -8,6 +12,8 @@ from .base import Base
 
 
 class Role(Base):
+    """Role model"""
+
     __tablename__ = "roles"
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
@@ -20,6 +26,8 @@ class Role(Base):
 
 
 class UserRole(Base):
+    """User-Role association model"""
+
     __tablename__ = "user_roles"
 
     user_id = Column(
@@ -31,6 +39,8 @@ class UserRole(Base):
     company_reg_no = Column(Text, primary_key=True, index=True)
     assigned_at = Column(DateTime(timezone=True), server_default=func.now())
 
-    # Relationships
-    user_profile = relationship("Profile", back_populates="user_roles")
+    # Relationships - FIX THESE
+    profile = relationship(
+        "Profile", back_populates="user_roles"
+    )  # Changed from back_populates="profile"
     role = relationship("Role", back_populates="user_roles")

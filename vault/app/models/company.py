@@ -30,4 +30,4 @@ class Company(Base):
 
     # Relationships
     profiles = relationship("Profile", back_populates="company")
-    ldap_connectors = relationship("LDAPConnector", back_populates="company")
+    # ldap_connectors = relationship("LDAPConnector", back_populates="company")

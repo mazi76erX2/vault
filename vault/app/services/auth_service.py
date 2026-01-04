@@ -5,6 +5,7 @@ Works with Supabase auth.users schema
 """
 
 import logging
+import bcrypt
 import secrets
 from datetime import datetime, timedelta
 from uuid import uuid4
@@ -37,13 +38,19 @@ class AuthService:
 
     @staticmethod
     def hash_password(password: str) -> str:
-        """Hash a password using bcrypt (compatible with Supabase)"""
-        return pwd_context.hash(password)
-
+        """Hash a password using bcrypt"""
+        # Bcrypt only uses first 72 bytes
+        password_bytes = password.encode('utf-8')[:72]
+        salt = bcrypt.gensalt()
+        hashed = bcrypt.hashpw(password_bytes, salt)
+        return hashed.decode('utf-8')
+    
     @staticmethod
     def verify_password(plain_password: str, hashed_password: str) -> bool:
         """Verify a password against its hash"""
-        return pwd_context.verify(plain_password, hashed_password)
+        password_bytes = plain_password.encode('utf-8')[:72]
+        hashed_bytes = hashed_password.encode('utf-8')
+        return bcrypt.checkpw(password_bytes, hashed_bytes)
 
     @staticmethod
     def create_access_token(data: dict, expires_delta: timedelta | None = None) -> str:
