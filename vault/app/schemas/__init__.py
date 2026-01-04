@@ -1,9 +1,14 @@
-from app.schemas.auth import (
-    ChangePasswordModel,
+from app.schemas.auth import (  # noqa: I001
+    PasswordChange,
     CheckFirstLoginModel,
     EmailTestRequest,
-    PasswordResetRequestModel,
+    PasswordReset,
     PasswordResetResponse,
+    PasswordResetRequest,
+    TokenResponse,
+    UserLogin,
+    UserCreate,
+    UserResponse,
 )
 
 from .company import (
@@ -83,9 +88,13 @@ __all__ = [
     "QuestionCreate",
     "QuestionResponse",
     # Auth schemas
-    "PasswordResetRequestModel",
+    "PasswordReset",
     "PasswordResetResponse",
-    "ChangePasswordModel",
+    "PasswordChange",
     "CheckFirstLoginModel",
     "EmailTestRequest",
+    "PasswordResetRequest",
+    "TokenResponse",
+    "UserLogin",
+    "UserCreate",
 ]

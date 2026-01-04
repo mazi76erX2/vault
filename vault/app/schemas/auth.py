@@ -3,7 +3,7 @@ Authentication Schemas
 Pydantic models for authentication requests/responses
 """
 
-from pydantic import BaseModel, EmailStr, Field, validator
+from pydantic import BaseModel, EmailStr, Field, field_validator, ValidationInfo
 
 
 class UserLogin(BaseModel):
@@ -30,12 +30,13 @@ class UserCreate(BaseModel):
     user_access: str | None = "employee"
     email_confirmed: bool = False
 
-    @validator("full_name", always=True)
-    def generate_full_name(self, v, values):
+    @field_validator("full_name", mode="before")
+    @classmethod
+    def generate_full_name(cls, v, info: ValidationInfo):
         if v:
             return v
-        first = values.get("first_name", "")
-        last = values.get("last_name", "")
+        first = info.data.get("first_name", "")
+        last = info.data.get("last_name", "")
         if first and last:
             return f"{first} {last}"
         return v
@@ -82,9 +83,10 @@ class PasswordReset(BaseModel):
     password: str = Field(..., min_length=8)
     password_confirmation: str = Field(..., min_length=8)
 
-    @validator("password_confirmation")
-    def passwords_match(self, v, values):
-        if "password" in values and v != values["password"]:
+    @field_validator("password_confirmation")
+    @classmethod
+    def passwords_match(cls, v, info: ValidationInfo):
+        if "password" in info.data and v != info.data["password"]:
             raise ValueError("Passwords do not match")
         return v
 
@@ -96,9 +98,10 @@ class PasswordChange(BaseModel):
     new_password: str = Field(..., min_length=8)
     new_password_confirmation: str = Field(..., min_length=8)
 
-    @validator("new_password_confirmation")
-    def passwords_match(self, v, values):
-        if "new_password" in values and v != values["new_password"]:
+    @field_validator("new_password_confirmation")
+    @classmethod
+    def passwords_match(cls, v, info: ValidationInfo):
+        if "new_password" in info.data and v != info.data["new_password"]:
             raise ValueError("Passwords do not match")
         return v
 
