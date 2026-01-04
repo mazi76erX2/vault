@@ -1,49 +1,71 @@
+"""
+Helper endpoints - migrated from Supabase to SQLAlchemy.
+"""
+
 from __future__ import annotations
 
 import logging
 from typing import Any
 
-from fastapi import APIRouter, Depends, HTTPException
-from gotrue import UserResponse
+from app.services.authservice import require_roles
+from fastapi import APIRouter, Depends, HTTPException, status
+from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.database import supabase
-from app.middleware.auth import verify_token
-from app.services.auth_service import require_roles
+from app.database import get_async_db
+from app.middleware.auth import verify_token_with_tenant
+from app.models import ChatMessageHelper
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/v1/helper", tags=["helper"])
 
 
-def _require_key(d: dict[str, Any], k: str) -> Any:
-    v = d.get(k)
-    if v is None or v == "":
-        raise HTTPException(status_code=400, detail=f"Missing {k}")
-    return v
-
-
-@router.post("/healthcheck", dependencies=[Depends(require_roles("Helper"))])
+@router.post("/healthcheck", dependencies=[Depends(require_roles(["Helper"]))])
 async def helper_healthcheck() -> dict[str, str]:
+    """Check if the helper API is up and running."""
     return {"status": "ok", "message": "Helper API is running"}
 
 
-@router.post("/addnewchatsession")
-async def addnewchatsession(
-    data: dict[str, Any], user: UserResponse = Depends(verify_token)
+@router.post("/add_new_chat_session")
+async def add_new_chat_session(
+    data: dict[str, Any],
+    current_user: dict = Depends(verify_token_with_tenant),
+    db: AsyncSession = Depends(get_async_db),
 ) -> dict[str, Any]:
-    userid = _require_key(data, "userid")
-    if str(userid) != str(user.user.id):
-        raise HTTPException(status_code=403, detail="userid does not match token user")
+    """
+    Create a new chat session for helper.
+    """
+    user_id = data.get("user_id")
+
+    if not user_id:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Missing user_id",
+        )
+
+    if str(user_id) != current_user["user_id"]:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="user_id does not match token user",
+        )
 
     try:
-        resp = supabase.table("chatmessageshelper").insert({"userid": userid}).execute()
-        if not resp.data:
-            raise HTTPException(status_code=500, detail="Failed to create chat session")
+        # Create new chat session
+        chat_session = ChatMessageHelper(user_id=user_id)
+        db.add(chat_session)
+        await db.commit()
+        await db.refresh(chat_session)
 
-        chat_id = resp.data[0].get("id")
-        return {"chatmessagesid": chat_id, "userid": userid}
+        return {
+            "chatmessagesid": str(chat_session.id),
+            "userid": str(user_id),
+        }
 
     except HTTPException:
         raise
     except Exception as e:
+        await db.rollback()
         logger.error(f"Error creating chat session: {e}")
-        raise HTTPException(status_code=500, detail=f"Error creating chat session: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Error creating chat session: {str(e)}",
+        )

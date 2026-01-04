@@ -3,6 +3,7 @@ import os
 from pathlib import Path
 
 import requests
+
 # Remove Azure Search & AzureOpenAI dependencies; route to Qdrant
 from dotenv import load_dotenv
 

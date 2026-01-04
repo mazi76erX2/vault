@@ -13,9 +13,15 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.config import settings
 from app.database import get_async_db
 from app.email_service import send_password_reset_email
-from app.schemas.auth import (PasswordChange, PasswordReset,
-                              PasswordResetRequest, TokenResponse, UserCreate,
-                              UserLogin, UserResponse)
+from app.schemas.auth import (
+    PasswordChange,
+    PasswordReset,
+    PasswordResetRequest,
+    TokenResponse,
+    UserCreate,
+    UserLogin,
+    UserResponse,
+)
 from app.services.auth_service import AuthService, get_current_user
 
 logger = logging.getLogger(__name__)

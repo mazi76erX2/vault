@@ -1,57 +1,37 @@
+"""
+Validator endpoints - migrated from Supabase to SQLAlchemy.
+Handles document validation workflow.
+"""
+
 from __future__ import annotations
 
 import logging
 from datetime import UTC, datetime
 from typing import Any
 
-from fastapi import APIRouter, Depends, HTTPException, Query
-from gotrue import UserResponse
+from fastapi import APIRouter, Depends, HTTPException, Query, status
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.database import supabase
-from app.dto.validator import (AcceptDocumentRequest, DelegateRequest,
-                               DocumentFetchRequest, RejectDocumentRequest)
-from app.middleware.auth import verify_token
+from app.database import get_async_db
+from app.dto.validator import (
+    AcceptDocumentRequest,
+    DelegateRequest,
+    DocumentFetchRequest,
+    RejectDocumentRequest,
+)
+from app.middleware.auth import verify_token_with_tenant
+from app.models import Document, Profile
 
 logger = logging.getLogger(__name__)
-
 router = APIRouter(prefix="/api/v1/validator", tags=["validator"])
 
 
-def _uid(user: UserResponse) -> str:
-    uid = getattr(getattr(user, "user", None), "id", None)
-    if not uid:
-        raise HTTPException(status_code=400, detail="Missing user id")
-    return str(uid)
-
-
-def _companyid_for_user(userid: str) -> int:
-    resp = supabase.table("profiles").select("companyid").eq("id", userid).maybe_single().execute()
-    data = resp.data or {}
-    companyid = data.get("companyid")
-    if not companyid:
-        raise HTTPException(
-            status_code=400,
-            detail="User does not have a company associated with their profile",
-        )
-    return int(companyid)
-
-
-def _profiles_map(companyid: int) -> dict[str, str]:
-    # Map userId -> fullname for display
-    resp = supabase.table("profiles").select("id, fullname").eq("companyid", companyid).execute()
-    m: dict[str, str] = {}
-    for row in resp.data or []:
-        pid = row.get("id")
-        if pid:
-            m[str(pid)] = row.get("fullname") or "NA"
-    return m
-
-
-def _parse_dt(s: str | None) -> datetime | None:
+def parse_dt(s: str | None) -> datetime | None:
+    """Parse ISO datetime string."""
     if not s:
         return None
     try:
-        # Handle "Z"
         s2 = s.replace("Z", "+00:00")
         dt = datetime.fromisoformat(s2)
         if dt.tzinfo is None:
@@ -64,327 +44,486 @@ def _parse_dt(s: str | None) -> datetime | None:
 @router.get("/get-documents")
 async def get_documents(
     userid: str = Query(...),
-    user: UserResponse = Depends(verify_token),
+    current_user: dict = Depends(verify_token_with_tenant),
+    db: AsyncSession = Depends(get_async_db),
 ) -> dict[str, Any]:
     """
-    UI expects: { documents: [{ id, title, author, status }] }
+    Get documents awaiting validator action (status: Pending, Validated - Awaiting Approval).
     """
-    token_uid = _uid(user)
+    token_uid = current_user["user_id"]
+    company_reg_no = current_user.get("company_reg_no")
+
     if userid != token_uid:
-        raise HTTPException(status_code=403, detail="userid does not match token user")
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="userid does not match token user",
+        )
 
-    companyid = _companyid_for_user(token_uid)
-    usermap = _profiles_map(companyid)
+    try:
+        # Get user map
+        stmt = select(Profile.id, Profile.full_name).where(Profile.company_reg_no == company_reg_no)
+        result = await db.execute(stmt)
+        profiles = result.all()
+        user_map = {str(p.id): p.full_name or "N/A" for p in profiles}
 
-    # Documents awaiting validator action
-    docs = (
-        supabase.table("documents")
-        .select("docid, title, authorid, status")
-        .eq("companyid", companyid)
-        .eq("responsible", token_uid)
-        .in_("status", ["Pending", "Validated - Awaiting Approval"])
-        .execute()
-    ).data or []
+        # Get documents
+        stmt = select(Document).where(
+            Document.responsible == token_uid,
+            Document.status.in_(["Pending", "Validated - Awaiting Approval"]),
+        )
+        result = await db.execute(stmt)
+        docs = result.scalars().all()
 
-    rows = [
-        {
-            "id": d.get("docid"),
-            "title": d.get("title") or "Untitled",
-            "author": usermap.get(str(d.get("authorid")), "NA"),
-            "status": d.get("status") or "NA",
-        }
-        for d in docs
-    ]
-    return {"documents": rows}
+        rows = [
+            {
+                "id": str(d.doc_id),
+                "title": d.title or "Untitled",
+                "author": user_map.get(str(d.author_id), "N/A"),
+                "status": d.status or "N/A",
+            }
+            for d in docs
+        ]
+
+        return {"documents": rows}
+
+    except Exception as e:
+        logger.error(f"Error fetching validator documents: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=str(e),
+        )
 
 
 @router.get("/completed-documents")
 async def completed_documents(
-    user: UserResponse = Depends(verify_token),
+    current_user: dict = Depends(verify_token_with_tenant),
+    db: AsyncSession = Depends(get_async_db),
 ) -> list[dict[str, Any]]:
     """
-    UI expects: an array: [{ id, title, author, status }]
+    Get completed documents for validator (status: Rejected, Validated - Stored).
     """
-    token_uid = _uid(user)
-    companyid = _companyid_for_user(token_uid)
-    usermap = _profiles_map(companyid)
+    token_uid = current_user["user_id"]
+    company_reg_no = current_user.get("company_reg_no")
 
-    docs = (
-        supabase.table("documents")
-        .select("docid, title, authorid, status")
-        .eq("companyid", companyid)
-        .eq("responsible", token_uid)
-        .in_("status", ["Rejected", "Validated - Stored"])
-        .execute()
-    ).data or []
+    try:
+        # Get user map
+        stmt = select(Profile.id, Profile.full_name).where(Profile.company_reg_no == company_reg_no)
+        result = await db.execute(stmt)
+        profiles = result.all()
+        user_map = {str(p.id): p.full_name or "N/A" for p in profiles}
 
-    return [
-        {
-            "id": d.get("docid"),
-            "title": d.get("title") or "Untitled",
-            "author": usermap.get(str(d.get("authorid")), "NA"),
-            "status": d.get("status") or "NA",
-        }
-        for d in docs
-    ]
+        # Get documents
+        stmt = select(Document).where(
+            Document.responsible == token_uid,
+            Document.status.in_(["Rejected", "Validated - Stored"]),
+        )
+        result = await db.execute(stmt)
+        docs = result.scalars().all()
+
+        return [
+            {
+                "id": str(d.doc_id),
+                "title": d.title or "Untitled",
+                "author": user_map.get(str(d.author_id), "N/A"),
+                "status": d.status or "N/A",
+            }
+            for d in docs
+        ]
+
+    except Exception as e:
+        logger.error(f"Error fetching completed documents: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=str(e),
+        )
 
 
-@router.post("/fetchdocumentbyid")
+@router.post("/fetch_document_by_id")
 async def fetch_document_by_id(
     payload: DocumentFetchRequest,
-    user: UserResponse = Depends(verify_token),
+    current_user: dict = Depends(verify_token_with_tenant),
+    db: AsyncSession = Depends(get_async_db),
 ) -> dict[str, Any]:
     """
-    UI expects: { document: { ... } }
+    Fetch document by ID with access control.
     """
-    token_uid = _uid(user)
-    companyid = _companyid_for_user(token_uid)
+    token_uid = current_user["user_id"]
 
-    doc = (
-        supabase.table("documents")
-        .select("*")
-        .eq("companyid", companyid)
-        .eq("docid", str(payload.documentid))
-        .maybe_single()
-        .execute()
-    ).data
+    try:
+        # Get document
+        stmt = select(Document).where(Document.doc_id == str(payload.document_id))
+        result = await db.execute(stmt)
+        doc = result.scalar_one_or_none()
 
-    if not doc:
-        raise HTTPException(status_code=404, detail="Document not found")
+        if not doc:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Document not found",
+            )
 
-    # Optional: enforce validator owns it OR it is part of their workflow
-    # (responsible == validator OR status is review/completed and responsible == validator)
-    if str(doc.get("responsible")) != token_uid:
-        raise HTTPException(status_code=403, detail="Not allowed to access this document")
+        # Ensure validator has access
+        if str(doc.responsible) != token_uid:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Not allowed to access this document",
+            )
 
-    return {"document": doc}
+        return {
+            "document": {
+                "doc_id": str(doc.doc_id),
+                "title": doc.title,
+                "summary": doc.summary,
+                "comment": getattr(doc, "comment", None),
+                "status": doc.status,
+                "severity_levels": doc.severity_levels,
+                "tags": getattr(doc, "tags", []),
+                "link": doc.link,
+                "responsible": str(doc.responsible) if doc.responsible else None,
+                "reviewer": str(doc.reviewer) if doc.reviewer else None,
+            }
+        }
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error fetching document: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=str(e),
+        )
 
 
 @router.post("/accept-document")
 async def accept_document(
     payload: AcceptDocumentRequest,
-    user: UserResponse = Depends(verify_token),
+    current_user: dict = Depends(verify_token_with_tenant),
+    db: AsyncSession = Depends(get_async_db),
 ) -> dict[str, Any]:
-    token_uid = _uid(user)
-    companyid = _companyid_for_user(token_uid)
+    """
+    Validator accepts document - status = 'Validated - Stored'.
+    """
+    token_uid = current_user["user_id"]
 
-    updatedata: dict[str, Any] = {
-        "status": payload.status or "Validated - Stored",
-    }
-    if payload.comment is not None:
-        updatedata["comment"] = payload.comment
-    if payload.summary is not None:
-        updatedata["summary"] = payload.summary
-    if payload.severitylevels:
-        updatedata["severitylevels"] = payload.severitylevels
+    try:
+        # Get document
+        stmt = select(Document).where(
+            Document.doc_id == payload.docid,
+            Document.responsible == token_uid,
+        )
+        result = await db.execute(stmt)
+        doc = result.scalar_one_or_none()
 
-    resp = (
-        supabase.table("documents")
-        .update(updatedata)
-        .eq("companyid", companyid)
-        .eq("docid", payload.docid)
-        .eq("responsible", token_uid)
-        .execute()
-    )
+        if not doc:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Document not found or not assigned to you",
+            )
 
-    if resp.data is None:
-        raise HTTPException(status_code=500, detail="Failed to update document")
+        # Update document
+        doc.status = payload.status or "Validated - Stored"
+        if payload.comment is not None:
+            doc.comment = payload.comment
+        if payload.summary is not None:
+            doc.summary = payload.summary
+        if payload.severitylevels:
+            doc.severity_levels = payload.severitylevels
 
-    return {"message": "Document updated successfully", "data": resp.data}
+        await db.commit()
+        await db.refresh(doc)
+
+        return {
+            "message": "Document updated successfully",
+            "data": {
+                "doc_id": str(doc.doc_id),
+                "status": doc.status,
+            },
+        }
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        await db.rollback()
+        logger.error(f"Error accepting document: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to update document",
+        )
 
 
 @router.post("/reject-document")
 async def reject_document(
     payload: RejectDocumentRequest,
-    user: UserResponse = Depends(verify_token),
+    current_user: dict = Depends(verify_token_with_tenant),
+    db: AsyncSession = Depends(get_async_db),
 ) -> dict[str, Any]:
-    token_uid = _uid(user)
-    companyid = _companyid_for_user(token_uid)
+    """
+    Validator rejects document - status = 'Rejected'.
+    """
+    token_uid = current_user["user_id"]
 
-    updatefields: dict[str, Any] = {
-        "comment": payload.comment,
-        "summary": payload.summary,
-        "status": "Rejected",
-    }
-    if payload.reviewer:
-        updatefields["reviewer"] = payload.reviewer
-    if payload.severitylevels:
-        updatefields["severitylevels"] = payload.severitylevels
+    try:
+        # Get document
+        stmt = select(Document).where(
+            Document.doc_id == payload.docid,
+            Document.responsible == token_uid,
+        )
+        result = await db.execute(stmt)
+        doc = result.scalar_one_or_none()
 
-    resp = (
-        supabase.table("documents")
-        .update(updatefields)
-        .eq("companyid", companyid)
-        .eq("docid", payload.docid)
-        .eq("responsible", token_uid)
-        .execute()
-    )
+        if not doc:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Document not found or not assigned to you",
+            )
 
-    if resp.data is None:
-        raise HTTPException(status_code=500, detail="Failed to reject document")
+        # Update document
+        doc.comment = payload.comment
+        doc.summary = payload.summary
+        doc.status = "Rejected"
 
-    return {"message": "Document successfully rejected", "data": resp.data}
+        if payload.reviewer:
+            doc.reviewer = payload.reviewer
+        if payload.severitylevels:
+            doc.severity_levels = payload.severitylevels
+
+        await db.commit()
+        await db.refresh(doc)
+
+        return {
+            "message": "Document successfully rejected",
+            "data": {
+                "doc_id": str(doc.doc_id),
+                "status": doc.status,
+            },
+        }
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        await db.rollback()
+        logger.error(f"Error rejecting document: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to reject document",
+        )
 
 
 @router.post("/delegate-document")
 async def delegate_document(
     payload: DelegateRequest,
-    user: UserResponse = Depends(verify_token),
+    current_user: dict = Depends(verify_token_with_tenant),
+    db: AsyncSession = Depends(get_async_db),
 ) -> dict[str, Any]:
     """
-    Delegate to an expert:
-      - keep 'responsible' as the validator (so it returns to them)
-      - set 'reviewer' to the expert (expert router filters reviewer + On Review)
-      - set status to On Review
+    Delegate document to an expert - status = 'On Review'.
+    Validator remains responsible, expert becomes reviewer.
     """
-    token_uid = _uid(user)
-    companyid = _companyid_for_user(token_uid)
+    token_uid = current_user["user_id"]
 
-    if payload.delegatorid != token_uid:
-        raise HTTPException(status_code=403, detail="delegatorid does not match token user")
+    if payload.delegator_id != token_uid:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="delegator_id does not match token user",
+        )
 
-    updatefields: dict[str, Any] = {
-        "comment": payload.comment,
-        "summary": payload.summary,
-        "status": payload.status or "On Review",
-        "reviewer": payload.assigneeid,
-        # responsible remains token_uid
-    }
-    if payload.severitylevels:
-        updatefields["severitylevels"] = payload.severitylevels
-
-    resp = (
-        supabase.table("documents")
-        .update(updatefields)
-        .eq("companyid", companyid)
-        .eq("docid", payload.docid)
-        .eq("responsible", token_uid)
-        .execute()
-    )
-
-    if resp.data is None:
-        raise HTTPException(status_code=500, detail="Failed to delegate document")
-
-    return {"message": "Document successfully delegated!", "data": resp.data}
-
-
-@router.post("/fetchdelegators")
-async def fetch_delegators(
-    data: dict[str, Any],
-    user: UserResponse = Depends(verify_token),
-) -> dict[str, Any]:
-    """
-    UI expects: { delegators: [{ id, fullName }] }
-    """
-    token_uid = _uid(user)
-    userid = data.get("userid")
-    if not userid or userid != token_uid:
-        raise HTTPException(status_code=403, detail="userid does not match token user")
-
-    companyid = _companyid_for_user(token_uid)
-
-    # Prefer "isExpert" (if column exists), else fallback to all profiles in company except self.
-    delegators: list[dict[str, Any]] = []
     try:
-        resp = (
-            supabase.table("profiles")
-            .select("id, fullname")
-            .eq("companyid", companyid)
-            .eq("isExpert", True)
-            .execute()
+        # Get document
+        stmt = select(Document).where(
+            Document.doc_id == payload.docid,
+            Document.responsible == token_uid,
         )
-        rows = resp.data or []
-        delegators = [
-            {"id": r["id"], "fullName": r.get("fullname") or "NA"}
-            for r in rows
-            if r.get("id") and str(r["id"]) != token_uid
-        ]
-    except Exception:
-        resp = (
-            supabase.table("profiles").select("id, fullname").eq("companyid", companyid).execute()
+        result = await db.execute(stmt)
+        doc = result.scalar_one_or_none()
+
+        if not doc:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Document not found or not assigned to you",
+            )
+
+        # Update document
+        doc.comment = payload.comment
+        doc.summary = payload.summary
+        doc.status = payload.status or "On Review"
+        doc.reviewer = payload.assignee_id  # Expert
+        # doc.responsible remains token_uid (validator)
+
+        if payload.severitylevels:
+            doc.severity_levels = payload.severitylevels
+
+        await db.commit()
+        await db.refresh(doc)
+
+        return {
+            "message": "Document successfully delegated!",
+            "data": {
+                "doc_id": str(doc.doc_id),
+                "status": doc.status,
+                "reviewer": str(doc.reviewer),
+            },
+        }
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        await db.rollback()
+        logger.error(f"Error delegating document: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to delegate document",
         )
-        rows = resp.data or []
-        delegators = [
-            {"id": r["id"], "fullName": r.get("fullname") or "NA"}
-            for r in rows
-            if r.get("id") and str(r["id"]) != token_uid
-        ]
-
-    return {"delegators": delegators}
 
 
-@router.post("/fetchassigneddocuments")
-async def fetch_assigned_documents(
-    data: dict[str, Any],
-    user: UserResponse = Depends(verify_token),
+@router.get("/get_stats")
+async def get_stats(
+    current_user: dict = Depends(verify_token_with_tenant),
+    db: AsyncSession = Depends(get_async_db),
 ) -> dict[str, Any]:
     """
-    Validator summary page expects: { documents: [{ id, title, status }] }
+    Get validator statistics: total assigned, completed, average review time.
     """
-    token_uid = _uid(user)
-    validatorid = data.get("validatorid")
-    if not validatorid or validatorid != token_uid:
-        raise HTTPException(status_code=403, detail="validatorid does not match token user")
+    token_uid = current_user["user_id"]
 
-    companyid = _companyid_for_user(token_uid)
+    try:
+        # Get all documents for this validator
+        stmt = select(Document).where(Document.responsible == token_uid)
+        result = await db.execute(stmt)
+        docs = result.scalars().all()
 
-    docs = (
-        supabase.table("documents")
-        .select("docid, title, status")
-        .eq("companyid", companyid)
-        .eq("responsible", token_uid)
-        .in_("status", ["Pending", "On Review", "Validated - Awaiting Approval"])
-        .execute()
-    ).data or []
+        total_assigned = 0
+        total_completed = 0
+        durations_hours = []
 
-    return {
-        "documents": [
-            {
-                "id": d.get("docid"),
-                "title": d.get("title") or "Untitled",
-                "status": d.get("status") or "NA",
-            }
-            for d in docs
-        ]
-    }
+        for d in docs:
+            st = d.status or ""
+            if st in ["Pending", "On Review", "Validated - Awaiting Approval"]:
+                total_assigned += 1
+            if st in ["Rejected", "Validated - Stored"]:
+                total_completed += 1
 
+            c = parse_dt(d.created_at.isoformat() if d.created_at else None)
+            u = parse_dt(d.updated_at.isoformat() if d.updated_at else None)
 
-@router.get("/getstats")
-async def get_stats(user: UserResponse = Depends(verify_token)) -> dict[str, Any]:
-    """
-    UI expects snakecase keys:
-      { totalassigned, totalcompleted, averagereviewtime }
-    """
-    token_uid = _uid(user)
-    companyid = _companyid_for_user(token_uid)
-
-    docs = (
-        supabase.table("documents")
-        .select("status, createdat, updatedat")
-        .eq("companyid", companyid)
-        .eq("responsible", token_uid)
-        .execute()
-    ).data or []
-
-    total_assigned = 0
-    total_completed = 0
-    durations_hours: list[float] = []
-
-    for d in docs:
-        st = d.get("status") or ""
-        if st in ("Pending", "On Review", "Validated - Awaiting Approval"):
-            total_assigned += 1
-        if st in ("Rejected", "Validated - Stored"):
-            total_completed += 1
-            c = _parse_dt(d.get("createdat"))
-            u = _parse_dt(d.get("updatedat"))
-            if c and u and u >= c:
+            if c and u and u > c:
                 durations_hours.append((u - c).total_seconds() / 3600.0)
 
-    avg = (sum(durations_hours) / len(durations_hours)) if durations_hours else 0.0
+        avg = sum(durations_hours) / len(durations_hours) if durations_hours else 0.0
 
-    return {
-        "totalassigned": total_assigned,
-        "totalcompleted": total_completed,
-        "averagereviewtime": round(avg, 2),
-    }
+        return {
+            "total_assigned": total_assigned,
+            "total_completed": total_completed,
+            "average_review_time": round(avg, 2),
+        }
+
+    except Exception as e:
+        logger.error(f"Error fetching stats: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=str(e),
+        )
+
+
+@router.post("/fetch_delegators")
+async def fetch_delegators(
+    data: dict[str, Any],
+    current_user: dict = Depends(verify_token_with_tenant),
+    db: AsyncSession = Depends(get_async_db),
+) -> dict[str, Any]:
+    """
+    Fetch list of experts (delegators) for delegation.
+    """
+    token_uid = current_user["user_id"]
+    company_reg_no = current_user.get("company_reg_no")
+
+    userid = data.get("user_id")
+    if not userid or userid != token_uid:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="userid does not match token user",
+        )
+
+    delegators = []
+
+    try:
+        # Try to get experts (isExpert = True)
+        try:
+            stmt = select(Profile.id, Profile.full_name).where(
+                Profile.company_reg_no == company_reg_no,
+                Profile.is_expert == True,  # noqa: E712
+            )
+            result = await db.execute(stmt)
+            rows = result.all()
+
+            delegators = [
+                {"id": str(r.id), "fullName": r.full_name or "N/A"}
+                for r in rows
+                if r.id and str(r.id) != token_uid
+            ]
+        except Exception:
+            # Fallback: all profiles except self
+            stmt = select(Profile.id, Profile.full_name).where(
+                Profile.company_reg_no == company_reg_no
+            )
+            result = await db.execute(stmt)
+            rows = result.all()
+
+            delegators = [
+                {"id": str(r.id), "fullName": r.full_name or "N/A"}
+                for r in rows
+                if r.id and str(r.id) != token_uid
+            ]
+
+        return {"delegators": delegators}
+
+    except Exception as e:
+        logger.error(f"Error fetching delegators: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=str(e),
+        )
+
+
+@router.post("/fetch_assigned_documents")
+async def fetch_assigned_documents(
+    data: dict[str, Any],
+    current_user: dict = Depends(verify_token_with_tenant),
+    db: AsyncSession = Depends(get_async_db),
+) -> dict[str, Any]:
+    """
+    Fetch documents assigned to validator (summary view).
+    """
+    token_uid = current_user["user_id"]
+    validator_id = data.get("validator_id")
+
+    if not validator_id or validator_id != token_uid:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="validator_id does not match token user",
+        )
+
+    try:
+        # Get assigned documents
+        stmt = select(Document).where(
+            Document.responsible == token_uid,
+            Document.status.in_(["Pending", "On Review", "Validated - Awaiting Approval"]),
+        )
+        result = await db.execute(stmt)
+        docs = result.scalars().all()
+
+        return {
+            "documents": [
+                {
+                    "id": str(d.doc_id),
+                    "title": d.title or "Untitled",
+                    "status": d.status or "N/A",
+                }
+                for d in docs
+            ]
+        }
+
+    except Exception as e:
+        logger.error(f"Error fetching assigned documents: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=str(e),
+        )

@@ -2,14 +2,20 @@ import argparse
 import logging
 import os
 
-from chat import (generate_summary_chat, initial_question_catalogue,
-                  update_conversation)
+from chat import generate_summary_chat, initial_question_catalogue, update_conversation
 from document import generate_init_questions
 from state_manager import state_manager
-from ui_handlers import (add_tag, go_initial_info, go_to_chatbot_tab,
-                         go_to_metadata_tab, go_to_questions,
-                         go_to_resume_session, go_to_validation_tab,
-                         radio_change, upload_prev_questions)
+from ui_handlers import (
+    add_tag,
+    go_initial_info,
+    go_to_chatbot_tab,
+    go_to_metadata_tab,
+    go_to_questions,
+    go_to_resume_session,
+    go_to_validation_tab,
+    radio_change,
+    upload_prev_questions,
+)
 from utils import generate_tags
 
 from app.database import get_all_managers, store_in_kb

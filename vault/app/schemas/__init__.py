@@ -1,27 +1,42 @@
-from app.schemas.auth import (ChangePasswordModel, CheckFirstLoginModel,
-                              EmailTestRequest, PasswordResetRequestModel,
-                              PasswordResetResponse)
+from app.schemas.auth import (
+                              ChangePasswordModel,
+                              CheckFirstLoginModel,
+                              EmailTestRequest,
+                              PasswordResetRequestModel,
+                              PasswordResetResponse,
+)
 
-from .company import (CompanyContactDetails, CompanyCreate, CompanyResponse,
-                      CompanyThemeSettingsPayload,
-                      CompanyThemeSettingsResponse, CompanyUpdate,
-                      GetCompanyContactDetailsRequest,
-                      GetCompanyThemeSettingsRequest,
-                      GetCompanyThemeSettingsResponse,
-                      UpdateCompanyContactDetailsRequest,
-                      UpdateCompanyThemeSettingsRequest)
-from .document import (DocumentCreate, DocumentResponse, DocumentUpdate,
-                       DocumentWithSimilarity)
-from .ldap import (LDAPConnectorCreate, LDAPConnectorResponse,
-                   LDAPConnectorUpdate)
+from .company import (
+                              CompanyContactDetails,
+                              CompanyCreate,
+                              CompanyResponse,
+                              CompanyThemeSettingsPayload,
+                              CompanyThemeSettingsResponse,
+                              CompanyUpdate,
+                              GetCompanyContactDetailsRequest,
+                              GetCompanyThemeSettingsRequest,
+                              GetCompanyThemeSettingsResponse,
+                              UpdateCompanyContactDetailsRequest,
+                              UpdateCompanyThemeSettingsRequest,
+)
+from .document import DocumentCreate, DocumentResponse, DocumentUpdate, DocumentWithSimilarity
+from .ldap import LDAPConnectorCreate, LDAPConnectorResponse, LDAPConnectorUpdate
 from .profile import ProfileCreate, ProfileResponse, ProfileUpdate
 from .role import RoleCreate, RoleResponse, UserRoleCreate, UserRoleResponse
-from .session import (QuestionCreate, QuestionResponse, SessionCreate,
-                      SessionResponse, SessionUpdate)
-from .user import (CompanyDetails, DeleteUserResponse, GetUserCompanyResponse,
-                   OrganisationDetails, UpdateUserDetailsRequest,
-                   UserCompanyRequest, UserCreate, UserInfo,
-                   UserProfileRequest, UserProfileResponse, UserResponse)
+from .session import QuestionCreate, QuestionResponse, SessionCreate, SessionResponse, SessionUpdate
+from .user import (
+                              CompanyDetails,
+                              DeleteUserResponse,
+                              GetUserCompanyResponse,
+                              OrganisationDetails,
+                              UpdateUserDetailsRequest,
+                              UserCompanyRequest,
+                              UserCreate,
+                              UserInfo,
+                              UserProfileRequest,
+                              UserProfileResponse,
+                              UserResponse,
+)
 
 __all__ = [
     # Company schemas

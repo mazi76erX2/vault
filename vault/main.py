@@ -8,14 +8,26 @@ from contextlib import asynccontextmanager
 import uvicorn
 from fastapi import FastAPI
 
-from app.api import (admin_router, auth_router, companies_router, kb_router,
-                     passwords_router, users_router, websocket_router)
+from app.api import (
+    admin_router,
+    auth_router,
+    collector_router,
+    companies_router,
+    expert_router,
+    helper_router,
+    kb_router,
+    passwords_router,
+    users_router,
+    utils_router,
+    validator_router,
+    websocket_router,
+)
 from app.config.middleware import setup_middleware
 from app.logger_config import setup_logging
 
 # Initialize logging
 setup_logging()
-logger = logging.getLogger(__name__)
+logger = setup_logging.getLogger(__name__)
 
 
 @asynccontextmanager
@@ -42,6 +54,11 @@ app.include_router(companies_router, prefix="/api/companies", tags=["Companies"]
 app.include_router(kb_router, prefix="/api/kb", tags=["Knowledge Base"])
 app.include_router(passwords_router, prefix="/api/auth", tags=["Passwords"])
 app.include_router(websocket_router, tags=["WebSocket"])
+app.include_router(utils_router, prefix="/api/utils", tags=["Utilities"])
+app.include_router(collector_router, tags=["Collector"])
+app.include_router(expert_router, tags=["Expert"])
+app.include_router(validator_router, tags=["Validator"])
+app.include_router(helper_router, tags=["Helper"])
 
 
 @app.get("/")

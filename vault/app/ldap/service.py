@@ -8,8 +8,7 @@ from app.database import supabase
 
 from .connector import authenticate_ldap, get_ldap_client
 from .errors import map_ldap_error
-from .models import (LDAPConnector, LDAPSearchInputModel, LDAPSearchResult,
-                     LoginModel)
+from .models import LDAPConnector, LDAPSearchInputModel, LDAPSearchResult, LoginModel
 
 # Configure logger
 logger = logging.getLogger(__name__)

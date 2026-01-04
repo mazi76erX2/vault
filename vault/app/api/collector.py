@@ -1,4 +1,7 @@
-# app/api/collector.py
+"""
+Collector endpoints - migrated from Supabase to SQLAlchemy.
+"""
+
 from __future__ import annotations
 
 import logging
@@ -8,59 +11,76 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any
 
-from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
-from gotrue import UserResponse
+from fastapi import APIRouter, Depends, File, HTTPException, UploadFile, status
+from sqlalchemy import select, update
+from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.database import supabase
-from app.dto.collector import (CollectorSummaryContinueRequest,
-                               CollectorSummaryContinueResponse,
-                               CollectorSummaryUpdateSummaryRequest,
-                               ProfileUpdateRequest, StartChatRequest)
-from app.middleware.auth import verify_token
-from app.services.collector_llm import (generate_follow_up_question,
-                                        generate_initial_questions,
-                                        generate_summary, generate_tags,
-                                        generate_topic_from_question)
+from app.database import get_async_db
+from app.dto.collector import (
+    CollectorSummaryContinueRequest,
+    CollectorSummaryContinueResponse,
+    CollectorSummaryUpdateSummaryRequest,
+    ProfileUpdateRequest,
+    StartChatRequest,
+)
+from app.middleware.auth import verify_token_with_tenant
+from app.models import ChatMessageCollector, Document, Profile, Questions, Session
+from app.services.collector_llm import (
+    generate_follow_up_question,
+    generate_initial_questions,
+    generate_summary,
+    generate_tags,
+    generate_topic_from_question,
+)
 from app.services.file_extract import extract_text
 
 router = APIRouter(prefix="/api/v1/collector", tags=["collector"])
 logger = logging.getLogger(__name__)
 
-UPLOADDIR = ".uploads"
-os.makedirs(UPLOADDIR, exist_ok=True)
+UPLOAD_DIR = ".uploads"
+os.makedirs(UPLOAD_DIR, exist_ok=True)
 
 
-def _must_userid(user: UserResponse) -> str:
-    uid = getattr(getattr(user, "user", None), "id", None)
-    if not uid:
-        raise HTTPException(status_code=400, detail="Missing user id")
-    return str(uid)
-
-
-@router.post("/updatecvtext")
-def updatecvtext(
-    file: UploadFile = File(...), user: UserResponse = Depends(verify_token)
+@router.post("/update_cv_text")
+async def update_cv_text(
+    file: UploadFile = File(...),
+    current_user: dict = Depends(verify_token_with_tenant),
+    db: AsyncSession = Depends(get_async_db),
 ) -> dict[str, Any]:
-    userid = _must_userid(user)
+    """Upload and extract CV text."""
+    user_id = current_user["user_id"]
+    filepath = os.path.join(UPLOAD_DIR, file.filename)
 
-    filepath = os.path.join(UPLOADDIR, file.filename)
     try:
         with open(filepath, "wb") as buffer:
             shutil.copyfileobj(file.file, buffer)
 
-        cvtext = extract_text(Path(filepath)).strip()
-        if not cvtext:
-            raise HTTPException(status_code=400, detail="Could not extract CV text from file")
+        cv_text = extract_text(Path(filepath)).strip()
+        if not cv_text:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Could not extract CV text from file",
+            )
 
-        resp = supabase.table("profiles").update({"CVtext": cvtext}).eq("id", userid).execute()
-        if not resp.data:
-            raise HTTPException(status_code=404, detail="User profile not found or no changes made")
+        # Update profile
+        stmt = update(Profile).where(Profile.id == user_id).values(CVtext=cv_text)
+        result = await db.execute(stmt)
+        await db.commit()
 
-        return {"cvtext": cvtext}
+        if result.rowcount == 0:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="User profile not found",
+            )
+
+        return {"cvtext": cv_text}
+
     except HTTPException:
         raise
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        await db.rollback()
+        logger.error(f"Error updating CV text: {e}")
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e))
     finally:
         try:
             os.remove(filepath)
@@ -68,611 +88,742 @@ def updatecvtext(
             pass
 
 
-@router.post("/fetchresumesessions")
-def fetchresumesessions(user: UserResponse = Depends(verify_token)) -> dict[str, Any]:
-    userid = _must_userid(user)
-    try:
-        resp = (
-            supabase.table("sessions")
-            .select("*")
-            .eq("userid", userid)
-            .eq("status", "Started")
-            .execute()
-        )
-        return {"sessions": resp.data or []}
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+@router.post("/fetch_resume_sessions")
+async def fetch_resume_sessions(
+    current_user: dict = Depends(verify_token_with_tenant),
+    db: AsyncSession = Depends(get_async_db),
+) -> dict[str, Any]:
+    """Fetch sessions with 'Started' status."""
+    user_id = current_user["user_id"]
 
-
-@router.post("/fetchuserprofile")
-async def fetchuserprofile(user: UserResponse = Depends(verify_token)) -> dict[str, Any]:
-    userid = _must_userid(user)
     try:
-        resp = (
-            supabase.table("profiles")
-            .select("fullname, yearsofexperience, fieldofexpertise, department, CVtext")
-            .eq("id", userid)
-            .execute()
-        )
-        if not resp.data:
-            raise HTTPException(status_code=404, detail="No profile found")
-        data = resp.data[0]
+        stmt = select(Session).where(Session.user_id == user_id, Session.status == "Started")
+        result = await db.execute(stmt)
+        sessions = result.scalars().all()
+
         return {
-            "fullname": data.get("fullname", ""),
-            "yearsofexperience": data.get("yearsofexperience", None),
-            "fieldofexpertise": data.get("fieldofexpertise", ""),
-            "department": data.get("department", ""),
-            "CVtext": data.get("CVtext", None),
+            "sessions": [
+                {
+                    "id": str(s.id),
+                    "user_id": str(s.user_id),
+                    "status": s.status,
+                    "created_at": s.created_at.isoformat() if s.created_at else None,
+                    "topic": getattr(s, "topic", None),
+                }
+                for s in sessions
+            ]
         }
+
+    except Exception as e:
+        logger.error(f"Error fetching sessions: {e}")
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e))
+
+
+@router.post("/fetch_user_profile")
+async def fetch_user_profile(
+    current_user: dict = Depends(verify_token_with_tenant),
+    db: AsyncSession = Depends(get_async_db),
+) -> dict[str, Any]:
+    """Fetch user profile details."""
+    user_id = current_user["user_id"]
+
+    try:
+        stmt = select(Profile).where(Profile.id == user_id)
+        result = await db.execute(stmt)
+        profile = result.scalar_one_or_none()
+
+        if not profile:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="No profile found",
+            )
+
+        return {
+            "fullname": profile.full_name or "",
+            "yearsofexperience": getattr(profile, "years_of_experience", None),
+            "fieldofexpertise": getattr(profile, "field_of_expertise", "") or "",
+            "department": profile.department or "",
+            "CVtext": getattr(profile, "CVtext", None),
+        }
+
     except HTTPException:
         raise
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        logger.error(f"Error fetching profile: {e}")
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e))
 
 
-@router.post("/updateprofile")
-def updateprofile(
-    request: ProfileUpdateRequest, user: UserResponse = Depends(verify_token)
+@router.post("/update_profile")
+async def update_profile(
+    request: ProfileUpdateRequest,
+    current_user: dict = Depends(verify_token_with_tenant),
+    db: AsyncSession = Depends(get_async_db),
 ) -> dict[str, Any]:
-    _ = _must_userid(user)
+    """Update user profile."""
     try:
-        resp = (
-            supabase.table("profiles")
-            .upsert(
-                {
-                    "id": request.userid,
-                    "fullname": request.fullname,
-                    "yearsofexperience": request.yearsofexperience,
-                    "fieldofexpertise": request.fieldofexpertise,
-                    "department": request.department,
-                },
-                on_conflict="id",
+        # Get existing profile
+        stmt = select(Profile).where(Profile.id == request.user_id)
+        result = await db.execute(stmt)
+        profile = result.scalar_one_or_none()
+
+        if not profile:
+            # Create new profile
+            profile = Profile(
+                id=request.user_id,
+                full_name=request.fullname,
+                department=request.department,
             )
-            .execute()
-        )
-        return {"message": "Profile updated successfully", "data": resp.data}
+            if hasattr(request, "yearsofexperience"):
+                profile.years_of_experience = request.yearsofexperience
+            if hasattr(request, "fieldofexpertise"):
+                profile.field_of_expertise = request.fieldofexpertise
+            db.add(profile)
+        else:
+            # Update existing
+            profile.full_name = request.fullname
+            profile.department = request.department
+            if hasattr(request, "yearsofexperience"):
+                profile.years_of_experience = request.yearsofexperience
+            if hasattr(request, "fieldofexpertise"):
+                profile.field_of_expertise = request.fieldofexpertise
+            profile.updated_at = datetime.utcnow()
+
+        await db.commit()
+        await db.refresh(profile)
+
+        return {"message": "Profile updated successfully", "data": {"id": str(profile.id)}}
+
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        await db.rollback()
+        logger.error(f"Error updating profile: {e}")
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e))
 
 
-@router.post("/fetchchatconversation")
-def fetchchatconversation(
-    data: dict[str, Any], user: UserResponse = Depends(verify_token)
+@router.post("/fetch_chat_conversation")
+async def fetch_chat_conversation(
+    data: dict[str, Any],
+    current_user: dict = Depends(verify_token_with_tenant),
+    db: AsyncSession = Depends(get_async_db),
 ) -> dict[str, Any]:
-    _ = _must_userid(user)
-    sessionid = data.get("sessionid")
-    chatmessagesid = data.get("chatmessagesid")
+    """Fetch chat conversation messages."""
+    session_id = data.get("sessionid")
+    chat_messages_id = data.get("chatmessagesid")
 
-    if not sessionid:
-        raise HTTPException(status_code=400, detail="Missing sessionid")
+    if not session_id:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Missing sessionid")
 
     try:
-        if not chatmessagesid:
-            sresp = (
-                supabase.table("sessions")
-                .select("chatmessagesid")
-                .eq("id", sessionid)
-                .maybe_single()
-                .execute()
-            )
-            sdata = sresp.data or {}
-            chatmessagesid = sdata.get("chatmessagesid")
-            if not chatmessagesid:
+        # Get chatmessagesid from session if not provided
+        if not chat_messages_id:
+            stmt = select(Session.chat_messages_id).where(Session.id == session_id)
+            result = await db.execute(stmt)
+            chat_messages_id = result.scalar_one_or_none()
+
+            if not chat_messages_id:
                 return {"chatmessagesid": None, "messages": None}
 
-        cresp = (
-            supabase.table("chatmessagescollector")
-            .select("messages")
-            .eq("id", chatmessagesid)
-            .maybe_single()
-            .execute()
+        # Get messages
+        stmt = select(ChatMessageCollector.messages).where(
+            ChatMessageCollector.id == chat_messages_id
         )
-        cdata = cresp.data or {}
-        return {"chatmessagesid": chatmessagesid, "messages": cdata.get("messages")}
+        result = await db.execute(stmt)
+        messages = result.scalar_one_or_none()
+
+        return {"chatmessagesid": str(chat_messages_id), "messages": messages}
+
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to fetch chat conversation: {str(e)}")
-
-
-@router.get("/fetchdocumentsstatus")
-def fetchdocumentsstatus(user: UserResponse = Depends(verify_token)) -> dict[str, Any]:
-    userid = _must_userid(user)
-    try:
-        profileresp = supabase.table("profiles").select("id, fullname").execute()
-        profiles = profileresp.data or []
-        usermap = {p["id"]: p.get("fullname", "NA") for p in profiles if p.get("id")}
-
-        docresp = (
-            supabase.table("documents")
-            .select("docid, title, responsible, status")
-            .neq("status", "Draft")
-            .eq("authorid", userid)
-            .execute()
+        logger.error(f"Error fetching chat conversation: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to fetch chat conversation: {str(e)}",
         )
-        documents = docresp.data or []
-        if not documents:
-            raise HTTPException(status_code=404, detail="No completed documents found")
 
-        rows = []
-        for d in documents:
-            rows.append(
-                {
-                    "id": d.get("docid"),
-                    "title": d.get("title", "Untitled"),
-                    "responsible": usermap.get(d.get("responsible"), "NA"),
-                    "status": d.get("status", "Pending"),
-                }
+
+@router.get("/fetch_documents_status")
+async def fetch_documents_status(
+    current_user: dict = Depends(verify_token_with_tenant),
+    db: AsyncSession = Depends(get_async_db),
+) -> dict[str, Any]:
+    """Fetch documents for collector."""
+    user_id = current_user["user_id"]
+    company_reg_no = current_user.get("company_reg_no")
+
+    try:
+        # Get all profiles for user mapping
+        stmt = select(Profile.id, Profile.full_name).where(Profile.company_reg_no == company_reg_no)
+        result = await db.execute(stmt)
+        profiles = result.all()
+        user_map = {str(p.id): p.full_name or "N/A" for p in profiles}
+
+        # Get documents
+        stmt = select(Document).where(
+            Document.author_id == user_id,
+            Document.status != "Draft",
+        )
+        result = await db.execute(stmt)
+        documents = result.scalars().all()
+
+        if not documents:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="No completed documents found",
             )
+
+        rows = [
+            {
+                "id": str(d.doc_id),
+                "title": d.title or "Untitled",
+                "responsible": user_map.get(str(d.responsible), "N/A"),
+                "status": d.status or "Pending",
+            }
+            for d in documents
+        ]
+
         return {"documents": rows}
+
     except HTTPException:
         raise
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        logger.error(f"Error fetching documents: {e}")
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e))
 
 
-@router.get("/getvalidators")
-def getvalidators(user: UserResponse = Depends(verify_token)) -> dict[str, Any]:
-    _ = _must_userid(user)
+@router.get("/get_validators")
+async def get_validators(
+    current_user: dict = Depends(verify_token_with_tenant),
+    db: AsyncSession = Depends(get_async_db),
+) -> dict[str, Any]:
+    """Get all validators (profiles with IDs)."""
+    company_reg_no = current_user.get("company_reg_no")
+
     try:
-        profileresp = supabase.table("profiles").select("id, fullname").execute()
-        profiles = profileresp.data or []
-        validators = [
-            {"id": p.get("id"), "fullname": p.get("fullname", "NA")}
-            for p in profiles
-            if p.get("id")
-        ]
+        stmt = select(Profile.id, Profile.full_name).where(Profile.company_reg_no == company_reg_no)
+        result = await db.execute(stmt)
+        profiles = result.all()
+
+        validators = [{"id": str(p.id), "fullName": p.full_name or "N/A"} for p in profiles]
+
         return {"validators": validators}
+
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        logger.error(f"Error fetching validators: {e}")
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e))
 
 
 @router.post("/get-questions")
-async def getquestions(
-    request: dict[str, Any], user: UserResponse = Depends(verify_token)
+async def get_questions(
+    request: dict[str, Any],
+    current_user: dict = Depends(verify_token_with_tenant),
+    db: AsyncSession = Depends(get_async_db),
 ) -> dict[str, Any]:
-    _ = _must_userid(user)
-    userid = request.get("userid")
-    if not userid:
-        raise HTTPException(status_code=400, detail="Missing userid")
+    """Get questions for user."""
+    user_id = request.get("user_id")
+    if not user_id:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Missing user_id")
 
     try:
-        topics_available = True
-        try:
-            resp = (
-                supabase.table("questions")
-                .select("questions, status, topics")
-                .eq("userid", userid)
-                .execute()
-            )
-        except Exception as e:
-            if "column" in str(e).lower() and "topics" in str(e).lower():
-                topics_available = False
-                resp = (
-                    supabase.table("questions")
-                    .select("questions, status")
-                    .eq("userid", userid)
-                    .execute()
-                )
-            else:
-                raise
+        stmt = select(Questions).where(Questions.user_id == user_id)
+        result = await db.execute(stmt)
+        question_row = result.scalar_one_or_none()
 
-        if resp.data is None:
+        if not question_row:
             raise HTTPException(
-                status_code=500, detail="Failed to retrieve questions from database"
-            )
-        if not resp.data:
-            raise HTTPException(
-                status_code=404,
-                detail="No questions found. Click Generate to create new questions or Upload Questions to import from a file.",
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="No questions found. Click 'Generate' to create new questions or 'Upload Questions' to import from a file.",
             )
 
-        row = resp.data[0]
         return {
-            "questions": row.get("questions", []),
-            "status": row.get("status", []),
-            "topics": row.get("topics", []) if topics_available else [],
+            "questions": question_row.questions or [],
+            "status": question_row.status or [],
+            "topics": getattr(question_row, "topics", []),
         }
+
     except HTTPException:
         raise
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Error fetching questions: {str(e)}")
+        logger.error(f"Error fetching questions: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Error fetching questions: {str(e)}",
+        )
 
 
-@router.post("/generatequestions")
-def generatequestions(
-    data: dict[str, Any], user: UserResponse = Depends(verify_token)
+@router.post("/generate_questions")
+async def generate_questions(
+    data: dict[str, Any],
+    current_user: dict = Depends(verify_token_with_tenant),
+    db: AsyncSession = Depends(get_async_db),
 ) -> dict[str, Any]:
-    _ = _must_userid(user)
-    userid = data.get("userid")
-    if not userid:
-        raise HTTPException(status_code=400, detail="Missing userid")
+    """Generate initial questions using LLM."""
+    user_id = data.get("user_id")
+    if not user_id:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Missing user_id")
 
     try:
-        prof = (
-            supabase.table("profiles")
-            .select("fullname, yearsofexperience, fieldofexpertise, department, CVtext")
-            .eq("id", userid)
-            .maybe_single()
-            .execute()
-        ).data or {}
+        # Get profile
+        stmt = select(Profile).where(Profile.id == user_id)
+        result = await db.execute(stmt)
+        prof = result.scalar_one_or_none()
 
-        questions, _seed = generate_initial_questions(prof, n=8)
-        topics: list[str] = [generate_topic_from_question(q) for q in questions]
+        if not prof:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Profile not found")
+
+        profile_dict = {
+            "fullname": prof.full_name,
+            "yearsofexperience": getattr(prof, "years_of_experience", None),
+            "fieldofexpertise": getattr(prof, "field_of_expertise", None),
+            "department": prof.department,
+            "CVtext": getattr(prof, "CVtext", None),
+        }
+
+        # Generate questions
+        questions, seed = generate_initial_questions(profile_dict, n=8)
+        topics = [generate_topic_from_question(q) for q in questions]
         status_list = ["Not Started" for _ in questions]
 
-        upsertdata = {
-            "userid": userid,
-            "questions": questions,
-            "createdat": datetime.now().isoformat(),
-            "status": status_list,
-        }
-        # topics column may not exist; only return topics to frontend
-        supabase.table("questions").upsert(upsertdata, on_conflict="userid").execute()
+        # Upsert questions
+        stmt = select(Questions).where(Questions.user_id == user_id)
+        result = await db.execute(stmt)
+        existing = result.scalar_one_or_none()
+
+        if existing:
+            existing.questions = questions
+            existing.status = status_list
+            if hasattr(existing, "topics"):
+                existing.topics = topics
+            existing.created_at = datetime.now()
+        else:
+            new_questions = Questions(
+                user_id=user_id,
+                questions=questions,
+                status=status_list,
+                created_at=datetime.now(),
+            )
+            if hasattr(Questions, "topics"):
+                new_questions.topics = topics
+            db.add(new_questions)
+
+        await db.commit()
 
         return {"questions": questions, "status": status_list, "topics": topics}
+
+    except HTTPException:
+        raise
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        await db.rollback()
+        logger.error(f"Error generating questions: {e}")
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e))
 
 
-@router.post("/initquestions")
-def initquestionsfromupload(
-    data: dict[str, Any], user: UserResponse = Depends(verify_token)
+@router.post("/init_questions")
+async def init_questions_from_upload(
+    data: dict[str, Any],
+    current_user: dict = Depends(verify_token_with_tenant),
+    db: AsyncSession = Depends(get_async_db),
 ) -> dict[str, Any]:
-    _ = _must_userid(user)
-    userid = data.get("userid")
-    questionslist = data.get("questions")
-    if not userid or not questionslist:
-        raise HTTPException(status_code=400, detail="Missing userid or questions list")
+    """Initialize questions from uploaded file."""
+    user_id = data.get("user_id")
+    questions_list = data.get("questions")
+
+    if not user_id or not questions_list:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Missing user_id or questions list",
+        )
 
     try:
-        topics: list[str] = [generate_topic_from_question(q) for q in questionslist]
-        status_list = ["Not Started" for _ in questionslist]
+        topics = [generate_topic_from_question(q) for q in questions_list]
+        status_list = ["Not Started" for _ in questions_list]
 
-        upsertdata = {
-            "userid": userid,
-            "questions": questionslist,
-            "createdat": datetime.now().isoformat(),
-            "status": status_list,
-        }
-        supabase.table("questions").upsert(upsertdata, on_conflict="userid").execute()
+        stmt = select(Questions).where(Questions.user_id == user_id)
+        result = await db.execute(stmt)
+        existing = result.scalar_one_or_none()
+
+        if existing:
+            existing.questions = questions_list
+            existing.status = status_list
+            if hasattr(existing, "topics"):
+                existing.topics = topics
+            existing.created_at = datetime.now()
+        else:
+            new_questions = Questions(
+                user_id=user_id,
+                questions=questions_list,
+                status=status_list,
+                created_at=datetime.now(),
+            )
+            if hasattr(Questions, "topics"):
+                new_questions.topics = topics
+            db.add(new_questions)
+
+        await db.commit()
 
         return {
             "message": "Questions initialized successfully",
-            "questions": questionslist,
+            "questions": questions_list,
             "status": status_list,
             "topics": topics,
         }
+
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        await db.rollback()
+        logger.error(f"Error initializing questions: {e}")
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e))
 
 
 @router.post("/start-chat")
 async def start_chat(
-    request: StartChatRequest, user: UserResponse = Depends(verify_token)
+    request: StartChatRequest,
+    current_user: dict = Depends(verify_token_with_tenant),
+    db: AsyncSession = Depends(get_async_db),
 ) -> dict[str, Any]:
-    userid = _must_userid(user)
+    """Start a new chat session."""
+    user_id = current_user["user_id"]
 
     try:
-        # 0) companyid
-        prof = (
-            supabase.table("profiles")
-            .select("companyid")
-            .eq("id", userid)
-            .maybe_single()
-            .execute()
-            .data
-            or {}
-        )
-        companyid = prof.get("companyid")
-        if not companyid:
+        # Get company_id
+        stmt = select(Profile.company_id).where(Profile.id == user_id)
+        result = await db.execute(stmt)
+        company_id = result.scalar_one_or_none()
+
+        if not company_id:
             raise HTTPException(
-                status_code=400,
+                status_code=status.HTTP_400_BAD_REQUEST,
                 detail="User does not have a company associated with their profile",
             )
 
-        # 1) create Draft document
-        docins = (
-            supabase.table("documents")
-            .insert(
-                {
-                    "authorid": userid,
-                    "title": f"Draft Document - {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}",
-                    "severitylevels": "Low",
-                    "status": "Draft",
-                    "companyid": companyid,
-                }
-            )
-            .execute()
+        # Create draft document
+        doc = Document(
+            author_id=user_id,
+            title=f"Draft Document - {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}",
+            severity_levels="Low",
+            status="Draft",
+            company_id=company_id,
         )
-        if not docins.data or not docins.data[0].get("docid"):
-            raise HTTPException(status_code=500, detail="Failed to create initial document record")
-        docid = docins.data[0]["docid"]
+        db.add(doc)
+        await db.flush()
+        doc_id = doc.doc_id
 
-        # 2) create session
+        # Create session
         topic = generate_topic_from_question(request.question)
-        sins = (
-            supabase.table("sessions")
-            .insert(
-                {
-                    "userid": userid,
-                    "docid": docid,
-                    "createdat": datetime.now().isoformat(),
-                    "topic": topic,
-                    "status": "Started",
-                }
-            )
-            .execute()
+        session = Session(
+            user_id=user_id,
+            doc_id=doc_id,
+            created_at=datetime.now(),
+            topic=topic,
+            status="Started",
         )
-        if not sins.data or not sins.data[0].get("id"):
-            raise HTTPException(status_code=500, detail="Failed to create session record")
-        sessionid = sins.data[0]["id"]
+        db.add(session)
+        await db.flush()
+        session_id = session.id
 
-        # 3) create chatmessagescollector with system+initial assistant message
-        systemmessage = {
+        # Create chat messages
+        system_message = {
             "role": "system",
-            "content": (
-                "You are a dynamic and engaging chatbot designed to ask open-ended questions to collect knowledge "
-                "and experiences from employees. Only ask follow-up questions. Do not summarize or answer."
-            ),
+            "content": "You are a dynamic and engaging chatbot designed to ask open-ended questions to collect knowledge and experiences from employees. Only ask follow-up questions. Do not summarize or answer.",
         }
-        initialquestion = {"role": "assistant", "content": request.question}
-        messages = [systemmessage, initialquestion]
+        initial_question = {"role": "assistant", "content": request.question}
+        messages = [system_message, initial_question]
 
-        cins = (
-            supabase.table("chatmessagescollector")
-            .insert(
-                {
-                    "sessionid": sessionid,
-                    "messages": messages,
-                    "createdat": datetime.now().isoformat(),
-                }
-            )
-            .execute()
+        chat_msg = ChatMessageCollector(
+            session_id=session_id,
+            messages=messages,
+            created_at=datetime.now(),
         )
-        if not cins.data or not cins.data[0].get("id"):
-            raise HTTPException(status_code=500, detail="Failed to insert chatmessagecollector")
-        chatmsgid = cins.data[0]["id"]
+        db.add(chat_msg)
+        await db.flush()
+        chat_msg_id = chat_msg.id
 
-        # 4) update session with chatmessagesid
-        supabase.table("sessions").update({"chatmessagesid": chatmsgid}).eq(
-            "id", sessionid
-        ).execute()
+        # Update session with chat_messages_id
+        session.chat_messages_id = chat_msg_id
 
-        # 5) update question status (best-effort)
+        await db.commit()
+
+        # Update question status (best-effort)
         try:
-            qrow = (
-                supabase.table("questions")
-                .select("status")
-                .eq("userid", userid)
-                .maybe_single()
-                .execute()
-                .data
-                or {}
-            )
-            status_list = qrow.get("status") or []
-            idx = int(request.id) - 1
-            if 0 <= idx < len(status_list):
-                status_list[idx] = "Started"
-                supabase.table("questions").update({"status": status_list}).eq(
-                    "userid", userid
-                ).execute()
+            stmt = select(Questions).where(Questions.user_id == user_id)
+            result = await db.execute(stmt)
+            q_row = result.scalar_one_or_none()
+
+            if q_row and q_row.status:
+                idx = int(request.id) - 1
+                if 0 <= idx < len(q_row.status):
+                    q_row.status[idx] = "Started"
+                    await db.commit()
         except Exception:
             logger.exception("Question status update failed (non-fatal)")
 
         return {
             "message": "Session created successfully",
-            "sessionId": sessionid,
-            "chatMessageId": chatmsgid,
+            "sessionId": str(session_id),
+            "chatMessageId": str(chat_msg_id),
             "resume": False,
         }
+
     except HTTPException:
         raise
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        await db.rollback()
+        logger.error(f"Error starting chat: {e}")
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e))
 
 
-@router.post("/generatequestionresponse")
-def generatequestionresponse(
-    data: dict[str, Any], user: UserResponse = Depends(verify_token)
+@router.post("/generate_question_response")
+async def generate_question_response(
+    data: dict[str, Any],
+    current_user: dict = Depends(verify_token_with_tenant),
+    db: AsyncSession = Depends(get_async_db),
 ) -> dict[str, Any]:
-    _ = _must_userid(user)
-    chatpromptid = data.get("chatpromptid")
-    usertext = data.get("usertext")
-    if not chatpromptid:
-        raise HTTPException(status_code=400, detail="Missing chatpromptid")
-    if not usertext:
-        raise HTTPException(status_code=400, detail="Missing usertext")
+    """Generate follow-up question based on user response."""
+    chat_prompt_id = data.get("chatpromptid")
+    user_text = data.get("usertext")
+
+    if not chat_prompt_id:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Missing chatpromptid")
+    if not user_text:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Missing usertext")
 
     try:
-        chatrow = (
-            supabase.table("chatmessagescollector")
-            .select("messages")
-            .eq("id", chatpromptid)
-            .maybe_single()
-            .execute()
-        ).data
-        if not chatrow:
-            raise HTTPException(status_code=404, detail="Chat session not found")
+        stmt = select(ChatMessageCollector).where(ChatMessageCollector.id == chat_prompt_id)
+        result = await db.execute(stmt)
+        chat_row = result.scalar_one_or_none()
 
-        messages = chatrow.get("messages") or []
-        followup, updated_messages = generate_follow_up_question(messages, usertext)
+        if not chat_row:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND, detail="Chat session not found"
+            )
 
-        supabase.table("chatmessagescollector").update({"messages": updated_messages}).eq(
-            "id", chatpromptid
-        ).execute()
-        return {"followupquestion": followup}
+        messages = chat_row.messages or []
+        followup, updated_messages = generate_follow_up_question(messages, user_text)
+
+        chat_row.messages = updated_messages
+        await db.commit()
+
+        return {"followupQuestion": followup}
+
     except HTTPException:
         raise
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        await db.rollback()
+        logger.error(f"Error generating follow-up: {e}")
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e))
 
 
-@router.post("/generatesummary")
-def generatesummary(
-    data: dict[str, Any], user: UserResponse = Depends(verify_token)
+@router.post("/generate_summary")
+async def generate_summary_endpoint(
+    data: dict[str, Any],
+    current_user: dict = Depends(verify_token_with_tenant),
+    db: AsyncSession = Depends(get_async_db),
 ) -> dict[str, Any]:
-    _ = _must_userid(user)
-    chatpromptid = data.get("chatpromptid")
-    if not chatpromptid:
-        raise HTTPException(status_code=400, detail="Missing chatpromptid")
+    """Generate summary from chat messages."""
+    chat_prompt_id = data.get("chatpromptid")
+
+    if not chat_prompt_id:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Missing chatpromptid")
 
     try:
-        chatrow = (
-            supabase.table("chatmessagescollector")
-            .select("messages")
-            .eq("id", chatpromptid)
-            .maybe_single()
-            .execute()
-        ).data or {}
+        stmt = select(ChatMessageCollector.messages).where(
+            ChatMessageCollector.id == chat_prompt_id
+        )
+        result = await db.execute(stmt)
+        messages = result.scalar_one_or_none() or []
 
-        messages = chatrow.get("messages") or []
         summ = generate_summary(messages)
         return {"chatsummary": summ}
+
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        logger.error(f"Error generating summary: {e}")
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e))
 
 
-@router.post("/generatetags")
-def generatetags_endpoint(
-    data: dict[str, Any], user: UserResponse = Depends(verify_token)
+@router.post("/generate_tags")
+async def generate_tags_endpoint(
+    data: dict[str, Any],
+    current_user: dict = Depends(verify_token_with_tenant),
+    db: AsyncSession = Depends(get_async_db),
 ) -> dict[str, Any]:
-    _ = _must_userid(user)
+    """Generate tags from text."""
     text = data.get("text") or ""
+
     if not text.strip():
-        raise HTTPException(status_code=400, detail="Missing text")
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Missing text")
+
     try:
         tags = generate_tags(text)
         return {"tags": tags}
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        logger.error(f"Error generating tags: {e}")
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e))
 
 
-@router.post("/updatesummary")
-def updatesummary(
+@router.post("/update_summary")
+async def update_summary(
     request: CollectorSummaryUpdateSummaryRequest,
-    user: UserResponse = Depends(verify_token),
+    current_user: dict = Depends(verify_token_with_tenant),
+    db: AsyncSession = Depends(get_async_db),
 ) -> dict[str, Any]:
-    _ = _must_userid(user)
-
+    """Update document summary."""
     try:
-        srow = (
-            supabase.table("sessions")
-            .select("docid")
-            .eq("id", request.sessionid)
-            .maybe_single()
-            .execute()
-        ).data or {}
-        docid = srow.get("docid")
-        if not docid:
-            raise HTTPException(status_code=404, detail="Session not found or missing docid")
+        # Get doc_id from session
+        stmt = select(Session.doc_id).where(Session.id == request.session_id)
+        result = await db.execute(stmt)
+        doc_id = result.scalar_one_or_none()
 
-        # Persist summary on document
-        supabase.table("documents").update({"summary": request.summarytext}).eq(
-            "docid", docid
-        ).execute()
+        if not doc_id:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Session not found or missing doc_id",
+            )
+
+        # Update document
+        stmt = (
+            update(Document).where(Document.doc_id == doc_id).values(summary=request.summary_text)
+        )
+        await db.execute(stmt)
+        await db.commit()
+
         return {"message": "Summary updated successfully"}
+
     except HTTPException:
         raise
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        await db.rollback()
+        logger.error(f"Error updating summary: {e}")
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e))
 
 
-@router.post("/continuesession", response_model=CollectorSummaryContinueResponse)
-def continuesession(
-    request: CollectorSummaryContinueRequest, user: UserResponse = Depends(verify_token)
+@router.post("/continue_session", response_model=CollectorSummaryContinueResponse)
+async def continue_session(
+    request: CollectorSummaryContinueRequest,
+    current_user: dict = Depends(verify_token_with_tenant),
 ) -> CollectorSummaryContinueResponse:
-    _ = _must_userid(user)
-    # UI uses this only for navigation state
+    """Continue session (navigation helper)."""
     return CollectorSummaryContinueResponse(
         message="Summary updated successfully",
-        nextpage="/applications/collector/CollectorMetaDataPage",
+        next_page="/application/s/collector/CollectorMetaDataPage",
         state={
-            "summarytext": request.summarytext,
-            "sessionid": request.sessionid,
-            "isresume": request.isresume,
+            "summary_text": request.summary_text,
+            "session_id": request.session_id,
+            "is_resume": request.is_resume,
         },
     )
 
 
-@router.post("/fetchexistingdoc")
-def fetchexistingdoc(
-    data: dict[str, Any], user: UserResponse = Depends(verify_token)
+@router.post("/fetch_existing_doc")
+async def fetch_existing_doc(
+    data: dict[str, Any],
+    current_user: dict = Depends(verify_token_with_tenant),
+    db: AsyncSession = Depends(get_async_db),
 ) -> dict[str, Any]:
-    _ = _must_userid(user)
-    sessionid = data.get("sessionid")
-    if not sessionid:
-        raise HTTPException(status_code=400, detail="Missing sessionId")
+    """Fetch existing document by session."""
+    session_id = data.get("sessionid")
+
+    if not session_id:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Missing sessionId")
 
     try:
-        srow = (
-            supabase.table("sessions")
-            .select("docid")
-            .eq("id", sessionid)
-            .maybe_single()
-            .execute()
-            .data
-            or {}
-        )
-        docid = srow.get("docid")
-        if not docid:
-            raise HTTPException(status_code=404, detail="Session not found or missing docid")
+        # Get doc_id from session
+        stmt = select(Session.doc_id).where(Session.id == session_id)
+        result = await db.execute(stmt)
+        doc_id = result.scalar_one_or_none()
 
-        doc = (
-            supabase.table("documents").select("*").eq("docid", docid).maybe_single().execute().data
-        )
-        return {"document": doc}
+        if not doc_id:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Session not found or missing doc_id",
+            )
+
+        # Get document
+        stmt = select(Document).where(Document.doc_id == doc_id)
+        result = await db.execute(stmt)
+        doc = result.scalar_one_or_none()
+
+        if not doc:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Document not found")
+
+        return {
+            "document": {
+                "doc_id": str(doc.doc_id),
+                "title": doc.title,
+                "summary": doc.summary,
+                "status": doc.status,
+                "tags": getattr(doc, "tags", []),
+                "employee_contact": getattr(doc, "employee_contact", None),
+                "link": doc.link,
+                "responsible": str(doc.responsible) if doc.responsible else None,
+                "severity_levels": doc.severity_levels,
+            }
+        }
+
     except HTTPException:
         raise
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        logger.error(f"Error fetching document: {e}")
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e))
 
 
-@router.post("/updatesessionanddocument")
-def updatesessionanddocument(
-    data: dict[str, Any], user: UserResponse = Depends(verify_token)
+@router.post("/update_session_and_document")
+async def update_session_and_document(
+    data: dict[str, Any],
+    current_user: dict = Depends(verify_token_with_tenant),
+    db: AsyncSession = Depends(get_async_db),
 ) -> dict[str, Any]:
-    _ = _must_userid(user)
+    """Update session and document metadata."""
+    session_id = data.get("sessionid")
 
-    sessionid = data.get("sessionid")
-    if not sessionid:
-        raise HTTPException(status_code=400, detail="Missing sessionid")
+    if not session_id:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Missing sessionid")
 
     tags = data.get("tags") or []
-    contact = data.get("contact") or None
-    sourcelink = data.get("sourcelink") or None
-    documenttitle = data.get("documenttitle") or None
-    validatorid = data.get("validatorid") or None
-    severity = data.get("severity") or None
+    contact = data.get("contact")
+    source_link = data.get("sourcelink")
+    document_title = data.get("documenttitle")
+    validator_id = data.get("validatorid")
+    severity = data.get("severity")
 
     try:
-        srow = (
-            supabase.table("sessions")
-            .select("docid")
-            .eq("id", sessionid)
-            .maybe_single()
-            .execute()
-            .data
-            or {}
-        )
-        docid = srow.get("docid")
-        if not docid:
-            raise HTTPException(status_code=404, detail="Session not found or missing docid")
+        # Get doc_id
+        stmt = select(Session.doc_id).where(Session.id == session_id)
+        result = await db.execute(stmt)
+        doc_id = result.scalar_one_or_none()
 
+        if not doc_id:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Session not found or missing doc_id",
+            )
+
+        # Update document
         upd: dict[str, Any] = {
-            "tags": tags,
-            "employeecontact": contact,
-            "link": sourcelink,
-            "responsible": validatorid,
-            "severitylevels": severity,
             "status": "Pending",
         }
-        if documenttitle:
-            upd["title"] = documenttitle
+        if tags:
+            upd["tags"] = tags
+        if contact:
+            upd["employee_contact"] = contact
+        if source_link:
+            upd["link"] = source_link
+        if validator_id:
+            upd["responsible"] = validator_id
+        if severity:
+            upd["severity_levels"] = severity
+        if document_title:
+            upd["title"] = document_title
 
-        supabase.table("documents").update(upd).eq("docid", docid).execute()
-        supabase.table("sessions").update({"status": "Completed"}).eq("id", sessionid).execute()
+        stmt = update(Document).where(Document.doc_id == doc_id).values(**upd)
+        await db.execute(stmt)
+
+        # Update session
+        stmt = update(Session).where(Session.id == session_id).values(status="Completed")
+        await db.execute(stmt)
+
+        await db.commit()
 
         return {"message": "Document stored successfully"}
+
     except HTTPException:
         raise
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        await db.rollback()
+        logger.error(f"Error updating document: {e}")
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e))

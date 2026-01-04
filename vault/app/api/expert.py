@@ -1,248 +1,323 @@
+"""
+Expert endpoints - migrated from Supabase to SQLAlchemy.
+Handles document review workflow for expert reviewers.
+"""
+
 from __future__ import annotations
 
 import logging
 from typing import Any
 
-from fastapi import APIRouter, Depends, HTTPException
-from gotrue import UserResponse
+from fastapi import APIRouter, Depends, HTTPException, status
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.database import supabase
-from app.dto.expert import (AcceptDocumentRequest, Document, DocumentRow,
-                            RejectRequest)
-from app.middleware.auth import verify_token
+from app.database import get_async_db
+from app.dto.expert import AcceptDocumentRequest, DocumentRow, RejectRequest
+from app.dto.expert import Document as DocumentDTO
+from app.middleware.auth import verify_token_with_tenant
+from app.models import Document, Profile
 
 router = APIRouter(prefix="/api/v1/expert", tags=["expert"])
 logger = logging.getLogger(__name__)
 
 
-def _uid(user: UserResponse) -> str:
-    uid = getattr(getattr(user, "user", None), "id", None)
-    if not uid:
-        raise HTTPException(status_code=400, detail="Missing user id")
-    return str(uid)
+@router.get("/get-documents", response_model=list[DocumentDTO])
+async def expert_get_documents(
+    current_user: dict = Depends(verify_token_with_tenant),
+    db: AsyncSession = Depends(get_async_db),
+) -> list[DocumentDTO]:
+    """
+    Get documents assigned to expert for review (status = 'On Review').
+    """
+    user_id = current_user["user_id"]
+    company_reg_no = current_user.get("company_reg_no")
 
+    try:
+        # Get user map for authors
+        stmt = select(Profile.id, Profile.full_name).where(Profile.company_reg_no == company_reg_no)
+        result = await db.execute(stmt)
+        profiles = result.all()
+        user_map = {str(p.id): p.full_name or "N/A" for p in profiles}
 
-def _companyid_for_user(userid: str) -> int:
-    resp = supabase.table("profiles").select("companyid").eq("id", userid).maybe_single().execute()
-    data = resp.data or {}
-    companyid = data.get("companyid")
-    if not companyid:
+        # Get documents assigned to this expert
+        stmt = select(Document).where(
+            Document.status == "On Review",
+            Document.reviewer == user_id,
+        )
+        result = await db.execute(stmt)
+        docs = result.scalars().all()
+
+        return [
+            DocumentDTO(
+                id=str(d.doc_id),
+                title=d.title or "Untitled",
+                author=user_map.get(str(d.author_id), "N/A"),
+                status=d.status or "On Review",
+            )
+            for d in docs
+        ]
+
+    except Exception as e:
+        logger.error(f"Error fetching expert documents: {e}")
         raise HTTPException(
-            status_code=400,
-            detail="User does not have a company associated with their profile",
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=str(e),
         )
-    return int(companyid)
 
 
-def _profiles_map(companyid: int) -> dict[str, str]:
-    resp = supabase.table("profiles").select("id, fullname").eq("companyid", companyid).execute()
-    m: dict[str, str] = {}
-    for p in resp.data or []:
-        pid = p.get("id")
-        if pid:
-            m[str(pid)] = p.get("fullname") or "NA"
-    return m
-
-
-@router.get("/get-documents", response_model=list[Document])
-async def expertstartgetdocuments(
-    user: UserResponse = Depends(verify_token),
-) -> list[Document]:
-    """
-    ExpertStartPage: documents assigned to expert for review (status On Review, reviewer == current user).
-    """
-    userid = _uid(user)
-    companyid = _companyid_for_user(userid)
-    usermap = _profiles_map(companyid)
-
-    docs = (
-        supabase.table("documents")
-        .select("docid, title, authorid, status")
-        .eq("status", "On Review")
-        .eq("companyid", companyid)
-        .eq("reviewer", userid)
-        .execute()
-    ).data or []
-
-    return [
-        Document(
-            id=d.get("docid"),
-            title=d.get("title") or "Untitled",
-            author=usermap.get(str(d.get("authorid")), "NA"),
-            status=d.get("status") or "On Review",
-        )
-        for d in docs
-    ]
-
-
-@router.get("/get-document/{documentid}")
-async def expertdocgetdocument(
-    documentid: str, user: UserResponse = Depends(verify_token)
+@router.get("/get-document/{document_id}")
+async def expert_get_document(
+    document_id: str,
+    current_user: dict = Depends(verify_token_with_tenant),
+    db: AsyncSession = Depends(get_async_db),
 ) -> dict[str, Any]:
     """
-    ExpertDocPage: fetch full doc fields needed by UI.
+    Fetch full document details for expert review.
     """
-    userid = _uid(user)
-    companyid = _companyid_for_user(userid)
+    user_id = current_user["user_id"]
+    current_user.get("company_reg_no")
 
-    resp = (
-        supabase.table("documents")
-        .select("*")
-        .eq("docid", documentid)
-        .eq("companyid", companyid)
-        .maybe_single()
-        .execute()
-    )
-    doc = resp.data
-    if not doc:
-        raise HTTPException(status_code=404, detail="Document not found")
+    try:
+        # Get document
+        stmt = select(Document).where(Document.doc_id == document_id)
+        result = await db.execute(stmt)
+        doc = result.scalar_one_or_none()
 
-    # Ensure expert is the reviewer for this doc
-    if str(doc.get("reviewer")) != userid:
-        raise HTTPException(status_code=403, detail="Not allowed to access this document")
+        if not doc:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Document not found",
+            )
 
-    return {
-        "tags": doc.get("tags"),
-        "comment": doc.get("comment"),
-        "summary": doc.get("summary"),
-        "link": doc.get("link"),
-        "title": doc.get("title"),
-        "severitylevels": doc.get("severitylevels"),
-        "docid": doc.get("docid"),
-        "status": doc.get("status"),
-    }
+        # Ensure expert is the reviewer
+        if str(doc.reviewer) != user_id:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Not allowed to access this document",
+            )
+
+        return {
+            "tags": getattr(doc, "tags", []),
+            "comment": getattr(doc, "comment", None),
+            "summary": doc.summary,
+            "link": doc.link,
+            "title": doc.title,
+            "severitylevels": doc.severity_levels,
+            "docid": str(doc.doc_id),
+            "status": doc.status,
+        }
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error fetching document {document_id}: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=str(e),
+        )
 
 
 @router.post("/accept-document")
-async def expertdocacceptdocument(
-    payload: AcceptDocumentRequest, user: UserResponse = Depends(verify_token)
+async def expert_accept_document(
+    payload: AcceptDocumentRequest,
+    current_user: dict = Depends(verify_token_with_tenant),
+    db: AsyncSession = Depends(get_async_db),
 ) -> dict[str, Any]:
     """
-    Expert accepts: move to 'Validated - Awaiting Approval' (per your existing dump).
+    Expert accepts document - move to 'Validated - Awaiting Approval'.
     """
-    userid = _uid(user)
-    companyid = _companyid_for_user(userid)
+    user_id = current_user["user_id"]
 
-    updatedata: dict[str, Any] = {
-        "comment": payload.comment,
-        "status": "Validated - Awaiting Approval",
-        "summary": payload.summary,
-    }
-    if payload.severitylevels:
-        updatedata["severitylevels"] = payload.severitylevels
+    try:
+        # Get document
+        stmt = select(Document).where(
+            Document.doc_id == payload.docid,
+            Document.reviewer == user_id,
+        )
+        result = await db.execute(stmt)
+        doc = result.scalar_one_or_none()
 
-    resp = (
-        supabase.table("documents")
-        .update(updatedata)
-        .eq("docid", payload.docid)
-        .eq("companyid", companyid)
-        .eq("reviewer", userid)
-        .execute()
-    )
+        if not doc:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Document not found or not assigned to you",
+            )
 
-    if resp.data is None:
-        raise HTTPException(status_code=500, detail="Failed to update document")
+        # Update document
+        doc.comment = payload.comment
+        doc.status = "Validated - Awaiting Approval"
+        doc.summary = payload.summary
 
-    return {"message": "Document updated successfully", "data": resp.data}
+        if payload.severitylevels:
+            doc.severity_levels = payload.severitylevels
+
+        await db.commit()
+        await db.refresh(doc)
+
+        return {
+            "message": "Document updated successfully",
+            "data": {
+                "doc_id": str(doc.doc_id),
+                "status": doc.status,
+            },
+        }
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        await db.rollback()
+        logger.error(f"Error accepting document: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to update document",
+        )
 
 
 @router.put("/reject-document")
-async def expertdocrejectdocument(
-    rejectrequest: RejectRequest, user: UserResponse = Depends(verify_token)
+async def expert_reject_document(
+    reject_request: RejectRequest,
+    current_user: dict = Depends(verify_token_with_tenant),
+    db: AsyncSession = Depends(get_async_db),
 ) -> dict[str, Any]:
     """
-    Expert rejects: status = Rejected, keep summary/comment.
+    Expert rejects document - status = 'Rejected'.
     """
-    userid = _uid(user)
-    companyid = _companyid_for_user(userid)
+    user_id = current_user["user_id"]
 
-    updatefields: dict[str, Any] = {
-        "comment": rejectrequest.comment,
-        "status": "Rejected",
-        "summary": rejectrequest.summary,
-    }
-    if rejectrequest.reviewer:
-        updatefields["reviewer"] = rejectrequest.reviewer
-    if rejectrequest.severitylevels:
-        updatefields["severitylevels"] = rejectrequest.severitylevels
+    try:
+        # Get document
+        stmt = select(Document).where(
+            Document.doc_id == reject_request.docid,
+            Document.reviewer == user_id,
+        )
+        result = await db.execute(stmt)
+        doc = result.scalar_one_or_none()
 
-    resp = (
-        supabase.table("documents")
-        .update(updatefields)
-        .eq("docid", rejectrequest.docid)
-        .eq("companyid", companyid)
-        .eq("reviewer", userid)
-        .execute()
-    )
+        if not doc:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Document not found or not assigned to you",
+            )
 
-    if resp.data is None:
-        raise HTTPException(status_code=500, detail="Failed to reject document")
+        # Update document
+        doc.comment = reject_request.comment
+        doc.status = "Rejected"
+        doc.summary = reject_request.summary
 
-    return {"message": "Document successfully rejected", "data": resp.data}
+        if reject_request.reviewer:
+            doc.reviewer = reject_request.reviewer
+        if reject_request.severitylevels:
+            doc.severity_levels = reject_request.severitylevels
+
+        await db.commit()
+        await db.refresh(doc)
+
+        return {
+            "message": "Document successfully rejected",
+            "data": {
+                "doc_id": str(doc.doc_id),
+                "status": doc.status,
+            },
+        }
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        await db.rollback()
+        logger.error(f"Error rejecting document: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to reject document",
+        )
 
 
-@router.get("/completed-documents/{reviewerid}")
-async def expertdocpreviousreviewsdocuments(
-    reviewerid: str, user: UserResponse = Depends(verify_token)
+@router.get("/completed-documents/{reviewer_id}")
+async def expert_completed_documents(
+    reviewer_id: str,
+    current_user: dict = Depends(verify_token_with_tenant),
+    db: AsyncSession = Depends(get_async_db),
 ) -> list[dict[str, Any]]:
     """
-    ExpertPreviousReviewsPage: completed docs for an expert reviewer (from your dump).
-    Returns array: [{ id, title, author, status }]
+    Get completed documents for an expert reviewer.
+    Returns documents with status: Rejected, Validated - Stored, Validated - Awaiting Approval.
     """
-    userid = _uid(user)
-    companyid = _companyid_for_user(userid)
-    profiles = _profiles_map(companyid)
+    company_reg_no = current_user.get("company_reg_no")
 
-    docs = (
-        supabase.table("documents")
-        .select("docid, title, authorid, status")
-        .in_(
-            "status",
-            ["Rejected", "Validated - Stored", "Validated - Awaiting Approval"],
+    try:
+        # Get user map
+        stmt = select(Profile.id, Profile.full_name).where(Profile.company_reg_no == company_reg_no)
+        result = await db.execute(stmt)
+        profiles = result.all()
+        profile_map = {str(p.id): p.full_name or "N/A" for p in profiles}
+
+        # Get completed documents
+        stmt = select(Document).where(
+            Document.status.in_(
+                ["Rejected", "Validated - Stored", "Validated - Awaiting Approval"]
+            ),
+            Document.reviewer == reviewer_id,
         )
-        .eq("companyid", companyid)
-        .eq("reviewer", reviewerid)
-        .execute()
-    ).data or []
+        result = await db.execute(stmt)
+        docs = result.scalars().all()
 
-    return [
-        {
-            "id": d.get("docid"),
-            "title": d.get("title") or "Untitled",
-            "author": profiles.get(str(d.get("authorid")), "NA"),
-            "status": d.get("status") or "NA",
-        }
-        for d in docs
-    ]
+        return [
+            {
+                "id": str(d.doc_id),
+                "title": d.title or "Untitled",
+                "author": profile_map.get(str(d.author_id), "N/A"),
+                "status": d.status or "N/A",
+            }
+            for d in docs
+        ]
+
+    except Exception as e:
+        logger.error(f"Error fetching completed documents: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=str(e),
+        )
 
 
 @router.get("/review-documents", response_model=list[DocumentRow])
-async def validatorstartexpertreviewdocuments(
-    user: UserResponse = Depends(verify_token),
+async def validator_expert_review_documents(
+    current_user: dict = Depends(verify_token_with_tenant),
+    db: AsyncSession = Depends(get_async_db),
 ) -> list[DocumentRow]:
     """
-    ValidatorStartExpertReviewPage: show documents currently On Review where this validator is responsible.
-    (This endpoint exists in your dump under the expert router.)
+    For validators: show documents currently 'On Review' where validator is responsible.
     """
-    userid = _uid(user)
-    companyid = _companyid_for_user(userid)
-    profilemap = _profiles_map(companyid)
+    user_id = current_user["user_id"]
+    company_reg_no = current_user.get("company_reg_no")
 
-    docs = (
-        supabase.table("documents")
-        .select("docid, title, reviewer, status")
-        .in_("status", ["On Review"])
-        .eq("responsible", userid)
-        .eq("companyid", companyid)
-        .execute()
-    ).data or []
+    try:
+        # Get profile map
+        stmt = select(Profile.id, Profile.full_name).where(Profile.company_reg_no == company_reg_no)
+        result = await db.execute(stmt)
+        profiles = result.all()
+        profile_map = {str(p.id): p.full_name or "N/A" for p in profiles}
 
-    return [
-        DocumentRow(
-            id=d.get("docid"),
-            title=d.get("title") or "Untitled",
-            reviewer=profilemap.get(str(d.get("reviewer")), "NA"),
-            status=d.get("status") or "On Review",
+        # Get documents
+        stmt = select(Document).where(
+            Document.status == "On Review",
+            Document.responsible == user_id,
         )
-        for d in docs
-    ]
+        result = await db.execute(stmt)
+        docs = result.scalars().all()
+
+        return [
+            DocumentRow(
+                id=str(d.doc_id),
+                title=d.title or "Untitled",
+                reviewer=profile_map.get(str(d.reviewer), "N/A"),
+                status=d.status or "On Review",
+            )
+            for d in docs
+        ]
+
+    except Exception as e:
+        logger.error(f"Error fetching review documents: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=str(e),
+        )

@@ -2,11 +2,21 @@ import argparse
 import logging
 import os
 
-from ui_handlers import (apply_modify_info, delegate_fn, fn_connect_confluence,
-                         fn_connect_sharepoint, fn_connector_drop,
-                         fn_tab_manager, fn_tab_reviewer, fn_validate,
-                         fn_validate_user, modify_info, on_select,
-                         on_select_verifier, reject_doc)
+from ui_handlers import (
+    apply_modify_info,
+    delegate_fn,
+    fn_connect_confluence,
+    fn_connect_sharepoint,
+    fn_connector_drop,
+    fn_tab_manager,
+    fn_tab_reviewer,
+    fn_validate,
+    fn_validate_user,
+    modify_info,
+    on_select,
+    on_select_verifier,
+    reject_doc,
+)
 
 from app.database import get_all_users
 

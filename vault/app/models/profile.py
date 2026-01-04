@@ -1,8 +1,16 @@
 import enum
 
-from sqlalchemy import BigInteger, Boolean, CheckConstraint, Column, DateTime
+from sqlalchemy import (
+    BigInteger,
+    Boolean,
+    CheckConstraint,
+    Column,
+    DateTime,
+    ForeignKey,
+    Text,
+    func,
+)
 from sqlalchemy import Enum as SQLEnum
-from sqlalchemy import ForeignKey, Text, func
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import relationship
 
