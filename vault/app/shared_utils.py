@@ -2,6 +2,7 @@
 Shared utility functions for the Vault application.
 Migrated from Supabase to SQLAlchemy.
 """
+
 from datetime import datetime
 from typing import Any
 
@@ -20,11 +21,11 @@ MAX_INPUT_LENGTH = 200
 async def process_session(s: dict[str, Any], db: AsyncSession) -> dict[str, Any]:
     """
     Process a single session record and fetch associated chat messages.
-    
+
     Args:
         s: Session dictionary with keys: id, created_at, status, chat_messages_id
         db: Async database session
-        
+
     Returns:
         Processed session dict with id, createdAt, topic, status
     """
@@ -68,17 +69,14 @@ async def process_session(s: dict[str, Any], db: AsyncSession) -> dict[str, Any]
     }
 
 
-async def get_session_rows(
-    data: list[dict[str, Any]], 
-    db: AsyncSession
-) -> list[dict[str, Any]]:
+async def get_session_rows(data: list[dict[str, Any]], db: AsyncSession) -> list[dict[str, Any]]:
     """
     Process all session records asynchronously.
-    
+
     Args:
         data: List of session dictionaries
         db: Async database session
-        
+
     Returns:
         List of processed session dictionaries
     """
@@ -89,17 +87,14 @@ async def get_session_rows(
     return session_rows
 
 
-def filter_by_severity(
-    user_role: str, 
-    query_results: list[dict[str, Any]]
-) -> list[dict[str, Any]]:
+def filter_by_severity(user_role: str, query_results: list[dict[str, Any]]) -> list[dict[str, Any]]:
     """
     Filter query results by user role and severity level.
-    
+
     Args:
         user_role: User role (admin, manager, employee, guest)
         query_results: List of results with 'access_level' key
-        
+
     Returns:
         Filtered list of results based on role permissions
     """
@@ -113,9 +108,7 @@ def filter_by_severity(
 
     allowed_levels = access_levels.get(user_role, [])
     filtered_results = [
-        result 
-        for result in query_results 
-        if result.get("access_level") in allowed_levels
+        result for result in query_results if result.get("access_level") in allowed_levels
     ]
 
     return filtered_results
@@ -124,13 +117,13 @@ def filter_by_severity(
 def read_docx(file_path: str) -> str:
     """
     Read and extract text from a .docx file.
-    
+
     Args:
         file_path: Path to the .docx file
-        
+
     Returns:
         Extracted text content
-        
+
     Raises:
         ValueError: If file cannot be read
     """
@@ -152,10 +145,10 @@ def read_docx(file_path: str) -> str:
 def read_pdf(file_path: str) -> str:
     """
     Read and extract text from a PDF file.
-    
+
     Args:
         file_path: Path to the PDF file
-        
+
     Returns:
         Extracted text content (empty string on error)
     """
@@ -186,10 +179,10 @@ def read_pdf(file_path: str) -> str:
 def read_txt(file_path: str) -> str:
     """
     Read text content from a .txt file.
-    
+
     Args:
         file_path: Path to the .txt file
-        
+
     Returns:
         Text content (empty string on error)
     """

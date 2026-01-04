@@ -1,11 +1,11 @@
 from .models import (
-                     LDAPConnector,
-                     LDAPConnectorStatus,
-                     LDAPGroup,
-                     LDAPSearchInputModel,
-                     LDAPSearchResult,
-                     LDAPUser,
-                     LoginModel,
+    LDAPConnector,
+    LDAPConnectorStatus,
+    LDAPGroup,
+    LDAPSearchInputModel,
+    LDAPSearchResult,
+    LDAPUser,
+    LoginModel,
 )
 from .router import router
 

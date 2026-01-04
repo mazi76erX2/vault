@@ -11,9 +11,19 @@ from sqlalchemy import engine_from_config, pool
 from alembic import context
 from app.config import settings
 from app.database import Base
+
 # Import ALL models - This is critical for autogenerate!
-from app.models import (ChatMessage, ChatMessageCollector, Company, Document,
-                        Profile, Role, Session, User, UserRole)
+from app.models import (
+    ChatMessage,
+    ChatMessageCollector,
+    Company,
+    Document,
+    Profile,
+    Role,
+    Session,
+    User,
+    UserRole,
+)
 
 # Alembic Config object
 config = context.config

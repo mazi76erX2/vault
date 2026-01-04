@@ -8,6 +8,7 @@ import json
 import logging
 import os
 import re
+import uuid
 from pathlib import Path
 from types import SimpleNamespace
 
@@ -16,14 +17,60 @@ from dotenv import load_dotenv
 from fastapi import APIRouter, WebSocket
 from qdrant_client import QdrantClient
 from sklearn.metrics.pairwise import cosine_similarity
-
-from app.database import supabase
+from sqlalchemy import JSON, Column, Integer, String, Text, create_engine
+from sqlalchemy.dialects.postgresql import UUID
+from sqlalchemy.ext.declarative import declarative_base
+from sqlalchemy.orm import Session, sessionmaker
 
 from .shared_utils import filter_by_severity, read_docx, readpdf, readtxt
 
 # Load .env from current directory
 env_path = Path(__file__).parent / ".env"
 load_dotenv(env_path)
+
+# Database configuration
+DATABASE_URL = os.environ.get(
+    "DATABASE_URL", "postgresql://postgres:postgres@localhost:5432/postgres"
+)
+
+# SQLAlchemy setup
+engine = create_engine(DATABASE_URL)
+SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
+Base = declarative_base()
+
+
+# SQLAlchemy Models
+class Profile(Base):
+    __tablename__ = "profiles"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    full_name = Column(String, nullable=True)
+    field_of_expertise = Column(String, nullable=True)
+    department = Column(String, nullable=True)
+    years_of_experience = Column(Integer, nullable=True)
+    CV_text = Column(Text, nullable=True)
+    user_access = Column(Integer, nullable=True)
+
+
+class ChatMessagesCollector(Base):
+    __tablename__ = "chat_messages_collector"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    messages = Column(JSON, nullable=True)
+
+
+# Create tables if they don't exist
+Base.metadata.create_all(bind=engine)
+
+
+# Database dependency
+def get_db():
+    db = SessionLocal()
+    try:
+        yield db
+    finally:
+        db.close()
+
 
 # Ollama & Qdrant configuration (local-first architecture)
 OLLAMA_HOST = os.environ.get("OLLAMA_HOST", "http://localhost:11434")
@@ -41,9 +88,8 @@ logger = logging.getLogger(__name__)
 
 ws_router = APIRouter()
 
+
 # Ollama helper functions for embeddings and completions
-
-
 def _ollama_embed(texts: list[str], model: str = None) -> list[list[float]]:
     """
     Generate embeddings for a list of texts via Ollama HTTP API.
@@ -238,7 +284,7 @@ def validate_retrieved_docs(
         return []
 
 
-def generate_response_helper(user_id, user_question, history):
+def generate_response_helper(user_id, user_question, history, db: Session = None):
     """
     Generate a response to the user's question using RAG with Ollama and Qdrant.
 
@@ -246,6 +292,7 @@ def generate_response_helper(user_id, user_question, history):
         user_id: User ID for access level checking
         user_question: The question to answer
         history: Conversation history
+        db: SQLAlchemy session (optional, will create one if not provided)
 
     Returns:
         Tuple of (response, confidence, formatted_docs, updated_history)
@@ -257,19 +304,25 @@ def generate_response_helper(user_id, user_question, history):
     temperature_value = 0.1
     max_token = 800
 
-    try:
-        # Get user access level from Supabase
-        access_level_response = (
-            supabase.table("profiles").select("user_access").eq("id", user_id).execute()
-        )
+    # Create session if not provided
+    close_session = False
+    if db is None:
+        db = SessionLocal()
+        close_session = True
 
-        if not access_level_response.data:
+    try:
+        # Get user access level from database
+        profile = db.query(Profile).filter(Profile.id == user_id).first()
+
+        if not profile:
             raise ValueError(f"Unable to fetch access level for user: {user_id}")
 
-        access_level = access_level_response.data[0]["user_access"]
+        access_level = profile.user_access
 
     except Exception as e:
         logger.error(f"Error getting access level for user {user_id}: {str(e)}")
+        if close_session:
+            db.close()
         raise
 
     # Generate query embedding using Ollama
@@ -429,6 +482,9 @@ Format:
                 link = f"[{src_link}]({src_link})\n"
                 md_text_formatted += retrieved_text + link + "\n---------------\n\n"
 
+    if close_session:
+        db.close()
+
     return response, confidence, md_text_formatted, history
 
 
@@ -448,38 +504,44 @@ def get_cv_text(filepath):
     return doc_content
 
 
-def generate_initial_questions(user_id):
+def generate_initial_questions(user_id, db: Session = None):
     """
     Generate initial knowledge collection questions for a user based on their profile.
 
     Args:
         user_id: User ID to generate questions for
+        db: SQLAlchemy session (optional, will create one if not provided)
 
     Returns:
         Tuple of (questions_list, conversation_history)
     """
-    try:
-        # Get user profile from Supabase
-        profile_response = (
-            supabase.table("profiles")
-            .select("full_name, field_of_expertise, department, years_of_experience, CV_text")
-            .eq("id", user_id)
-            .execute()
-        )
+    # Create session if not provided
+    close_session = False
+    if db is None:
+        db = SessionLocal()
+        close_session = True
 
-        if not profile_response.data:
+    try:
+        # Get user profile from database
+        profile = db.query(Profile).filter(Profile.id == user_id).first()
+
+        if not profile:
             raise ValueError(f"No profile found for user ID: {user_id}")
 
-        profile = profile_response.data[0]
-        name = profile["full_name"]
-        role = profile["field_of_expertise"]
-        domain = profile["department"]
-        years = profile["years_of_experience"]
-        cv = profile["CV_text"]
+        name = profile.full_name
+        role = profile.field_of_expertise
+        domain = profile.department
+        years = profile.years_of_experience
+        cv = profile.CV_text
 
     except Exception as e:
         logger.error(f"Error generating questions for user {user_id}: {str(e)}")
+        if close_session:
+            db.close()
         raise
+
+    if close_session:
+        db.close()
 
     logger.info(f"Generating questions for user {name}")
 
@@ -577,35 +639,45 @@ def generate_initial_questions(user_id):
     return cleaned_questions, conversation_history
 
 
-def generate_response_collector(chat_prompt_id, user_answer):
+def generate_response_collector(chat_prompt_id, user_answer, db: Session = None):
     """
     Generate follow-up questions/responses during knowledge collection.
 
     Args:
         chat_prompt_id: ID of the chat session
         user_answer: User's answer to the previous question
+        db: SQLAlchemy session (optional, will create one if not provided)
 
     Returns:
         Tuple of (follow_up_question, updated_conversation_history)
     """
+    # Create session if not provided
+    close_session = False
+    if db is None:
+        db = SessionLocal()
+        close_session = True
+
     try:
-        # Get conversation history from Supabase
-        chat_response = (
-            supabase.table("chat_messages_collector")
-            .select("messages")
-            .eq("id", chat_prompt_id)
-            .execute()
+        # Get conversation history from database
+        chat = (
+            db.query(ChatMessagesCollector)
+            .filter(ChatMessagesCollector.id == chat_prompt_id)
+            .first()
         )
 
-        if not chat_response.data:
+        if not chat:
             raise ValueError(f"No messages found for chat ID: {chat_prompt_id}")
 
-        chat = chat_response.data[0]
-        conversation_history = chat["messages"]
+        conversation_history = chat.messages
 
     except Exception as e:
         logger.error(f"Error generating response for chat_session {chat_prompt_id}: {str(e)}")
+        if close_session:
+            db.close()
         raise
+
+    if close_session:
+        db.close()
 
     logger.info(f"Processing answer for chat session {chat_prompt_id}")
 
@@ -635,33 +707,44 @@ def generate_response_collector(chat_prompt_id, user_answer):
     return follow_up, conversation_history
 
 
-def generate_summary_chat(chat_prompt_id):
+def generate_summary_chat(chat_prompt_id, db: Session = None):
     """
     Generate a Q&A summary from a completed chat session.
 
     Args:
         chat_prompt_id: ID of the chat session to summarize
+        db: SQLAlchemy session (optional, will create one if not provided)
 
     Returns:
         Formatted Q&A summary string
     """
+    # Create session if not provided
+    close_session = False
+    if db is None:
+        db = SessionLocal()
+        close_session = True
+
     try:
-        # Get chat messages from Supabase
-        chat_response = (
-            supabase.table("chat_messages_collector")
-            .select("messages")
-            .eq("id", chat_prompt_id)
-            .execute()
+        # Get chat messages from database
+        chat_record = (
+            db.query(ChatMessagesCollector)
+            .filter(ChatMessagesCollector.id == chat_prompt_id)
+            .first()
         )
 
-        if not chat_response.data:
+        if not chat_record:
             raise ValueError(f"No messages found for chat ID: {chat_prompt_id}")
 
-        chat = chat_response.data[0]["messages"]
+        chat = chat_record.messages
 
     except Exception as e:
         logger.error(f"Error generating summary for chat_session {chat_prompt_id}: {str(e)}")
+        if close_session:
+            db.close()
         raise
+
+    if close_session:
+        db.close()
 
     logger.info(f"Raw chat data length: {len(chat)}")
 
@@ -837,3 +920,776 @@ def generate_topic_from_question(question: str) -> str:
     except Exception as e:
         logger.error(f"Error generating topic: {e}")
         return "Knowledge Collection"
+
+
+# Utility functions for database operations
+def get_profile_by_id(user_id, db: Session = None) -> Profile:
+    """
+    Get a user profile by ID.
+
+    Args:
+        user_id: User ID to fetch
+        db: SQLAlchemy session (optional)
+
+    Returns:
+        Profile object or None
+    """
+    close_session = False
+    if db is None:
+        db = SessionLocal()
+        close_session = True
+
+    try:
+        profile = db.query(Profile).filter(Profile.id == user_id).first()
+        return profile
+    finally:
+        if close_session:
+            db.close()
+
+
+def update_profile(user_id, updates: dict, db: Session = None) -> Profile:
+    """
+    Update a user profile.
+
+    Args:
+        user_id: User ID to update
+        updates: Dictionary of fields to update
+        db: SQLAlchemy session (optional)
+
+    Returns:
+        Updated Profile object
+    """
+    close_session = False
+    if db is None:
+        db = SessionLocal()
+        close_session = True
+
+    try:
+        profile = db.query(Profile).filter(Profile.id == user_id).first()
+        if profile:
+            for key, value in updates.items():
+                if hasattr(profile, key):
+                    setattr(profile, key, value)
+            db.commit()
+            db.refresh(profile)
+        return profile
+    finally:
+        if close_session:
+            db.close()
+
+
+def get_chat_messages(chat_id, db: Session = None) -> ChatMessagesCollector:
+    """
+    Get chat messages by chat ID.
+
+    Args:
+        chat_id: Chat session ID
+        db: SQLAlchemy session (optional)
+
+    Returns:
+        ChatMessagesCollector object or None
+    """
+    close_session = False
+    if db is None:
+        db = SessionLocal()
+        close_session = True
+
+    try:
+        chat = db.query(ChatMessagesCollector).filter(ChatMessagesCollector.id == chat_id).first()
+        return chat
+    finally:
+        if close_session:
+            db.close()
+
+
+def save_chat_messages(chat_id, messages: list, db: Session = None) -> ChatMessagesCollector:
+    """
+    Save or update chat messages.
+
+    Args:
+        chat_id: Chat session ID
+        messages: List of message dictionaries
+        db: SQLAlchemy session (optional)
+
+    Returns:
+        ChatMessagesCollector object
+    """
+    close_session = False
+    if db is None:
+        db = SessionLocal()
+        close_session = True
+
+    try:
+        chat = db.query(ChatMessagesCollector).filter(ChatMessagesCollector.id == chat_id).first()
+
+        if chat:
+            chat.messages = messages
+        else:
+            chat = ChatMessagesCollector(id=chat_id, messages=messages)
+            db.add(chat)
+
+        db.commit()
+        db.refresh(chat)
+        return chat
+    finally:
+        if close_session:
+            db.close()
+
+
+def create_chat_session(messages: list = None, db: Session = None) -> ChatMessagesCollector:
+    """
+    Create a new chat session.
+
+    Args:
+        messages: Initial messages (optional)
+        db: SQLAlchemy session (optional)
+
+    Returns:
+        New ChatMessagesCollector object
+    """
+    close_session = False
+    if db is None:
+        db = SessionLocal()
+        close_session = True
+
+    try:
+        chat = ChatMessagesCollector(id=uuid.uuid4(), messages=messages or [])
+        db.add(chat)
+        db.commit()
+        db.refresh(chat)
+        return chat
+    finally:
+        if close_session:
+            db.close()
+
+
+def delete_chat_session(chat_id, db: Session = None) -> bool:
+    """
+    Delete a chat session by ID.
+
+    Args:
+        chat_id: Chat session ID to delete
+        db: SQLAlchemy session (optional)
+
+    Returns:
+        True if deleted, False if not found
+    """
+    close_session = False
+    if db is None:
+        db = SessionLocal()
+        close_session = True
+
+    try:
+        chat = db.query(ChatMessagesCollector).filter(ChatMessagesCollector.id == chat_id).first()
+
+        if chat:
+            db.delete(chat)
+            db.commit()
+            return True
+        return False
+    finally:
+        if close_session:
+            db.close()
+
+
+def create_profile(
+    user_id=None,
+    full_name: str = None,
+    field_of_expertise: str = None,
+    department: str = None,
+    years_of_experience: int = None,
+    cv_text: str = None,
+    user_access: int = 1,
+    db: Session = None,
+) -> Profile:
+    """
+    Create a new user profile.
+
+    Args:
+        user_id: User ID (optional, will generate UUID if not provided)
+        full_name: User's full name
+        field_of_expertise: User's expertise field
+        department: User's department
+        years_of_experience: Years of experience
+        cv_text: CV text content
+        user_access: Access level (default 1)
+        db: SQLAlchemy session (optional)
+
+    Returns:
+        New Profile object
+    """
+    close_session = False
+    if db is None:
+        db = SessionLocal()
+        close_session = True
+
+    try:
+        profile = Profile(
+            id=user_id if user_id else uuid.uuid4(),
+            full_name=full_name,
+            field_of_expertise=field_of_expertise,
+            department=department,
+            years_of_experience=years_of_experience,
+            CV_text=cv_text,
+            user_access=user_access,
+        )
+        db.add(profile)
+        db.commit()
+        db.refresh(profile)
+        return profile
+    finally:
+        if close_session:
+            db.close()
+
+
+def delete_profile(user_id, db: Session = None) -> bool:
+    """
+    Delete a user profile by ID.
+
+    Args:
+        user_id: User ID to delete
+        db: SQLAlchemy session (optional)
+
+    Returns:
+        True if deleted, False if not found
+    """
+    close_session = False
+    if db is None:
+        db = SessionLocal()
+        close_session = True
+
+    try:
+        profile = db.query(Profile).filter(Profile.id == user_id).first()
+
+        if profile:
+            db.delete(profile)
+            db.commit()
+            return True
+        return False
+    finally:
+        if close_session:
+            db.close()
+
+
+def list_profiles(
+    limit: int = 100, offset: int = 0, department: str = None, db: Session = None
+) -> list[Profile]:
+    """
+    List user profiles with optional filtering.
+
+    Args:
+        limit: Maximum number of profiles to return
+        offset: Number of profiles to skip
+        department: Filter by department (optional)
+        db: SQLAlchemy session (optional)
+
+    Returns:
+        List of Profile objects
+    """
+    close_session = False
+    if db is None:
+        db = SessionLocal()
+        close_session = True
+
+    try:
+        query = db.query(Profile)
+
+        if department:
+            query = query.filter(Profile.department == department)
+
+        profiles = query.offset(offset).limit(limit).all()
+        return profiles
+    finally:
+        if close_session:
+            db.close()
+
+
+def list_chat_sessions(
+    limit: int = 100, offset: int = 0, db: Session = None
+) -> list[ChatMessagesCollector]:
+    """
+    List chat sessions.
+
+    Args:
+        limit: Maximum number of sessions to return
+        offset: Number of sessions to skip
+        db: SQLAlchemy session (optional)
+
+    Returns:
+        List of ChatMessagesCollector objects
+    """
+    close_session = False
+    if db is None:
+        db = SessionLocal()
+        close_session = True
+
+    try:
+        sessions = db.query(ChatMessagesCollector).offset(offset).limit(limit).all()
+        return sessions
+    finally:
+        if close_session:
+            db.close()
+
+
+def update_chat_messages(chat_id, messages: list, db: Session = None) -> ChatMessagesCollector:
+    """
+    Update chat messages for an existing session.
+
+    Args:
+        chat_id: Chat session ID
+        messages: New messages list
+        db: SQLAlchemy session (optional)
+
+    Returns:
+        Updated ChatMessagesCollector object or None if not found
+    """
+    close_session = False
+    if db is None:
+        db = SessionLocal()
+        close_session = True
+
+    try:
+        chat = db.query(ChatMessagesCollector).filter(ChatMessagesCollector.id == chat_id).first()
+
+        if chat:
+            chat.messages = messages
+            db.commit()
+            db.refresh(chat)
+            return chat
+        return None
+    finally:
+        if close_session:
+            db.close()
+
+
+def append_chat_message(chat_id, message: dict, db: Session = None) -> ChatMessagesCollector:
+    """
+    Append a single message to an existing chat session.
+
+    Args:
+        chat_id: Chat session ID
+        message: Message dictionary with 'role' and 'content'
+        db: SQLAlchemy session (optional)
+
+    Returns:
+        Updated ChatMessagesCollector object or None if not found
+    """
+    close_session = False
+    if db is None:
+        db = SessionLocal()
+        close_session = True
+
+    try:
+        chat = db.query(ChatMessagesCollector).filter(ChatMessagesCollector.id == chat_id).first()
+
+        if chat:
+            current_messages = chat.messages or []
+            current_messages.append(message)
+            chat.messages = current_messages
+            db.commit()
+            db.refresh(chat)
+            return chat
+        return None
+    finally:
+        if close_session:
+            db.close()
+
+
+def get_user_access_level(user_id, db: Session = None) -> int:
+    """
+    Get a user's access level.
+
+    Args:
+        user_id: User ID
+        db: SQLAlchemy session (optional)
+
+    Returns:
+        Access level integer or None if user not found
+    """
+    close_session = False
+    if db is None:
+        db = SessionLocal()
+        close_session = True
+
+    try:
+        profile = db.query(Profile).filter(Profile.id == user_id).first()
+        return profile.user_access if profile else None
+    finally:
+        if close_session:
+            db.close()
+
+
+def update_user_access_level(user_id, access_level: int, db: Session = None) -> Profile:
+    """
+    Update a user's access level.
+
+    Args:
+        user_id: User ID
+        access_level: New access level
+        db: SQLAlchemy session (optional)
+
+    Returns:
+        Updated Profile object or None if not found
+    """
+    close_session = False
+    if db is None:
+        db = SessionLocal()
+        close_session = True
+
+    try:
+        profile = db.query(Profile).filter(Profile.id == user_id).first()
+
+        if profile:
+            profile.user_access = access_level
+            db.commit()
+            db.refresh(profile)
+            return profile
+        return None
+    finally:
+        if close_session:
+            db.close()
+
+
+def update_user_cv(user_id, cv_text: str, db: Session = None) -> Profile:
+    """
+    Update a user's CV text.
+
+    Args:
+        user_id: User ID
+        cv_text: New CV text content
+        db: SQLAlchemy session (optional)
+
+    Returns:
+        Updated Profile object or None if not found
+    """
+    close_session = False
+    if db is None:
+        db = SessionLocal()
+        close_session = True
+
+    try:
+        profile = db.query(Profile).filter(Profile.id == user_id).first()
+
+        if profile:
+            profile.CV_text = cv_text
+            db.commit()
+            db.refresh(profile)
+            return profile
+        return None
+    finally:
+        if close_session:
+            db.close()
+
+
+def search_profiles_by_expertise(
+    expertise: str, limit: int = 100, db: Session = None
+) -> list[Profile]:
+    """
+    Search profiles by field of expertise (case-insensitive partial match).
+
+    Args:
+        expertise: Expertise keyword to search for
+        limit: Maximum number of results
+        db: SQLAlchemy session (optional)
+
+    Returns:
+        List of matching Profile objects
+    """
+    close_session = False
+    if db is None:
+        db = SessionLocal()
+        close_session = True
+
+    try:
+        profiles = (
+            db.query(Profile)
+            .filter(Profile.field_of_expertise.ilike(f"%{expertise}%"))
+            .limit(limit)
+            .all()
+        )
+        return profiles
+    finally:
+        if close_session:
+            db.close()
+
+
+def get_profiles_by_department(department: str, db: Session = None) -> list[Profile]:
+    """
+    Get all profiles in a specific department.
+
+    Args:
+        department: Department name
+        db: SQLAlchemy session (optional)
+
+    Returns:
+        List of Profile objects in the department
+    """
+    close_session = False
+    if db is None:
+        db = SessionLocal()
+        close_session = True
+
+    try:
+        profiles = db.query(Profile).filter(Profile.department == department).all()
+        return profiles
+    finally:
+        if close_session:
+            db.close()
+
+
+def get_profiles_with_min_experience(
+    min_years: int, limit: int = 100, db: Session = None
+) -> list[Profile]:
+    """
+    Get profiles with minimum years of experience.
+
+    Args:
+        min_years: Minimum years of experience
+        limit: Maximum number of results
+        db: SQLAlchemy session (optional)
+
+    Returns:
+        List of Profile objects meeting the criteria
+    """
+    close_session = False
+    if db is None:
+        db = SessionLocal()
+        close_session = True
+
+    try:
+        profiles = (
+            db.query(Profile).filter(Profile.years_of_experience >= min_years).limit(limit).all()
+        )
+        return profiles
+    finally:
+        if close_session:
+            db.close()
+
+
+def count_profiles(department: str = None, db: Session = None) -> int:
+    """
+    Count total profiles, optionally filtered by department.
+
+    Args:
+        department: Department to filter by (optional)
+        db: SQLAlchemy session (optional)
+
+    Returns:
+        Count of profiles
+    """
+    close_session = False
+    if db is None:
+        db = SessionLocal()
+        close_session = True
+
+    try:
+        query = db.query(Profile)
+        if department:
+            query = query.filter(Profile.department == department)
+        return query.count()
+    finally:
+        if close_session:
+            db.close()
+
+
+def count_chat_sessions(db: Session = None) -> int:
+    """
+    Count total chat sessions.
+
+    Args:
+        db: SQLAlchemy session (optional)
+
+    Returns:
+        Count of chat sessions
+    """
+    close_session = False
+    if db is None:
+        db = SessionLocal()
+        close_session = True
+
+    try:
+        return db.query(ChatMessagesCollector).count()
+    finally:
+        if close_session:
+            db.close()
+
+
+# Context manager for database sessions
+class DatabaseSession:
+    """
+    Context manager for database sessions.
+
+    Usage:
+        with DatabaseSession() as db:
+            profile = db.query(Profile).first()
+    """
+
+    def __init__(self):
+        self.db = None
+
+    def __enter__(self) -> Session:
+        self.db = SessionLocal()
+        return self.db
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        if self.db:
+            if exc_type is not None:
+                self.db.rollback()
+            self.db.close()
+
+
+# FastAPI dependency for database sessions
+def get_database_session():
+    """
+    FastAPI dependency that provides a database session.
+
+    Usage:
+        @app.get("/users/{user_id}")
+        def get_user(user_id: str, db: Session = Depends(get_database_session)):
+            return db.query(Profile).filter(Profile.id == user_id).first()
+    """
+    db = SessionLocal()
+    try:
+        yield db
+    finally:
+        db.close()
+
+
+# Bulk operations
+def bulk_create_profiles(profiles_data: list[dict], db: Session = None) -> list[Profile]:
+    """
+    Create multiple profiles in a single transaction.
+
+    Args:
+        profiles_data: List of profile dictionaries
+        db: SQLAlchemy session (optional)
+
+    Returns:
+        List of created Profile objects
+    """
+    close_session = False
+    if db is None:
+        db = SessionLocal()
+        close_session = True
+
+    try:
+        profiles = []
+        for data in profiles_data:
+            profile = Profile(
+                id=data.get("id", uuid.uuid4()),
+                full_name=data.get("full_name"),
+                field_of_expertise=data.get("field_of_expertise"),
+                department=data.get("department"),
+                years_of_experience=data.get("years_of_experience"),
+                CV_text=data.get("CV_text"),
+                user_access=data.get("user_access", 1),
+            )
+            profiles.append(profile)
+
+        db.bulk_save_objects(profiles)
+        db.commit()
+        return profiles
+    except Exception as e:
+        db.rollback()
+        logger.error(f"Error in bulk profile creation: {e}")
+        raise
+    finally:
+        if close_session:
+            db.close()
+
+
+def bulk_delete_profiles(user_ids: list, db: Session = None) -> int:
+    """
+    Delete multiple profiles by IDs.
+
+    Args:
+        user_ids: List of user IDs to delete
+        db: SQLAlchemy session (optional)
+
+    Returns:
+        Number of profiles deleted
+    """
+    close_session = False
+    if db is None:
+        db = SessionLocal()
+        close_session = True
+
+    try:
+        deleted_count = (
+            db.query(Profile).filter(Profile.id.in_(user_ids)).delete(synchronize_session=False)
+        )
+        db.commit()
+        return deleted_count
+    except Exception as e:
+        db.rollback()
+        logger.error(f"Error in bulk profile deletion: {e}")
+        raise
+    finally:
+        if close_session:
+            db.close()
+
+
+def bulk_update_access_levels(user_ids: list, access_level: int, db: Session = None) -> int:
+    """
+    Update access level for multiple users.
+
+    Args:
+        user_ids: List of user IDs to update
+        access_level: New access level
+        db: SQLAlchemy session (optional)
+
+    Returns:
+        Number of profiles updated
+    """
+    close_session = False
+    if db is None:
+        db = SessionLocal()
+        close_session = True
+
+    try:
+        updated_count = (
+            db.query(Profile)
+            .filter(Profile.id.in_(user_ids))
+            .update({Profile.user_access: access_level}, synchronize_session=False)
+        )
+        db.commit()
+        return updated_count
+    except Exception as e:
+        db.rollback()
+        logger.error(f"Error in bulk access level update: {e}")
+        raise
+    finally:
+        if close_session:
+            db.close()
+
+
+# Health check function for database
+def check_database_connection() -> bool:
+    """
+    Check if database connection is healthy.
+
+    Returns:
+        True if connection is successful, False otherwise
+    """
+    try:
+        db = SessionLocal()
+        db.execute("SELECT 1")
+        db.close()
+        return True
+    except Exception as e:
+        logger.error(f"Database connection check failed: {e}")
+        return False
+
+
+# Initialize database tables on module load (optional)
+def init_database():
+    """
+    Initialize database tables.
+    Call this function on application startup if needed.
+    """
+    try:
+        Base.metadata.create_all(bind=engine)
+        logger.info("Database tables initialized successfully")
+    except Exception as e:
+        logger.error(f"Failed to initialize database tables: {e}")
+        raise
