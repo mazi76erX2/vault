@@ -58,7 +58,9 @@ async def create_admin_user(email: str, password: str, full_name: str, company_r
             )
             await db.commit()
 
-        print(f"✅ Admin created: {email} (profile_id={profile.id}, company_reg_no={company_reg_no})")
+        print(
+            f"✅ Admin created: {email} (profile_id={profile.id}, company_reg_no={company_reg_no})"
+        )
         return True
 
 

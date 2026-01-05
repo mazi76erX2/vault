@@ -113,7 +113,9 @@ class AuthService:
 
             # Check if username already exists (if provided)
             if user_data.username:
-                result = await db.execute(select(Profile).where(Profile.username == user_data.username))
+                result = await db.execute(
+                    select(Profile).where(Profile.username == user_data.username)
+                )
                 if result.scalar_one_or_none():
                     raise ValueError(f"Username '{user_data.username}' is already taken")
 
@@ -123,8 +125,8 @@ class AuthService:
             # Derive full_name consistently with schema
             full_name = user_data.full_name
             if not full_name:
-                first = getattr(user_data, 'first_name', None) or ""
-                last = getattr(user_data, 'last_name', None) or ""
+                first = getattr(user_data, "first_name", None) or ""
+                last = getattr(user_data, "last_name", None) or ""
                 full_name = (f"{first} {last}").strip() or None
 
             # Create user in auth.users
@@ -150,12 +152,12 @@ class AuthService:
                 email=user_data.email,
                 full_name=full_name,
                 username=user_data.username,
-                telephone=getattr(user_data, 'telephone', None),
-                company_id=getattr(user_data, 'company_id', None),
-                company_name=getattr(user_data, 'company_name', None),
-                company_reg_no=company_reg_no or getattr(user_data, 'company_reg_no', None),
-                department=getattr(user_data, 'department', None),
-                user_access=coerce_user_access(getattr(user_data, 'user_access', None)),
+                telephone=getattr(user_data, "telephone", None),
+                company_id=getattr(user_data, "company_id", None),
+                company_name=getattr(user_data, "company_name", None),
+                company_reg_no=company_reg_no or getattr(user_data, "company_reg_no", None),
+                department=getattr(user_data, "department", None),
+                user_access=coerce_user_access(getattr(user_data, "user_access", None)),
                 status="active",
                 created_at=now,
                 updated_at=now,
@@ -174,7 +176,9 @@ class AuthService:
             raise
 
     @staticmethod
-    async def authenticate_user(db: AsyncSession, email: str, password: str) -> tuple[User, Profile] | None:
+    async def authenticate_user(
+        db: AsyncSession, email: str, password: str
+    ) -> tuple[User, Profile] | None:
         """
         Authenticate a user by email and password
         """
@@ -340,7 +344,9 @@ class AuthService:
             return None
 
     @staticmethod
-    async def reset_password_with_token(db: AsyncSession, email: str, token: str, new_password: str) -> bool:
+    async def reset_password_with_token(
+        db: AsyncSession, email: str, token: str, new_password: str
+    ) -> bool:
         """Reset password using token"""
         try:
             user = await AuthService.verify_password_reset_token(db, email, token)
@@ -446,7 +452,9 @@ async def get_current_user_dependency(
 
     user_id = payload.get("sub")
     if not user_id:
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid token payload")
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid token payload"
+        )
 
     user_data = await AuthService.get_user_with_roles(db, user_id)
     if not user_data:
@@ -472,7 +480,9 @@ def require_access_level(min_level: int):
     async def access_checker(current_user: dict = Depends(get_current_user_dependency)):
         user_access = current_user.get("profile", {}).get("user_access", 0) or 0
         if int(user_access) < min_level:
-            raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Insufficient access level")
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN, detail="Insufficient access level"
+            )
         return current_user
 
     return access_checker

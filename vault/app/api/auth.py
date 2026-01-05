@@ -28,15 +28,9 @@ from app.email_service import send_password_reset_email
 from app.models.profile import Profile
 from app.models.role import Role, UserRole
 from app.models.user import User
-from app.schemas.auth import (
-    PasswordChange,
-    PasswordReset,
-    PasswordResetRequest,
-    TokenResponse,
-    UserCreate,
-    UserLogin,
-    UserResponse,
-)
+from app.schemas.auth import (PasswordChange, PasswordReset,
+                              PasswordResetRequest, TokenResponse, UserCreate,
+                              UserLogin, UserResponse)
 
 # Shared DB dependency (matches usage elsewhere in your repo)
 try:

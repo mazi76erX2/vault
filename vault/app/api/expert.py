@@ -13,8 +13,9 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import get_async_db
-from app.dto.expert import AcceptDocumentRequest, DocumentRow, RejectRequest
+from app.dto.expert import AcceptDocumentRequest
 from app.dto.expert import Document as DocumentDTO
+from app.dto.expert import DocumentRow, RejectRequest
 from app.middleware.auth import verify_token_with_tenant
 from app.models import Document, Profile
 

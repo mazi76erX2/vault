@@ -11,13 +11,11 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.database import get_async_db
 from app.middleware.auth import verify_token
 from app.models import Company, Profile, Role, UserRole
-from app.schemas.company import (
-    CompanyContactDetails,
-    GetCompanyContactDetailsRequest,
-    GetCompanyThemeSettingsRequest,
-    UpdateCompanyContactDetailsRequest,
-    UpdateCompanyThemeSettingsRequest,
-)
+from app.schemas.company import (CompanyContactDetails,
+                                 GetCompanyContactDetailsRequest,
+                                 GetCompanyThemeSettingsRequest,
+                                 UpdateCompanyContactDetailsRequest,
+                                 UpdateCompanyThemeSettingsRequest)
 from app.services.storage import StorageService
 
 router = APIRouter()

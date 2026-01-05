@@ -11,7 +11,8 @@ from datetime import datetime
 
 import requests
 from pgvector.sqlalchemy import Vector
-from sqlalchemy import Column, DateTime, Integer, String, Text, create_engine, text
+from sqlalchemy import (Column, DateTime, Integer, String, Text, create_engine,
+                        text)
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import declarative_base, sessionmaker
 

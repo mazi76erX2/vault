@@ -14,12 +14,8 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import get_async_db
-from app.dto.validator import (
-    AcceptDocumentRequest,
-    DelegateRequest,
-    DocumentFetchRequest,
-    RejectDocumentRequest,
-)
+from app.dto.validator import (AcceptDocumentRequest, DelegateRequest,
+                               DocumentFetchRequest, RejectDocumentRequest)
 from app.middleware.auth import verify_token_with_tenant
 from app.models import Document, Profile
 

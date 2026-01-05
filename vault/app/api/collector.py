@@ -16,22 +16,17 @@ from sqlalchemy import select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import get_async_db
-from app.dto.collector import (
-    CollectorSummaryContinueRequest,
-    CollectorSummaryContinueResponse,
-    CollectorSummaryUpdateSummaryRequest,
-    ProfileUpdateRequest,
-    StartChatRequest,
-)
+from app.dto.collector import (CollectorSummaryContinueRequest,
+                               CollectorSummaryContinueResponse,
+                               CollectorSummaryUpdateSummaryRequest,
+                               ProfileUpdateRequest, StartChatRequest)
 from app.middleware.auth import verify_token_with_tenant
-from app.models import ChatMessageCollector, Document, Profile, Question, Session
-from app.services.collector_llm import (
-    generate_follow_up_question,
-    generate_initial_questions,
-    generate_summary,
-    generate_tags,
-    generate_topic_from_question,
-)
+from app.models import (ChatMessageCollector, Document, Profile, Question,
+                        Session)
+from app.services.collector_llm import (generate_follow_up_question,
+                                        generate_initial_questions,
+                                        generate_summary, generate_tags,
+                                        generate_topic_from_question)
 from app.services.file_extract import extract_text
 
 router = APIRouter(prefix="/api/v1/collector", tags=["collector"])
