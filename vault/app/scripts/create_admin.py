@@ -24,9 +24,9 @@ async def create_admin_user(email: str, password: str, full_name: str, company_r
         raise RuntimeError("DATABASE_URL / DATABASEURL is not configured (check your .env)")
 
     engine = create_async_engine(_async_db_url(db_url), echo=False)
-    AsyncSessionLocal = sessionmaker(bind=engine, class_=AsyncSession, expire_on_commit=False)
+    async_session_local = sessionmaker(bind=engine, class_=AsyncSession, expire_on_commit=False)
 
-    async with AsyncSessionLocal() as db:
+    async with async_session_local() as db:
         # 1) Check if user already exists
         res = await db.execute(select(User).where(User.email == email))
         if res.scalar_one_or_none():

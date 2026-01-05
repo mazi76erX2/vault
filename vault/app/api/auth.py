@@ -4,7 +4,7 @@ Handles user authentication, registration, and JWT token management.
 
 This version:
 - Uses canonical ORM models from app.models (the ones Alembic sees).
-- Uses the shared AsyncSession dependency from app.database (getasyncdb).
+- Uses the shared AsyncSession dependency from app.database (get_async_db).
 - Keeps refresh tokens stateless (JWT-only) to avoid requiring a refresh_tokens table.
 """
 
@@ -16,10 +16,10 @@ import uuid
 from datetime import datetime, timedelta
 from typing import Any
 
+import bcrypt
 import jwt
 from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer
-from passlib.context import CryptContext
 from sqlalchemy import or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -34,14 +34,13 @@ from app.schemas.auth import (PasswordChange, PasswordReset,
 
 # Shared DB dependency (matches usage elsewhere in your repo)
 try:
-    from app.database import getasyncdb as get_async_db  # type: ignore
-except Exception:
     from app.database import get_async_db  # type: ignore
+except ImportError:
+    from app.database import getasyncdb as get_async_db  # type: ignore
 
 
 logger = logging.getLogger(__name__)
 
-pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/auth/login")
 
 router = APIRouter(tags=["Authentication"])
@@ -49,15 +48,26 @@ router = APIRouter(tags=["Authentication"])
 
 class AuthService:
     # -------------------------------------------------------------------------
-    # Password utilities
+    # Password utilities (using bcrypt directly to avoid passlib compatibility issues)
     # -------------------------------------------------------------------------
     @staticmethod
     def hash_password(password: str) -> str:
-        return pwd_context.hash(password)
+        """Hash a password using bcrypt, truncating to 72 bytes as required."""
+        password_bytes = password.encode("utf-8")[:72]
+        salt = bcrypt.gensalt()
+        hashed = bcrypt.hashpw(password_bytes, salt)
+        return hashed.decode("utf-8")
 
     @staticmethod
     def verify_password(plain_password: str, hashed_password: str) -> bool:
-        return pwd_context.verify(plain_password, hashed_password)
+        """Verify a password against its hash, truncating to 72 bytes as required."""
+        try:
+            password_bytes = plain_password.encode("utf-8")[:72]
+            hashed_bytes = hashed_password.encode("utf-8")
+            return bcrypt.checkpw(password_bytes, hashed_bytes)
+        except Exception as e:
+            logger.warning(f"Password verification error: {e}")
+            return False
 
     # -------------------------------------------------------------------------
     # JWT helpers
@@ -66,21 +76,21 @@ class AuthService:
     def create_access_token(data: dict[str, Any], expires_delta: timedelta | None = None) -> str:
         to_encode = dict(data)
         expire = datetime.utcnow() + (
-            expires_delta or timedelta(minutes=settings.ACCESSTOKENEXPIREMINUTES)
+            expires_delta or timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
         )
         to_encode.update({"exp": expire, "iat": datetime.utcnow(), "type": "access"})
-        return jwt.encode(to_encode, settings.SECRETKEY, algorithm=settings.ALGORITHM)
+        return jwt.encode(to_encode, settings.SECRET_KEY, algorithm=settings.ALGORITHM)
 
     @staticmethod
     def create_refresh_token(user_id: str) -> str:
-        expire = datetime.utcnow() + timedelta(days=settings.REFRESHTOKENEXPIREDAYS)
+        expire = datetime.utcnow() + timedelta(days=settings.REFRESH_TOKEN_EXPIRE_DAYS)
         to_encode = {"sub": user_id, "exp": expire, "iat": datetime.utcnow(), "type": "refresh"}
-        return jwt.encode(to_encode, settings.SECRETKEY, algorithm=settings.ALGORITHM)
+        return jwt.encode(to_encode, settings.SECRET_KEY, algorithm=settings.ALGORITHM)
 
     @staticmethod
     def decode_token(token: str) -> dict[str, Any]:
         try:
-            return jwt.decode(token, settings.SECRETKEY, algorithms=[settings.ALGORITHM])
+            return jwt.decode(token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM])
         except jwt.ExpiredSignatureError:
             raise ValueError("Token has expired") from None
         except jwt.PyJWTError as e:
@@ -93,7 +103,7 @@ class AuthService:
     async def create_user(
         db: AsyncSession,
         user_data: UserCreate,
-        companyregno: str | None = None,
+        company_reg_no: str | None = None,
     ) -> Profile:
         # Check if email exists
         existing = await db.execute(select(User).where(User.email == user_data.email))
@@ -113,16 +123,23 @@ class AuthService:
 
         # Build full name
         full_name = user_data.full_name
-        if not full_name and (user_data.firstname or user_data.lastname):
-            full_name = f"{user_data.firstname or ''} {user_data.lastname or ''}".strip() or None
+        first_name = getattr(user_data, "first_name", None) or getattr(user_data, "firstname", None)
+        last_name = getattr(user_data, "last_name", None) or getattr(user_data, "lastname", None)
+        if not full_name and (first_name or last_name):
+            full_name = f"{first_name or ''} {last_name or ''}".strip() or None
+
+        # Get email_confirmed attribute (handle both snake_case and camelCase)
+        email_confirmed = getattr(user_data, "email_confirmed", None)
+        if email_confirmed is None:
+            email_confirmed = getattr(user_data, "emailconfirmed", False)
 
         # Create auth user (auth.users)
         new_user = User(
             id=user_id,
             email=user_data.email,
             encryptedpassword=AuthService.hash_password(user_data.password),
-            emailconfirmedat=now if user_data.emailconfirmed else None,
-            confirmedat=now if user_data.emailconfirmed else None,
+            emailconfirmedat=now if email_confirmed else None,
+            confirmedat=now if email_confirmed else None,
             createdat=now,
             updatedat=now,
             rawappmetadata={},
@@ -130,30 +147,44 @@ class AuthService:
         )
         db.add(new_user)
 
-        # IMPORTANT:
-        # Your codebase historically assumed profile.id == auth user id in places.
-        # To avoid surprises, set profile.id = user_id AND profile.userid = user_id.
+        # Get profile fields (handle both snake_case and camelCase)
+        telephone = getattr(user_data, "telephone", None)
+        company_id = getattr(user_data, "company_id", None) or getattr(user_data, "companyid", None)
+        company_name = getattr(user_data, "company_name", None) or getattr(
+            user_data, "companyname", None
+        )
+        user_company_reg_no = getattr(user_data, "company_reg_no", None) or getattr(
+            user_data, "companyregno", None
+        )
+        department = getattr(user_data, "department", None)
+        field_of_expertise = getattr(user_data, "field_of_expertise", None) or getattr(
+            user_data, "fieldofexpertise", None
+        )
+        years_of_experience = getattr(user_data, "years_of_experience", None) or getattr(
+            user_data, "yearsofexperience", None
+        )
+        user_access = getattr(user_data, "user_access", None) or getattr(
+            user_data, "useraccess", None
+        )
+
+        # Create profile
         new_profile = Profile(
             id=user_id,
-            userid=user_id,
+            user_id=user_id,
             email=user_data.email,
             full_name=full_name,
             username=user_data.username,
-            telephone=user_data.telephone,
-            companyid=user_data.companyid,
-            companyname=user_data.companyname,
-            companyregno=companyregno or user_data.companyregno,
-            department=user_data.department,
-            fieldofexpertise=(
-                user_data.fieldofexpertise if hasattr(user_data, "fieldofexpertise") else None
-            ),
-            yearsofexperience=(
-                user_data.yearsofexperience if hasattr(user_data, "yearsofexperience") else None
-            ),
-            useraccess=_coerce_useraccess(user_data.useraccess),
+            telephone=telephone,
+            company_id=company_id,
+            company_name=company_name,
+            company_reg_no=company_reg_no or user_company_reg_no,
+            department=department,
+            field_of_expertise=field_of_expertise,
+            years_of_experience=years_of_experience,
+            user_access=_coerce_user_access(user_access),
             status="active",
-            createdat=now,
-            updatedat=now,
+            created_at=now,
+            updated_at=now,
         )
         db.add(new_profile)
 
@@ -172,38 +203,46 @@ class AuthService:
             result = await db.execute(select(User).where(User.email == email))
             user = result.scalar_one_or_none()
             if not user:
+                logger.warning(f"Authentication failed: User not found - {email}")
                 return None
 
-            # Deleted / banned checks (canonical model uses deletedat / banneduntil)
+            # Deleted / banned checks
             if getattr(user, "deletedat", None) is not None:
+                logger.warning(f"Authentication failed: User deleted - {email}")
                 return None
 
             banned_until = getattr(user, "banneduntil", None)
             if banned_until and banned_until > datetime.utcnow():
+                logger.warning(f"Authentication failed: User banned - {email}")
                 return None
 
             hashed = getattr(user, "encryptedpassword", None)
             if not hashed:
+                logger.warning(f"Authentication failed: No password set - {email}")
                 return None
 
             if not AuthService.verify_password(password, hashed):
+                logger.warning(f"Authentication failed: Invalid password - {email}")
                 return None
 
-            # Get profile: try userid link first, then id fallback (for safety)
+            # Get profile: try user_id link first, then id fallback
             prof_q = select(Profile).where(
                 or_(
-                    Profile.userid == user.id,
+                    Profile.user_id == user.id,
                     Profile.id == user.id,
                 )
             )
             prof_res = await db.execute(prof_q)
             profile = prof_res.scalar_one_or_none()
             if not profile:
+                logger.error(f"Profile not found for user: {user.id}")
                 return None
 
             if getattr(profile, "status", None) == "inactive":
+                logger.warning(f"Authentication failed: Profile inactive - {email}")
                 return None
 
+            logger.info(f"User authenticated successfully: {email}")
             return user, profile
 
         except Exception:
@@ -217,16 +256,16 @@ class AuthService:
     async def get_user_roles(
         db: AsyncSession,
         profile_id: str,
-        companyregno: str | None = None,
+        company_reg_no: str | None = None,
     ) -> list[str]:
         try:
             q = (
                 select(Role.name)
-                .join(UserRole, UserRole.roleid == Role.id)
-                .where(UserRole.userid == profile_id)
+                .join(UserRole, UserRole.role_id == Role.id)
+                .where(UserRole.user_id == profile_id)
             )
-            if companyregno:
-                q = q.where(UserRole.companyregno == companyregno)
+            if company_reg_no:
+                q = q.where(UserRole.company_reg_no == company_reg_no)
 
             rows = (await db.execute(q)).all()
             return [r[0] for r in rows]
@@ -239,7 +278,7 @@ class AuthService:
         db: AsyncSession,
         profile_id: str,
         role_name: str,
-        companyregno: str,
+        company_reg_no: str,
     ) -> bool:
         try:
             role_res = await db.execute(select(Role).where(Role.name == role_name))
@@ -249,15 +288,15 @@ class AuthService:
 
             existing = await db.execute(
                 select(UserRole).where(
-                    (UserRole.userid == profile_id)
-                    & (UserRole.roleid == role.id)
-                    & (UserRole.companyregno == companyregno)
+                    (UserRole.user_id == profile_id)
+                    & (UserRole.role_id == role.id)
+                    & (UserRole.company_reg_no == company_reg_no)
                 )
             )
             if existing.scalar_one_or_none():
                 return True
 
-            db.add(UserRole(userid=profile_id, roleid=role.id, companyregno=companyregno))
+            db.add(UserRole(user_id=profile_id, role_id=role.id, company_reg_no=company_reg_no))
             await db.commit()
             return True
         except Exception:
@@ -359,7 +398,7 @@ class AuthService:
     async def get_user_with_roles(
         db: AsyncSession,
         auth_user_id: str,
-        companyregno: str | None = None,
+        company_reg_no: str | None = None,
     ) -> dict[str, Any] | None:
         try:
             res = await db.execute(select(User).where(User.id == auth_user_id))
@@ -375,20 +414,20 @@ class AuthService:
                 return None
 
             prof_res = await db.execute(
-                select(Profile).where(or_(Profile.userid == user.id, Profile.id == user.id))
+                select(Profile).where(or_(Profile.user_id == user.id, Profile.id == user.id))
             )
             profile = prof_res.scalar_one_or_none()
             if not profile:
                 return None
 
-            effective_companyregno = companyregno or getattr(profile, "companyregno", None)
-            roles = await AuthService.get_user_roles(db, str(profile.id), effective_companyregno)
+            effective_company_reg_no = company_reg_no or getattr(profile, "company_reg_no", None)
+            roles = await AuthService.get_user_roles(db, str(profile.id), effective_company_reg_no)
 
             return {
                 "user": {
                     "id": str(user.id),
                     "email": user.email,
-                    "emailconfirmed": bool(
+                    "email_confirmed": bool(
                         getattr(user, "emailconfirmedat", None)
                         or getattr(user, "confirmedat", None)
                     ),
@@ -399,28 +438,27 @@ class AuthService:
                     "email": profile.email,
                     "username": getattr(profile, "username", None),
                     "telephone": getattr(profile, "telephone", None),
-                    "companyid": getattr(profile, "companyid", None),
-                    "companyname": getattr(profile, "companyname", None),
-                    "companyregno": getattr(profile, "companyregno", None),
+                    "company_id": getattr(profile, "company_id", None),
+                    "company_name": getattr(profile, "company_name", None),
+                    "company_reg_no": getattr(profile, "company_reg_no", None),
                     "department": getattr(profile, "department", None),
-                    "useraccess": getattr(profile, "useraccess", None),
+                    "user_access": getattr(profile, "user_access", None),
                     "status": getattr(profile, "status", None),
                 },
                 "roles": roles,
-                "companyregno": getattr(profile, "companyregno", None),
+                "company_reg_no": getattr(profile, "company_reg_no", None),
             }
         except Exception:
             logger.exception("Error getting user with roles")
             return None
 
 
-def _coerce_useraccess(value: Any) -> int | None:
+def _coerce_user_access(value: Any) -> int | None:
     if value is None:
         return None
     if isinstance(value, int):
         return value
     if isinstance(value, str):
-        # Keep backward compatibility with earlier mapping you used
         access_map = {"admin": 3, "manager": 2, "employee": 1, "viewer": 0, "guest": 0}
         return access_map.get(value.lower(), 1)
     return None
@@ -471,8 +509,8 @@ def require_roles(*required_roles: str):
 
 def require_access_level(min_level: int):
     async def access_checker(current_user: dict[str, Any] = Depends(get_current_user)):
-        useraccess = current_user.get("profile", {}).get("useraccess", 0) or 0
-        if int(useraccess) < min_level:
+        user_access = current_user.get("profile", {}).get("user_access", 0) or 0
+        if int(user_access) < min_level:
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail="Insufficient access level",
@@ -488,7 +526,7 @@ async def register(user_data: UserCreate, db: AsyncSession = Depends(get_async_d
         profile = await AuthService.create_user(db, user_data)
 
         roles = await AuthService.get_user_roles(
-            db, str(profile.id), getattr(profile, "companyregno", None)
+            db, str(profile.id), getattr(profile, "company_reg_no", None)
         )
 
         return UserResponse(
@@ -496,7 +534,7 @@ async def register(user_data: UserCreate, db: AsyncSession = Depends(get_async_d
             email=profile.email,
             full_name=getattr(profile, "full_name", None),
             username=getattr(profile, "username", None),
-            companyregno=getattr(profile, "companyregno", None),
+            company_reg_no=getattr(profile, "company_reg_no", None),
             roles=roles,
         )
     except ValueError as e:
@@ -530,16 +568,16 @@ async def login(credentials: UserLogin, db: AsyncSession = Depends(get_async_db)
             data={
                 "sub": str(user.id),
                 "email": user.email,
-                "companyregno": getattr(profile, "companyregno", None),
+                "company_reg_no": getattr(profile, "company_reg_no", None),
             }
         )
         refresh_token = AuthService.create_refresh_token(str(user.id))
 
         return TokenResponse(
-            accesstoken=access_token,
-            refreshtoken=refresh_token,
-            tokentype="bearer",
-            expiresin=settings.ACCESSTOKENEXPIREMINUTES * 60,
+            access_token=access_token,
+            refresh_token=refresh_token,
+            token_type="bearer",
+            expires_in=settings.ACCESS_TOKEN_EXPIRE_MINUTES * 60,
         )
 
     except HTTPException:
@@ -553,9 +591,9 @@ async def login(credentials: UserLogin, db: AsyncSession = Depends(get_async_db)
 
 
 @router.post("/refresh", response_model=TokenResponse)
-async def refresh_token_endpoint(refreshtoken: str, db: AsyncSession = Depends(get_async_db)):
+async def refresh_token_endpoint(refresh_token: str, db: AsyncSession = Depends(get_async_db)):
     try:
-        payload = AuthService.decode_token(refreshtoken)
+        payload = AuthService.decode_token(refresh_token)
         if payload.get("type") != "refresh":
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid token type"
@@ -575,16 +613,16 @@ async def refresh_token_endpoint(refreshtoken: str, db: AsyncSession = Depends(g
             data={
                 "sub": user_id,
                 "email": user_data["user"]["email"],
-                "companyregno": user_data.get("companyregno"),
+                "company_reg_no": user_data.get("company_reg_no"),
             }
         )
         new_refresh = AuthService.create_refresh_token(user_id)
 
         return TokenResponse(
-            accesstoken=new_access,
-            refreshtoken=new_refresh,
-            tokentype="bearer",
-            expiresin=settings.ACCESSTOKENEXPIREMINUTES * 60,
+            access_token=new_access,
+            refresh_token=new_refresh,
+            token_type="bearer",
+            expires_in=settings.ACCESS_TOKEN_EXPIRE_MINUTES * 60,
         )
 
     except HTTPException:
@@ -640,14 +678,22 @@ async def change_password(
     user_id = current_user["user"]["id"]
     email = current_user["user"]["email"]
 
+    # Get old_password (handle both snake_case and camelCase)
+    old_password = getattr(password_data, "old_password", None) or getattr(
+        password_data, "oldpassword", None
+    )
+    new_password = getattr(password_data, "new_password", None) or getattr(
+        password_data, "newpassword", None
+    )
+
     # Verify old password
-    result = await AuthService.authenticate_user(db, email, password_data.oldpassword)
+    result = await AuthService.authenticate_user(db, email, old_password)
     if not result:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED, detail="Incorrect current password"
         )
 
-    ok = await AuthService.update_password(db, user_id, password_data.newpassword)
+    ok = await AuthService.update_password(db, user_id, new_password)
     if not ok:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Error updating password"
@@ -663,7 +709,7 @@ async def me(current_user: dict[str, Any] = Depends(get_current_user)):
         email=current_user["user"]["email"],
         full_name=current_user["profile"]["full_name"],
         username=current_user["profile"]["username"],
-        companyregno=current_user.get("companyregno"),
+        company_reg_no=current_user.get("company_reg_no"),
         roles=current_user.get("roles", []),
     )
 
@@ -684,8 +730,8 @@ async def logout_all_devices():
 async def verify(current_user: dict[str, Any] = Depends(get_current_user)):
     return {
         "status": "valid",
-        "userid": current_user["profile"]["id"],
+        "user_id": current_user["profile"]["id"],
         "email": current_user["user"]["email"],
-        "companyregno": current_user.get("companyregno"),
+        "company_reg_no": current_user.get("company_reg_no"),
         "roles": current_user.get("roles", []),
     }
