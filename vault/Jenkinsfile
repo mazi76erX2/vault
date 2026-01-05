@@ -2,7 +2,7 @@ pipeline {
     agent any
     
     environment {
-        DOCKER_IMAGE = 'hico-vault'
+        DOCKER_IMAGE = '-vault'
         KUBECONFIG = credentials('kubeconfig') // Jenkins credential ID for your kubeconfig
         DOCKER_REGISTRY = credentials('docker-registry') // Optional: if using private registry
     }

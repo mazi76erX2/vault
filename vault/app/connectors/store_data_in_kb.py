@@ -1,517 +1,916 @@
-from typing import List, Dict
+"""
+store_data_in_kb.py - Knowledge Base Storage Module
+Handles document ingestion into PostgreSQL with pgvector using Ollama embeddings
+Replaces Azure Search and Qdrant with pgvector for local-first architecture
+"""
 
-import os
 import logging
-import gradio as gr
-from datetime import datetime
-import hashlib
-
-from langchain_community.document_loaders import ConfluenceLoader
-from atlassian import Confluence
-from openai import AzureOpenAI
-from langchain.text_splitter import RecursiveCharacterTextSplitter
-from langchain.text_splitter import CharacterTextSplitter
-from azure.core.credentials import AzureKeyCredential
-from azure.search.documents import SearchClient
-from azure.search.documents.indexes import SearchIndexClient
-from azure.search.documents.indexes.models import SearchIndex
-from azure.search.documents.indexes.models import (
-    HnswParameters,
-    HnswVectorSearchAlgorithmConfiguration,
-    PrioritizedFields,
-    SearchableField,
-    SearchField,
-    SearchFieldDataType,
-    SemanticConfiguration,
-    SemanticField,
-    SemanticSettings,
-    SimpleField,
-    VectorSearch,
-)
-from app.connectors.sharepoint_client import SharePointClient
-from pathlib import Path
-from dotenv import load_dotenv
 import os
 import uuid
-from langchain.text_splitter import RecursiveCharacterTextSplitter
-from sentence_transformers import SentenceTransformer
-from qdrant_client import QdrantClient
-from qdrant_client.models import PointStruct
+from datetime import datetime
 
-# Load .env from current directory
-env_path = Path(__file__).parent.parent / ".env"
-load_dotenv(env_path)
+import requests
+from pgvector.sqlalchemy import Vector
+from sqlalchemy import (Column, DateTime, Integer, String, Text, create_engine,
+                        text)
+from sqlalchemy.dialects.postgresql import UUID
+from sqlalchemy.orm import declarative_base, sessionmaker
 
-# Configure logging
-logging.basicConfig(
-    level=logging.DEBUG,  # Set the lowest severity level to capture
-    format="%(asctime)s - %(levelname)s - %(message)s",
-    handlers=[
-        logging.FileHandler("testing.log"),  # Log messages to a file
-        logging.StreamHandler(),  # Print messages to the console
-    ],
-)
+from app.config import settings
+
+logger = logging.getLogger(__name__)
+
+# Configuration
+OLLAMA_HOST = os.environ.get("OLLAMA_HOST", "http://localhost:11434")
+OLLAMA_EMBED_MODEL = os.environ.get("OLLAMA_EMBED_MODEL", "nomic-embed-text")
+EMBEDDING_DIMENSION = int(os.environ.get("EMBEDDING_DIMENSION", "768"))
+
+# Database setup
+DATABASE_URL = settings.DATABASE_URL
+engine = create_engine(DATABASE_URL, echo=False)
+SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
+
+Base = declarative_base()
 
 
-def check_doc_in_index(search_client, doc_id, last_modified_date):
+# ============================================================================
+# SQLAlchemy Model for Knowledge Base Documents
+# ============================================================================
+
+
+class KnowledgeBaseDocument(Base):
+    """Knowledge base document with vector embedding"""
+
+    __tablename__ = "kb_documents"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    content = Column(Text, nullable=False)
+    embedding = Column(Vector(EMBEDDING_DIMENSION), nullable=True)
+
+    # Document metadata
+    sourcefile = Column(String(500), nullable=True)
+    title = Column(String(500), nullable=True)
+    access_level = Column(Integer, default=1, index=True)
+
+    # Additional metadata
+    company_id = Column(Integer, nullable=True, index=True)
+    company_reg_no = Column(String(50), nullable=True, index=True)
+    department = Column(String(100), nullable=True)
+    tags = Column(Text, nullable=True)  # Comma-separated tags
+    author = Column(String(255), nullable=True)
+    doc_type = Column(String(50), nullable=True)
+
+    # Timestamps
+    created_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    last_modified_date = Column(DateTime, default=datetime.utcnow)
+
+
+# ============================================================================
+# Database Initialization
+# ============================================================================
+
+
+def init_pgvector():
+    """Initialize pgvector extension and create tables"""
+    with engine.connect() as conn:
+        # Enable pgvector extension
+        conn.execute(text("CREATE EXTENSION IF NOT EXISTS vector"))
+        conn.commit()
+
+    # Create tables
+    Base.metadata.create_all(bind=engine)
+    logger.info("pgvector extension enabled and tables created")
+
+
+def get_db_session():
+    """Get a database session"""
+    db = SessionLocal()
+    try:
+        return db
+    except Exception:
+        db.close()
+        raise
+
+
+# ============================================================================
+# Embedding Generation
+# ============================================================================
+
+
+def _get_embedding(text_content: str) -> list[float]:
     """
-    Check if a document with the given doc_id exists in the Azure Cognitive Search index.
+    Generate embedding for text using Ollama.
 
     Args:
-        search_client (SearchClient): An instance of the Azure Cognitive Search client.
-        doc_id (str): The unique document ID to search for.
+        text_content: Text to embed
 
     Returns:
-        bool: True if the document exists, False otherwise.
+        Embedding vector as list of floats
     """
-    query = doc_id
-    results = search_client.search(
-        query, search_fields=["doc_id"]
-    )  # Limit results to 1 for efficiency
-    ids = []
-    is_old = False
-    for result in results:  # If any result exists, the doc_id is in the index
-        if doc_id == result.get("doc_id"):
-            is_old = True
-            if last_modified_date != result.get("last_modified_date"):
-                ids.append(result.get("id"))
-    return ids, is_old
+    try:
+        url = f"{OLLAMA_HOST.rstrip('/')}/api/embed"
+        payload = {"model": OLLAMA_EMBED_MODEL, "input": [text_content]}
+        resp = requests.post(url, json=payload, timeout=60)
+        resp.raise_for_status()
+        data = resp.json()
+
+        if isinstance(data, dict) and "embeddings" in data:
+            return data["embeddings"][0]
+        if isinstance(data, dict) and "embedding" in data:
+            return data["embedding"]
+        if isinstance(data, list) and len(data) > 0:
+            return data[0]
+
+        raise RuntimeError(f"Unexpected Ollama embed response: {type(data)}")
+    except Exception as e:
+        logger.error(f"Failed to generate embedding: {e}")
+        raise
 
 
-def get_index(name: str) -> SearchIndex:
+def _get_embeddings_batch(texts: list[str]) -> list[list[float]]:
     """
-    Returns an Azure Cognitive Search index with the given name.
+    Generate embeddings for multiple texts using Ollama.
+
+    Args:
+        texts: List of texts to embed
+
+    Returns:
+        List of embedding vectors
     """
-    fields = [
-        SimpleField(name="id", type=SearchFieldDataType.String, key=True),
-        SearchableField(name="doc_id", type=SearchFieldDataType.String),
-        SimpleField(name="chunk_index", type=SearchFieldDataType.Int32),
-        SimpleField(name="sourcefile", type=SearchFieldDataType.String),
-        SimpleField(name="title", type=SearchFieldDataType.String),
-        SimpleField(name="created_date", type=SearchFieldDataType.String),
-        SimpleField(name="last_modified_date", type=SearchFieldDataType.String),
-        SimpleField(name="created_by", type=SearchFieldDataType.String),
-        SimpleField(name="last_modified_by", type=SearchFieldDataType.String),
-        SimpleField(name="access_level", type=SearchFieldDataType.Int32),
-        SearchableField(name="content", type=SearchFieldDataType.String),
-        SearchField(
-            name="embedding",
-            type=SearchFieldDataType.Collection(SearchFieldDataType.Single),
-            vector_search_dimensions=1536,
-            vector_search_configuration="default",
-        ),
-    ]
+    try:
+        url = f"{OLLAMA_HOST.rstrip('/')}/api/embed"
+        payload = {"model": OLLAMA_EMBED_MODEL, "input": texts}
+        resp = requests.post(url, json=payload, timeout=120)
+        resp.raise_for_status()
+        data = resp.json()
 
-    semantic_settings = SemanticSettings(
-        configurations=[
-            SemanticConfiguration(
-                name="default",
-                prioritized_fields=PrioritizedFields(
-                    title_field=None,
-                    prioritized_content_fields=[SemanticField(field_name="content")],
-                ),
-            )
-        ]
-    )
+        if isinstance(data, dict) and "embeddings" in data:
+            return data["embeddings"]
+        if isinstance(data, list):
+            return data
 
-    vector_search = VectorSearch(
-        algorithm_configurations=[
-            HnswVectorSearchAlgorithmConfiguration(
-                name="default",
-                kind="hnsw",
-                parameters=HnswParameters(metric="cosine"),
-            )
-        ]
-    )
-
-    index = SearchIndex(
-        name=name,
-        fields=fields,
-        semantic_settings=semantic_settings,
-        vector_search=vector_search,
-    )
-
-    return index
+        raise RuntimeError(f"Unexpected Ollama embed response: {type(data)}")
+    except Exception as e:
+        logger.error(f"Failed to generate batch embeddings: {e}")
+        raise
 
 
-def load_from_confluence_loader(confluence_url, username, api_key, space_key):
-    """Load HTML files from Confluence"""
-    loader = ConfluenceLoader(url=confluence_url, username=username, api_key=api_key)
-
-    docs = loader.load(space_key=space_key, include_attachments=True)
-    return docs
+# ============================================================================
+# Knowledge Base Operations
+# ============================================================================
 
 
-def get_all_parent_titles_dict(
-    confluence_url: str, username: str, api_token: str, page_ids: List
-) -> Dict:
+def store_in_kb(doc: dict) -> dict:
     """
-    Retrieve and store all parent page titles in a dictionary with page IDs.
+    Store a document in the pgvector knowledge base.
+
+    Args:
+        doc: Dictionary containing document data with keys:
+            - file_name: Source file name or URL
+            - content: Document text content
+            - file_title: Title of the document
+            - level: Access level (1-5)
+            - Optional metadata fields
+
+    Returns:
+        Dictionary with status and document ID
     """
-    # Initialize the Confluence client
-    confluence = Confluence(
-        url=confluence_url,
-        username=username,
-        password=api_token,  # For cloud instances, use API token as password
-    )
-    parent_titles = {}
-    for page_id in page_ids:
+    db = None
+    try:
+        logger.info(f"Storing document: {doc.get('file_title', 'Untitled')}")
 
-        current_id = page_id
+        # Extract document data
+        content = doc.get("content", "")
+        if not content:
+            raise ValueError("Document content is empty")
 
-        # Fetch the current page details
-        page = confluence.get_page_by_id(current_id, expand="ancestors")
+        file_name = doc.get("file_name", "unknown")
+        file_title = doc.get("file_title", "Untitled")
+        access_level = doc.get("level", 1)
 
-        # Check if there are ancestors
-        ancestors = page.get("ancestors", [])
-        temp_list = []
-        for ancestor in ancestors:
-            temp_list.append(ancestor["title"])
-        parent_titles[current_id] = temp_list
+        # Generate embedding
+        logger.info("Generating embedding for document...")
+        embedding = _get_embedding(content)
 
-    return parent_titles
+        # Create unique ID
+        doc_id = uuid.uuid4()
 
-
-def get_hiearchy_space(docs, confluence_url, username, api_key):
-    docs_ids = []
-    for doc in docs:
-        docs_ids.append(doc.metadata["id"])
-
-    # add how to get the tree
-    hiearchy = get_all_parent_titles_dict(confluence_url, username, api_key, docs_ids)
-
-    return hiearchy
-
-
-def format_hierarchy(page_id, page_tree):
-    """
-    Formats the hierarchy into a string from the list of ancestors.
-    """
-    if page_id in page_tree:
-        return " > ".join(page_tree[page_id][::-1])  # Reverse to start from the root
-    return "No hierarchy available"
-
-
-def augment_content_with_hierarchy(content: str, hierarchy: str, date: str) -> str:
-    """
-    Augments content with hierarchy and date information.
-    """
-    hierarchy_info = f"This is the page hierarchy of the content: {hierarchy}"
-    date_info = f"Published on: {date}"
-    return f"{hierarchy_info}\n{date_info}\n\n{content}"
-
-
-def generate_doc_id(file_name, file_url):
-    unique_str = f"{file_name}_{file_url}"
-    return hashlib.md5(unique_str.encode()).hexdigest()
-
-
-def generate_chunk_ids(doc_id, num_chunks):
-    return [f"{doc_id}_chunk_{i}" for i in range(1, num_chunks + 1)]
-
-
-def store_confluence_in_azure_kb(confluence_url, username, api_key, space_key, index):
-    AZURE_SEARCH_ENDPOINT = os.environ["AZURE_SEARCH_ENDPOINT"]
-    AZURE_SEARCH_KEY = os.environ["AZURE_SEARCH_KEY"]
-    AZURE_SEARCH_INDEX_NAME = index
-
-    search_client = SearchClient(
-        endpoint=AZURE_SEARCH_ENDPOINT,
-        index_name=AZURE_SEARCH_INDEX_NAME,
-        credential=AzureKeyCredential(AZURE_SEARCH_KEY),
-    )
-    clientOpenAI = AzureOpenAI(
-        azure_endpoint=os.environ["AZURE_OPENAI_ENDPOINT"],
-        api_key=os.environ["AZURE_OPENAI_KEY"],
-        api_version="2024-02-15-preview",
-    )
-    search_index_client = SearchIndexClient(
-        AZURE_SEARCH_ENDPOINT, AzureKeyCredential(AZURE_SEARCH_KEY)
-    )
-    docs = load_from_confluence_loader(confluence_url, username, api_key, space_key)
-    page_tree = get_hiearchy_space(docs, confluence_url, username, api_key)
-    # Split data into manageable chunks
-    text_splitter = RecursiveCharacterTextSplitter(
-        chunk_size=5000, chunk_overlap=20, length_function=len
-    )
-    chunks = text_splitter.split_documents(docs)
-    datas = []
-    # Store the data into Azure search index
-    chunk_counter = 0
-    doc_counter = ""
-    for index, chunk in enumerate(chunks):
-        hierarchy = format_hierarchy(chunk.metadata["id"], page_tree)
-        augmented_content = augment_content_with_hierarchy(
-            chunk.page_content, hierarchy, chunk.metadata["when"][:10]
+        # Create document record
+        kb_doc = KnowledgeBaseDocument(
+            id=doc_id,
+            content=content,
+            embedding=embedding,
+            sourcefile=file_name,
+            title=file_title,
+            access_level=access_level,
+            company_id=doc.get("company_id"),
+            company_reg_no=doc.get("company_reg_no"),
+            department=doc.get("department"),
+            tags=doc.get("tags"),
+            author=doc.get("author"),
+            doc_type=doc.get("doc_type"),
+            last_modified_date=datetime.now(),
         )
 
-        doc_id = generate_doc_id(chunk.metadata["title"], chunk.metadata["source"])
-        try:
-            ids, is_old = check_doc_in_index(
-                search_client, doc_id, chunk.metadata["when"][:10]
-            )
-        except:
-            ids = []
-            is_old = False
+        # Store in database
+        db = get_db_session()
+        db.add(kb_doc)
+        db.commit()
 
-        if ids:
-            print(f"the file: {chunk.metadata['title']} deleted from the KB")
+        logger.info(f"Document stored successfully with ID: {doc_id}")
 
-            search_client.delete_documents(ids)
-
-            if doc_id == doc_counter:
-                chunk_counter += 1
-            else:
-                doc_counter = doc_id
-                chunk_counter = 0
-            chunk_id = (
-                f"{doc_id}_chunk_{chunk_counter}"  # Combine doc_id and chunk index
-            )
-            data = {
-                "id": chunk_id,
-                "doc_id": doc_id,
-                "chunk_index": chunk_counter,
-                "content": augmented_content,
-                "sourcefile": chunk.metadata["source"],
-                "title": chunk.metadata["title"],
-                "created_date": "",
-                "last_modified_date": "",
-                "created_by": "",
-                "last_modified_by": chunk.metadata["when"][:10],
-                "access_level": 1,
-            }
-            datas.append(data)
-        if not is_old:
-            if doc_id == doc_counter:
-                chunk_counter += 1
-            else:
-                doc_counter = doc_id
-                chunk_counter = 0
-            chunk_id = (
-                f"{doc_id}_chunk_{chunk_counter}"  # Combine doc_id and chunk index
-            )
-            data = {
-                "id": chunk_id,
-                "doc_id": doc_id,
-                "chunk_index": chunk_counter,
-                "content": augmented_content,
-                "sourcefile": chunk.metadata["source"],
-                "title": chunk.metadata["title"],
-                "created_date": "",
-                "last_modified_date": chunk.metadata["when"][:10],
-                "created_by": "",
-                "last_modified_by": "",
-                "access_level": 1,
-            }
-            datas.append(data)
-
-    for doc in datas:
-        doc["embedding"] = (
-            clientOpenAI.embeddings.create(
-                input=doc["content"], model="embedding-rag-confluence"
-            )
-            .data[0]
-            .embedding
-        )
-
-    # Create an Azure Cognitive Search index.
-    index = get_index(AZURE_SEARCH_INDEX_NAME)
-    search_index_client.create_or_update_index(index)
-
-    # Upload our data to the index.
-
-    if datas:
-        search_client.upload_documents(datas)
-
-
-def store_sharepoint_in_azure_kb(site_hostname, site_path, index):
-    CLIENT_ID = os.environ["sharepoint_Client_ID"]
-    CLIENT_SECRET = os.environ["sharepoint_Secret"]
-    TENANT_ID = os.environ["TENANT_ID"]
-    site_url = f"{site_hostname}:/sites/{site_path}"
-    logging.info("Starting the SharePoint Client")
-    sharepoint_client = SharePointClient(
-        TENANT_ID, CLIENT_ID, CLIENT_SECRET, "https://graph.microsoft.com/", index
-    )
-    site_id = sharepoint_client.get_site_id(site_url)
-    print("Site ID:", site_id)
-
-    drive_info = sharepoint_client.get_drive_id(site_id)
-    print("Root folder:", drive_info)
-
-    drive_id = drive_info[0][0]  # Assume the first drive ID
-    folder_content = sharepoint_client.get_folder_content(site_id, drive_id)
-
-    for folder_name in folder_content.keys():
-        logging.info(f"Processing the SharePoint folder: {folder_name}")
-        folder_id = folder_content[folder_name]
-        sharepoint_client.process_folder_contents(
-            site_id, drive_id, folder_id, local_folder_path="data"
-        )
-
-
-def store_in_azure_kb(doc):
-    AZURE_SEARCH_ENDPOINT = os.environ["AZURE_SEARCH_ENDPOINT"]
-    AZURE_SEARCH_KEY = os.environ["AZURE_SEARCH_KEY"]
-    AZURE_SEARCH_INDEX_NAME = "hicovault"
-
-    clientOpenAI = AzureOpenAI(
-        azure_endpoint=os.environ["AZURE_OPENAI_ENDPOINT"],
-        api_key=os.environ["AZURE_OPENAI_KEY"],
-        api_version="2024-02-15-preview",
-    )
-
-    # Initialize Azure Cognitive Search client
-    search_index_client = SearchIndexClient(
-        AZURE_SEARCH_ENDPOINT, AzureKeyCredential(AZURE_SEARCH_KEY)
-    )
-
-    datas = []
-    counter = 0
-    splitter = CharacterTextSplitter(separator="\n", chunk_size=5000, chunk_overlap=20)
-
-    # Process each text document
-    chunks = splitter.split_text(doc["content"])
-    for chunk in chunks:
-        counter += 1
-        data = {
-            "id": str(counter),
-            "content": chunk,
-            "sourcefile": doc["file_name"],
-            "title": doc["file_title"],
-            "created_date": datetime.now().date(),  # or extract actual date if available
-            "access_level": doc["level"],
+        return {
+            "status": "success",
+            "message": "Document stored in knowledge base",
+            "doc_id": str(doc_id),
         }
-        datas.append(data)
 
-    for doc in datas:
-        doc["embedding"] = (
-            clientOpenAI.embeddings.create(
-                input=doc["content"], model="embedding-rag-confluence"
-            )
-            .data[0]
-            .embedding
-        )
-
-    # Create an Azure Cognitive Search index
-    index = get_index(AZURE_SEARCH_INDEX_NAME)
-    search_index_client.create_or_update_index(index)
-    logging.info("Uploading Embeddings into Vector Storage Place ...")
-
-    # Upload data to the index
-    search_client = SearchClient(
-        endpoint=AZURE_SEARCH_ENDPOINT,
-        index_name=AZURE_SEARCH_INDEX_NAME,
-        credential=AzureKeyCredential(AZURE_SEARCH_KEY),
-    )
-    search_client.upload_documents(datas)
+    except Exception as e:
+        logger.error(f"Error storing document in knowledge base: {e}")
+        if db:
+            db.rollback()
+        return {"status": "error", "message": f"Failed to store document: {str(e)}"}
+    finally:
+        if db:
+            db.close()
 
 
-def store_confluence_in_qdrant(
-    confluence_url: str,
-    username: str,
-    api_key: str,
-    space_key: str,
-    collection_name: str = "confluence-kb",
-    host: str = "localhost",
-    port: int = 6333,
-    chunk_size: int = 5000,
-    chunk_overlap: int = 20,
-    embedding_model: str = "all-MiniLM-L6-v2",
-):
+def store_bulk_in_kb(docs: list[dict]) -> dict:
     """
-    Extract documents from a Confluence space, split them into manageable chunks,
-    create embeddings for each chunk and store them in a Qdrant collection.
+    Store multiple documents in the knowledge base in a batch.
 
-    Parameters:
-      confluence_url (str): The base URL of your Confluence instance.
-      username (str): Username for Confluence.
-      api_key (str): API token for Confluence.
-      space_key (str): Key for the Confluence space.
-      collection_name (str): Name of the Qdrant collection to store documents.
-      host (str): Qdrant server host.
-      port (int): Qdrant server port.
-      chunk_size (int): Maximum number of characters per text chunk.
-      chunk_overlap (int): Number of overlapping characters between chunks.
-      embedding_model (str): SentenceTransformer model to use for creating embeddings.
+    Args:
+        docs: List of document dictionaries (same format as store_in_kb)
+
+    Returns:
+        Dictionary with status and count of stored documents
     """
+    db = None
+    try:
+        logger.info(f"Bulk storing {len(docs)} documents")
 
-    # Step 1: Load data from Confluence.
-    print(f"Extracting data from Confluence space '{space_key}' at: {confluence_url}")
-    docs = load_from_confluence_loader(confluence_url, username, api_key, space_key)
-    page_tree = get_hiearchy_space(docs, confluence_url, username, api_key)
+        # Filter documents with content
+        valid_docs = [doc for doc in docs if doc.get("content")]
+        if not valid_docs:
+            return {"status": "error", "message": "No valid documents to store"}
 
-    # Step 2: Split documents into chunks.
-    text_splitter = RecursiveCharacterTextSplitter(
-        chunk_size=chunk_size, chunk_overlap=chunk_overlap, length_function=len
-    )
-    chunks = text_splitter.split_documents(docs)
-    print(f"Split Confluence documents into {len(chunks)} chunks.")
+        # Generate embeddings in batch
+        contents = [doc["content"] for doc in valid_docs]
+        logger.info(f"Generating embeddings for {len(contents)} documents...")
+        embeddings = _get_embeddings_batch(contents)
 
-    # Step 3: Create embeddings for each chunk.
-    embedder = SentenceTransformer(embedding_model)
+        # Create document records
+        kb_docs = []
+        doc_ids = []
 
-    # Step 4: Initialize Qdrant client and recreate the collection.
-    # Adjust the 'size' in vectors_config to match your chosen embedding model's dimension,
-    # e.g., for "all-MiniLM-L6-v2" the vector size is 384.
-    client = QdrantClient(host=host, port=port)
-    client.recreate_collection(
-        collection_name=collection_name,
-        vectors_config={"size": 384, "distance": "Cosine"},
-    )
+        for i, doc in enumerate(valid_docs):
+            doc_id = uuid.uuid4()
+            doc_ids.append(str(doc_id))
 
-    points = []
-    for i, chunk in enumerate(chunks):
-        # Prepare the hierarchy if available.
-        hierarchy = (
-            format_hierarchy(chunk.metadata["id"], page_tree)
-            if "id" in chunk.metadata
-            else ""
-        )
-        augmented_content = (
-            augment_content_with_hierarchy(
-                chunk.page_content, hierarchy, chunk.metadata["when"][:10]
+            kb_doc = KnowledgeBaseDocument(
+                id=doc_id,
+                content=doc.get("content", ""),
+                embedding=embeddings[i],
+                sourcefile=doc.get("file_name", "unknown"),
+                title=doc.get("file_title", "Untitled"),
+                access_level=doc.get("level", 1),
+                company_id=doc.get("company_id"),
+                company_reg_no=doc.get("company_reg_no"),
+                department=doc.get("department"),
+                tags=doc.get("tags"),
+                author=doc.get("author"),
+                doc_type=doc.get("doc_type"),
+                last_modified_date=datetime.now(),
             )
-            if "when" in chunk.metadata
-            else chunk.page_content
+            kb_docs.append(kb_doc)
+
+        # Bulk insert
+        db = get_db_session()
+        db.add_all(kb_docs)
+        db.commit()
+
+        logger.info(f"Bulk storage complete: {len(kb_docs)} documents stored")
+
+        return {
+            "status": "success",
+            "message": f"Stored {len(kb_docs)} documents in knowledge base",
+            "doc_ids": doc_ids,
+        }
+
+    except Exception as e:
+        logger.error(f"Error in bulk storage: {e}")
+        if db:
+            db.rollback()
+        return {"status": "error", "message": f"Bulk storage failed: {str(e)}"}
+    finally:
+        if db:
+            db.close()
+
+
+def delete_from_kb(doc_id: str) -> dict:
+    """
+    Delete a document from the knowledge base.
+
+    Args:
+        doc_id: ID of the document to delete
+
+    Returns:
+        Dictionary with status
+    """
+    db = None
+    try:
+        logger.info(f"Deleting document: {doc_id}")
+
+        db = get_db_session()
+        doc = db.query(KnowledgeBaseDocument).filter(KnowledgeBaseDocument.id == doc_id).first()
+
+        if not doc:
+            return {"status": "error", "message": "Document not found"}
+
+        db.delete(doc)
+        db.commit()
+
+        logger.info(f"Document {doc_id} deleted successfully")
+
+        return {"status": "success", "message": "Document deleted from knowledge base"}
+
+    except Exception as e:
+        logger.error(f"Error deleting document: {e}")
+        if db:
+            db.rollback()
+        return {"status": "error", "message": f"Failed to delete document: {str(e)}"}
+    finally:
+        if db:
+            db.close()
+
+
+def delete_bulk_from_kb(doc_ids: list[str]) -> dict:
+    """
+    Delete multiple documents from the knowledge base.
+
+    Args:
+        doc_ids: List of document IDs to delete
+
+    Returns:
+        Dictionary with status and count of deleted documents
+    """
+    db = None
+    try:
+        logger.info(f"Bulk deleting {len(doc_ids)} documents")
+
+        db = get_db_session()
+        deleted_count = (
+            db.query(KnowledgeBaseDocument)
+            .filter(KnowledgeBaseDocument.id.in_(doc_ids))
+            .delete(synchronize_session=False)
+        )
+        db.commit()
+
+        logger.info(f"Deleted {deleted_count} documents")
+
+        return {
+            "status": "success",
+            "message": f"Deleted {deleted_count} documents from knowledge base",
+            "deleted_count": deleted_count,
+        }
+
+    except Exception as e:
+        logger.error(f"Error in bulk delete: {e}")
+        if db:
+            db.rollback()
+        return {"status": "error", "message": f"Bulk delete failed: {str(e)}"}
+    finally:
+        if db:
+            db.close()
+
+
+def search_kb(
+    query: str,
+    limit: int = 5,
+    access_level: int = 1,
+    company_id: int | None = None,
+    company_reg_no: str | None = None,
+    department: str | None = None,
+    similarity_threshold: float = 0.5,
+) -> list[dict]:
+    """
+    Search the knowledge base for similar documents using pgvector.
+
+    Args:
+        query: Search query text
+        limit: Maximum number of results
+        access_level: User's access level for filtering
+        company_id: Optional company ID filter
+        company_reg_no: Optional company registration number filter
+        department: Optional department filter
+        similarity_threshold: Minimum similarity score (0-1)
+
+    Returns:
+        List of matching documents with scores
+    """
+    db = None
+    try:
+        logger.info(f"Searching knowledge base for: {query}")
+
+        # Generate query embedding
+        query_embedding = _get_embedding(query)
+
+        db = get_db_session()
+
+        # Build the similarity search query using pgvector's cosine distance
+        # Note: pgvector uses distance, so we convert to similarity (1 - distance)
+        query_sql = text(
+            """
+            SELECT
+                id,
+                content,
+                sourcefile,
+                title,
+                access_level,
+                company_id,
+                company_reg_no,
+                department,
+                tags,
+                author,
+                doc_type,
+                created_at,
+                last_modified_date,
+                1 - (embedding <=> :query_embedding::vector) as similarity
+            FROM kb_documents
+            WHERE access_level <= :access_level
+            AND (1 - (embedding <=> :query_embedding::vector)) >= :similarity_threshold
+            AND (:company_id IS NULL OR company_id = :company_id)
+            AND (:company_reg_no IS NULL OR company_reg_no = :company_reg_no)
+            AND (:department IS NULL OR department = :department)
+            ORDER BY embedding <=> :query_embedding::vector
+            LIMIT :limit
+        """
         )
 
-        # Create embedding for the (augmented) content.
-        embedding = embedder.encode(augmented_content).tolist()
-
-        # Generate a document ID based on available metadata.
-        doc_id = (
-            generate_doc_id(chunk.metadata["title"], chunk.metadata["source"])
-            if "title" in chunk.metadata and "source" in chunk.metadata
-            else str(uuid.uuid4())
-        )
-
-        # Create a unique identifier for each chunk in Qdrant.
-        point = PointStruct(
-            id=str(uuid.uuid4()),
-            vector=embedding,
-            payload={
-                "doc_id": doc_id,
-                "chunk_index": i,
-                "content": augmented_content,
-                "sourcefile": (
-                    chunk.metadata["source"]
-                    if "source" in chunk.metadata
-                    else confluence_url
-                ),
-                "title": chunk.metadata.get("title", "No Title"),
-                "created_date": (
-                    chunk.metadata["when"][:10] if "when" in chunk.metadata else ""
-                ),
-                "last_modified_date": (
-                    chunk.metadata["when"][:10] if "when" in chunk.metadata else ""
-                ),
-                "created_by": "",  # Optionally provide creator information.
-                "access_level": 1,
+        results = db.execute(
+            query_sql,
+            {
+                "query_embedding": str(query_embedding),
+                "access_level": access_level,
+                "similarity_threshold": similarity_threshold,
+                "company_id": company_id,
+                "company_reg_no": company_reg_no,
+                "department": department,
+                "limit": limit,
             },
-        )
-        points.append(point)
+        ).fetchall()
 
-    # Step 5: Insert the points into Qdrant.
-    client.upsert(collection_name=collection_name, points=points)
-    print(f"Inserted {len(points)} chunks into Qdrant collection '{collection_name}'.")
+        # Format results
+        formatted_results = []
+        for row in results:
+            formatted_results.append(
+                {
+                    "id": str(row.id),
+                    "score": float(row.similarity),
+                    "content": row.content,
+                    "title": row.title,
+                    "source": row.sourcefile,
+                    "sourcefile": row.sourcefile,
+                    "access_level": row.access_level,
+                    "company_id": row.company_id,
+                    "company_reg_no": row.company_reg_no,
+                    "department": row.department,
+                    "tags": row.tags,
+                    "author": row.author,
+                    "doc_type": row.doc_type,
+                    "created_at": row.created_at.isoformat() if row.created_at else None,
+                    "last_modified_date": (
+                        row.last_modified_date.isoformat() if row.last_modified_date else None
+                    ),
+                    "metadata": {
+                        "title": row.title,
+                        "sourcefile": row.sourcefile,
+                        "access_level": row.access_level,
+                        "company_id": row.company_id,
+                        "department": row.department,
+                        "tags": row.tags,
+                    },
+                }
+            )
+
+        logger.info(f"Found {len(formatted_results)} matching documents")
+        return formatted_results
+
+    except Exception as e:
+        logger.error(f"Error searching knowledge base: {e}")
+        return []
+    finally:
+        if db:
+            db.close()
+
+
+def search_kb_hybrid(
+    query: str,
+    limit: int = 5,
+    access_level: int = 1,
+    company_id: int | None = None,
+    keyword_weight: float = 0.3,
+    semantic_weight: float = 0.7,
+) -> list[dict]:
+    """
+    Hybrid search combining semantic similarity and keyword matching.
+
+    Args:
+        query: Search query text
+        limit: Maximum number of results
+        access_level: User's access level for filtering
+        company_id: Optional company ID filter
+        keyword_weight: Weight for keyword matching (0-1)
+        semantic_weight: Weight for semantic similarity (0-1)
+
+    Returns:
+        List of matching documents with combined scores
+    """
+    db = None
+    try:
+        logger.info(f"Hybrid searching knowledge base for: {query}")
+
+        # Generate query embedding
+        query_embedding = _get_embedding(query)
+
+        db = get_db_session()
+
+        # Hybrid search using both vector similarity and text search
+        query_sql = text(
+            """
+            WITH semantic_search AS (
+                SELECT
+                    id,
+                    1 - (embedding <=> :query_embedding::vector) as semantic_score
+                FROM kb_documents
+                WHERE access_level <= :access_level
+                AND (:company_id IS NULL OR company_id = :company_id)
+            ),
+            keyword_search AS (
+                SELECT
+                    id,
+                    ts_rank(
+                        to_tsvector('english', coalesce(title, '') || ' ' || coalesce(content, '')),
+                        plainto_tsquery('english', :query)
+                    ) as keyword_score
+                FROM kb_documents
+                WHERE access_level <= :access_level
+                AND (:company_id IS NULL OR company_id = :company_id)
+            )
+            SELECT
+                d.id,
+                d.content,
+                d.sourcefile,
+                d.title,
+                d.access_level,
+                d.company_id,
+                d.company_reg_no,
+                d.department,
+                d.tags,
+                d.author,
+                d.doc_type,
+                d.created_at,
+                d.last_modified_date,
+                COALESCE(s.semantic_score, 0) as semantic_score,
+                COALESCE(k.keyword_score, 0) as keyword_score,
+                (COALESCE(s.semantic_score, 0) * :semantic_weight +
+                 COALESCE(k.keyword_score, 0) * :keyword_weight) as combined_score
+            FROM kb_documents d
+            LEFT JOIN semantic_search s ON d.id = s.id
+            LEFT JOIN keyword_search k ON d.id = k.id
+            WHERE d.access_level <= :access_level
+            AND (:company_id IS NULL OR d.company_id = :company_id)
+            ORDER BY combined_score DESC
+            LIMIT :limit
+        """
+        )
+
+        results = db.execute(
+            query_sql,
+            {
+                "query_embedding": str(query_embedding),
+                "query": query,
+                "access_level": access_level,
+                "company_id": company_id,
+                "semantic_weight": semantic_weight,
+                "keyword_weight": keyword_weight,
+                "limit": limit,
+            },
+        ).fetchall()
+
+        # Format results
+        formatted_results = []
+        for row in results:
+            formatted_results.append(
+                {
+                    "id": str(row.id),
+                    "score": float(row.combined_score),
+                    "semantic_score": float(row.semantic_score),
+                    "keyword_score": float(row.keyword_score),
+                    "content": row.content,
+                    "title": row.title,
+                    "source": row.sourcefile,
+                    "sourcefile": row.sourcefile,
+                    "access_level": row.access_level,
+                    "company_id": row.company_id,
+                    "company_reg_no": row.company_reg_no,
+                    "department": row.department,
+                    "tags": row.tags,
+                    "author": row.author,
+                    "doc_type": row.doc_type,
+                    "metadata": {
+                        "title": row.title,
+                        "sourcefile": row.sourcefile,
+                        "access_level": row.access_level,
+                    },
+                }
+            )
+
+        logger.info(f"Hybrid search found {len(formatted_results)} matching documents")
+        return formatted_results
+
+    except Exception as e:
+        logger.error(f"Error in hybrid search: {e}")
+        return []
+    finally:
+        if db:
+            db.close()
+
+
+def get_document_by_id(doc_id: str) -> dict | None:
+    """
+    Retrieve a document by its ID.
+
+    Args:
+        doc_id: Document ID
+
+    Returns:
+        Document data or None if not found
+    """
+    db = None
+    try:
+        db = get_db_session()
+        doc = db.query(KnowledgeBaseDocument).filter(KnowledgeBaseDocument.id == doc_id).first()
+
+        if not doc:
+            return None
+
+        return {
+            "id": str(doc.id),
+            "content": doc.content,
+            "title": doc.title,
+            "sourcefile": doc.sourcefile,
+            "access_level": doc.access_level,
+            "company_id": doc.company_id,
+            "company_reg_no": doc.company_reg_no,
+            "department": doc.department,
+            "tags": doc.tags,
+            "author": doc.author,
+            "doc_type": doc.doc_type,
+            "created_at": doc.created_at.isoformat() if doc.created_at else None,
+            "last_modified_date": (
+                doc.last_modified_date.isoformat() if doc.last_modified_date else None
+            ),
+        }
+
+    except Exception as e:
+        logger.error(f"Error getting document: {e}")
+        return None
+    finally:
+        if db:
+            db.close()
+
+
+def update_document(doc_id: str, updates: dict) -> dict:
+    """
+    Update a document's metadata (content update regenerates embedding).
+
+    Args:
+        doc_id: Document ID
+        updates: Dictionary of fields to update
+
+    Returns:
+        Dictionary with status
+    """
+    db = None
+    try:
+        logger.info(f"Updating document: {doc_id}")
+
+        db = get_db_session()
+        doc = db.query(KnowledgeBaseDocument).filter(KnowledgeBaseDocument.id == doc_id).first()
+
+        if not doc:
+            return {"status": "error", "message": "Document not found"}
+
+        # Update fields
+        for key, value in updates.items():
+            if hasattr(doc, key) and key not in ["id", "embedding", "created_at"]:
+                setattr(doc, key, value)
+
+        # If content is updated, regenerate embedding
+        if "content" in updates and updates["content"]:
+            logger.info("Regenerating embedding for updated content...")
+            doc.embedding = _get_embedding(updates["content"])
+
+        doc.updated_at = datetime.now()
+        db.commit()
+
+        logger.info(f"Document {doc_id} updated successfully")
+
+        return {"status": "success", "message": "Document updated"}
+
+    except Exception as e:
+        logger.error(f"Error updating document: {e}")
+        if db:
+            db.rollback()
+        return {"status": "error", "message": f"Failed to update document: {str(e)}"}
+    finally:
+        if db:
+            db.close()
+
+
+def list_documents(
+    limit: int = 100,
+    offset: int = 0,
+    access_level: int | None = None,
+    company_id: int | None = None,
+    department: str | None = None,
+) -> list[dict]:
+    """
+    List documents with optional filtering.
+
+    Args:
+        limit: Maximum number of results
+        offset: Offset for pagination
+        access_level: Optional access level filter
+        company_id: Optional company ID filter
+        department: Optional department filter
+
+    Returns:
+        List of document metadata (without content for efficiency)
+    """
+    db = None
+    try:
+        db = get_db_session()
+        query = db.query(KnowledgeBaseDocument)
+
+        if access_level is not None:
+            query = query.filter(KnowledgeBaseDocument.access_level <= access_level)
+        if company_id is not None:
+            query = query.filter(KnowledgeBaseDocument.company_id == company_id)
+        if department is not None:
+            query = query.filter(KnowledgeBaseDocument.department == department)
+
+        docs = (
+            query.order_by(KnowledgeBaseDocument.created_at.desc())
+            .offset(offset)
+            .limit(limit)
+            .all()
+        )
+
+        return [
+            {
+                "id": str(doc.id),
+                "title": doc.title,
+                "sourcefile": doc.sourcefile,
+                "access_level": doc.access_level,
+                "company_id": doc.company_id,
+                "department": doc.department,
+                "doc_type": doc.doc_type,
+                "created_at": doc.created_at.isoformat() if doc.created_at else None,
+            }
+            for doc in docs
+        ]
+
+    except Exception as e:
+        logger.error(f"Error listing documents: {e}")
+        return []
+    finally:
+        if db:
+            db.close()
+
+
+def get_document_count(
+    access_level: int | None = None,
+    company_id: int | None = None,
+) -> int:
+    """
+    Get total count of documents.
+
+    Args:
+        access_level: Optional access level filter
+        company_id: Optional company ID filter
+
+    Returns:
+        Count of documents
+    """
+    db = None
+    try:
+        db = get_db_session()
+        query = db.query(KnowledgeBaseDocument)
+
+        if access_level is not None:
+            query = query.filter(KnowledgeBaseDocument.access_level <= access_level)
+        if company_id is not None:
+            query = query.filter(KnowledgeBaseDocument.company_id == company_id)
+
+        return query.count()
+
+    except Exception as e:
+        logger.error(f"Error counting documents: {e}")
+        return 0
+    finally:
+        if db:
+            db.close()
+
+
+def reindex_document(doc_id: str) -> dict:
+    """
+    Regenerate embedding for a document.
+
+    Args:
+        doc_id: Document ID
+
+    Returns:
+        Dictionary with status
+    """
+    db = None
+    try:
+        logger.info(f"Reindexing document: {doc_id}")
+
+        db = get_db_session()
+        doc = db.query(KnowledgeBaseDocument).filter(KnowledgeBaseDocument.id == doc_id).first()
+
+        if not doc:
+            return {"status": "error", "message": "Document not found"}
+
+        # Regenerate embedding
+        doc.embedding = _get_embedding(doc.content)
+        doc.updated_at = datetime.now()
+        db.commit()
+
+        logger.info(f"Document {doc_id} reindexed successfully")
+
+        return {"status": "success", "message": "Document reindexed"}
+
+    except Exception as e:
+        logger.error(f"Error reindexing document: {e}")
+        if db:
+            db.rollback()
+        return {"status": "error", "message": f"Failed to reindex document: {str(e)}"}
+    finally:
+        if db:
+            db.close()
+
+
+def reindex_all_documents() -> dict:
+    """
+    Regenerate embeddings for all documents.
+
+    Returns:
+        Dictionary with status and count
+    """
+    db = None
+    try:
+        logger.info("Reindexing all documents...")
+
+        db = get_db_session()
+        docs = db.query(KnowledgeBaseDocument).all()
+
+        count = 0
+        for doc in docs:
+            try:
+                doc.embedding = _get_embedding(doc.content)
+                doc.updated_at = datetime.now()
+                count += 1
+                if count % 10 == 0:
+                    logger.info(f"Reindexed {count} documents...")
+                    db.commit()
+            except Exception as e:
+                logger.error(f"Error reindexing document {doc.id}: {e}")
+                continue
+
+        db.commit()
+        logger.info(f"Reindexed {count} documents")
+
+        return {"status": "success", "message": f"Reindexed {count} documents"}
+
+    except Exception as e:
+        logger.error(f"Error in bulk reindex: {e}")
+        if db:
+            db.rollback()
+        return {"status": "error", "message": f"Bulk reindex failed: {str(e)}"}
+    finally:
+        if db:
+            db.close()
+
+
+# ============================================================================
+# Backward Compatibility Aliases
+# ============================================================================
+
+# Deprecated aliases for backward compatibility
+store_in_azure_kb = store_in_kb
+store_in_qdrant = store_in_kb
+search_qdrant = search_kb

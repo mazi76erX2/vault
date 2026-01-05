@@ -1,227 +1,153 @@
-// LoginPage.tsx
+import * as React from "react";
+import { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
+import { toast } from "sonner";
+import { Button } from "@/components/ui/button";
+import { TextField } from "@/components/forms/text-field";
+import { Loader } from "@/components/feedback/loader";
+import { useAuthContext } from "@/hooks/useAuthContext";
+import instance from "@/services/Instance";
 
-import React, {useEffect, useState} from 'react';
-import {useNavigate} from 'react-router-dom';
-import {ThemeProvider, Box, Typography, useTheme, useMediaQuery} from '@mui/material';
-import {HCButton, HCTextField, error, success, HCIcon, HCLoader} from 'generic-components';
-import Map from '../../assets/truechart_map.png';
-import Logo from '../../assets/HICO_VAULT_LOGO_ORANGE_NEW.svg';
-import {PasswordInput} from '../../components/PasswordInput/PasswordInput';
-import {useAuthContext} from '../../hooks/useAuthContext';
-import Api from '../../services/Instance';
-import { AxiosError } from 'axios';
-import { LoginRequestDTO } from '../../types/LoginResponseDTO';
+const LoginPage: React.FC = () => {
+  const navigate = useNavigate();
+  const authContext = useAuthContext();
+  const [loading, setLoading] = useState(false);
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
 
-function LoginPage() {
-    const theme = useTheme();
-    const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
-    const navigate = useNavigate();
+  const onLogin = async (emailParam: string, passwordParam: string) => {
+    setLoading(true);
+    try {
+      const response = await instance.post("/api/auth/login", {
+        email: emailParam,
+        password: passwordParam,
+      });
 
-    const [email, setEmail] = useState('');
-    const [password, setPassword] = useState('');
-
-    const authContext = useAuthContext();
-
-    // Handle case where context might be undefined during initial renders or if not wrapped properly
-    if (!authContext) {
-        // Optional: Render a loader or a specific message, or null
-        return <HCLoader/>; // Or return a more specific loading/error component
+      if (response.data.access_token) {
+        console.log("Login successful:", response.data);
+        localStorage.setItem("token", response.data.access_token);
+        await authContext?.login(response.data);
+        toast.success("Login successful!");
+        navigate("/");
+      }
+    } catch (error) {
+      console.error("Login failed:", error);
+      toast.error("Login failed. Please check your credentials.");
+    } finally {
+      setLoading(false);
     }
+  };
 
-    const { login: contextLogin, isLoadingUser, user } = authContext;
+  // ✅ Move BOTH useEffects BEFORE early return
+  useEffect(() => {
+    const token = localStorage.getItem("token");
+    if (token && authContext?.user) {
+      navigate("/");
+    }
+  }, [navigate, authContext?.user]);
 
-    const onLogin = async () => {
-        if (!email || !password) {
-            error({message: 'Login details are required.'});
-            return;
-        }
-
-        try {
-            console.log('Login attempt starting...');
-            console.log('API URL:', process.env.NODE_ENV === 'development' ? 'Check config.ts' : 'Production mode');
-            
-            const loginData: LoginRequestDTO = { email, password };
-            console.log('Calling contextLogin...');
-            await contextLogin(loginData); 
-            console.log('contextLogin completed');
-            
-            // Use user data from context after login, which should be updated by the login process
-            console.log('Checking user from context:', user);
-            if (user && user.user && user.user.id) {
-                console.log('User found in context, proceeding with first-login check');
-                try {
-                    const response = await Api.post(
-                        '/api/auth/check-first-login', 
-                        { user_id: user.user.id } 
-                    );
-                    if (response.data.require_password_change) {
-                        navigate('/password-reset');
-                        return;
-                    }
-                } catch (err) {
-                    console.warn('First-login check failed, proceeding to dashboard', err);
-                    if (!(err instanceof AxiosError && err.response?.status === 401)) {
-                        // Handle other errors if needed
-                    }
-                }
-                success({ message: 'Login successful.' });
-                window.location.href = '/dashboard'; 
-            } else {
-                // If context user is still not available after login, wait a bit and try getCurrentUser
-                console.log('User not found in context, waiting and checking localStorage...');
-                await new Promise(resolve => setTimeout(resolve, 200));
-                const currentUser = (await import('../../services/auth/Auth.service')).getCurrentUser();
-                
-                console.log('User from localStorage:', currentUser);
-                if (currentUser && currentUser.user && currentUser.user.id) {
-                    console.log('User found in localStorage, proceeding with first-login check');
-                    try {
-                        const response = await Api.post(
-                            '/api/auth/check-first-login', 
-                            { user_id: currentUser.user.id } 
-                        );
-                        if (response.data.require_password_change) {
-                            navigate('/password-reset');
-                            return;
-                        }
-                    } catch (err) {
-                        console.warn('First-login check failed, proceeding to dashboard', err);
-                        if (!(err instanceof AxiosError && err.response?.status === 401)) {
-                            // Handle other errors if needed
-                        }
-                    }
-                    success({ message: 'Login successful.' });
-                    window.location.href = '/dashboard'; 
-                } else {
-                    console.error('No user data found anywhere. Context user:', user, 'localStorage user:', currentUser);
-                    error({ message: 'Login process completed, but user data not found. Please try again.' });
-                }
-            }
-        } catch (err) {
-            console.error('Login error occurred:', err);
-            const errorMessage = err instanceof Error ? err.message : 'Failed to sign in. Please check your credentials.';
-            error({ message: errorMessage });
-        }
+  useEffect(() => {
+    const handleKeyPress = (event: KeyboardEvent) => {
+      if (event.key === "Enter") {
+        onLogin(email, password);
+      }
     };
 
-    useEffect(() => {
-        const listener = (event: KeyboardEvent) => {
-            if (event.code === 'Enter' || event.code === 'NumpadEnter') {
-                onLogin();
-            }
-        };
-        document.addEventListener('keydown', listener);
-        return () => {
-            document.removeEventListener('keydown', listener);
-        };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [email, password, contextLogin]); // Added contextLogin to dependencies
+    window.addEventListener("keypress", handleKeyPress);
+    return () => {
+      window.removeEventListener("keypress", handleKeyPress);
+    };
+  }, [email, password, onLogin]);
 
-    return (
-        <ThemeProvider theme={theme}>
-            <Box
-                sx={{
-                    display: 'grid',
-                    gridTemplateColumns: isMobile ? '100%' : '44% 56%',
-                    height: '100vh'
-                }}
+  // NOW the early return (after ALL hooks)
+  if (!authContext) {
+    return <div>Loading...</div>;
+  }
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    onLogin(email, password);
+  };
+
+  if (loading) {
+    return <Loader />;
+  }
+
+  return (
+    <div className="flex min-h-screen items-center justify-center bg-gray-100">
+      <div className="w-full max-w-md space-y-8 rounded-lg bg-white p-8 shadow-lg">
+        <div className="text-center">
+          <h2 className="text-3xl font-bold">Sign In</h2>
+          <p className="mt-2 text-gray-600">
+            Welcome back! Please sign in to continue.
+          </p>
+        </div>
+
+        <form onSubmit={handleSubmit} className="mt-8 space-y-6">
+          <div className="space-y-4">
+            <TextField
+              label="Email"
+              type="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              required
+              fullWidth
+            />
+            <TextField
+              label="Password"
+              type="password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              required
+              fullWidth
+            />
+          </div>
+
+          <div className="flex items-center justify-between">
+            <div className="flex items-center">
+              <input
+                id="remember-me"
+                name="remember-me"
+                type="checkbox"
+                className="h-4 w-4 rounded border-gray-300"
+              />
+              <label
+                htmlFor="remember-me"
+                className="ml-2 text-sm text-gray-900"
+              >
+                Remember me
+              </label>
+            </div>
+
+            <button
+              type="button"
+              className="cursor-pointer text-sm text-blue-600 hover:text-blue-500"
+              onClick={() => navigate("/reset-password")}
             >
-                <Box
-                    sx={{
-                        background: 'gray',
-                        height: '100vh',
-                        display: 'flex',
-                        flexDirection: 'column',
-                        justifyContent: 'center',
-                        p: 10,
-                        [theme.breakpoints.down('md')]: {p: 2},
-                        [theme.breakpoints.down('lg')]: {p: 4}
-                    }}
-                >
-                    <Box style={{display: 'flex', justifyContent: 'center'}}>
-                        <img style={{width: 400}} src={Logo} alt={''}/>
-                    </Box>
-                    <Typography
-                        sx={{
-                            color: '#fff',
-                            fontSize: isMobile ? 24 : 25,
-                            marginTop: '-16px',
-                            textAlign: 'center',
-                            mb: '56.4px',
-                            fontWeight: 'bold'
-                        }}
-                    >
-                        MANAGEMENT CONSOLE
-                    </Typography>
-                    <Typography
-                        sx={{
-                            color: '#fff',
-                            fontSize: isMobile ? 24 : 25,
-                            mb: '32px',
-                            fontWeight: 'bold'
-                        }}
-                    >
-                        LOGIN
-                    </Typography>
+              Forgot password?
+            </button>
+          </div>
 
-                    <HCTextField
-                        id="email"
-                        type="text"
-                        label="EMAIL"
-                        value={email}
-                        textColor="#fff"
-                        inputProps={{startAdornment: <HCIcon icon="Profile"/>}}
-                        formControlSx={{mb: '24px'}}
-                        onChange={(e) => setEmail(e.target.value)}
-                    />
+          <Button type="submit" className="w-full" disabled={loading}>
+            {loading ? "Signing in..." : "Sign in"}
+          </Button>
+        </form>
 
-                    <PasswordInput
-                        id="password"
-                        type="text"
-                        label="PASSWORD"
-                        value={password}
-                        textColor="#fff"
-                        inputProps={{startAdornment: <HCIcon icon="Lock"/>}}
-                        formControlSx={{mb: '24px'}}
-                        onChange={(e) => setPassword(e.target.value)}
-                    />
-
-                    <HCButton
-                        sx={{mt: 2, background: '#e66334', ':hover': { background: '#FF8234' }}}
-                        text="Login"
-                        hcVariant="primary"
-                        size="small"
-                        onClick={onLogin}
-                        disabled={isLoadingUser} 
-                    />
-
-                    <span
-                        style={{
-                            marginTop: '10px',
-                            color: '#FFF',
-                            cursor: 'pointer'
-                        }}
-                        onClick={() => navigate('/password-reset')}
-                    >
-            Forgot Password?
-                    </span>
-                </Box>
-                {!isMobile && (
-                    <Box sx={{height: '100vh'}}>
-                        <img
-                            style={{
-                                width: '100%',
-                                height: '100%',
-                                objectFit: 'cover'
-                            }}
-                            src={Map}
-                            alt="Map"
-                        />
-                    </Box>
-                )}
-            </Box>
-        </ThemeProvider>
-    );
-}
+        <div className="text-center">
+          <span className="text-sm text-gray-600">
+            Don&apos;t have an account?{" "}
+            <button
+              type="button"
+              className="cursor-pointer text-blue-600 hover:text-blue-500"
+              onClick={() => navigate("/signup")}
+            >
+              Sign up
+            </button>
+          </span>
+        </div>
+      </div>
+    </div>
+  );
+};
 
 export default LoginPage;

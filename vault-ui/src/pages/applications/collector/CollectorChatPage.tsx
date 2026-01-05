@@ -1,420 +1,201 @@
-import React, {useEffect, useState} from 'react';
-import {useLocation, useNavigate} from 'react-router-dom'; // Import useNavigate for programmatic navigation
-import {error as showError, HCButton, HCLoader, HCTextareaAutosize, HCIcon} from 'generic-components';
-import {useAuthContext} from '../../../hooks/useAuthContext';
-// import type {LoginResponseDTO} from '../../../types/LoginResponseDTO'; // REMOVED
-import Api from '../../../services/Instance'; // Import the new Api instance
-import {Box, styled} from '@mui/material';
-import assistantIcon from '../../../assets/assistant-icon.png';
-import { formatColor, hexToRgba } from '../../../utils/colorUtils'; // Corrected import path
-import { AxiosError } from 'axios'; // Add this at the top if not present
+import React, { useEffect, useState } from "react";
+import { useNavigate, useLocation } from "react-router-dom";
+import { toast } from "sonner";
+import { AxiosError } from "axios";
+import { useAuthContext } from "@/hooks/useAuthContext";
+import { DancingBot } from "@/components/media/dancing-bot";
+import { Button } from "@/components/ui/button";
+import { Loader } from "@/components/feedback/loader";
+import { Card } from "@/components/ui/card";
+import Api from "@/services/Instance";
 
-// A known good public image URL for testing default
-// const defaultFallbackBotIcon = 'https://www.gstatic.com/images/branding/product/1x/avatar_circle_blue_512dp.png'; // REMOVED
-
-// Theme settings interface and defaults
-interface ChatThemeSettings {
-    userChatBubbleColor: string;
-    botChatBubbleColor: string;
-    sendButtonAndBox: string;
-    font: string;
-    logo: string;
-    botProfilePicture: string;
-    userChatFontColor: string;
-    botChatFontColor: string;
-}
-const defaultThemeSettings: ChatThemeSettings = {
-    userChatBubbleColor: '#ececec',
-    botChatBubbleColor: '#f0f0f0',
-    sendButtonAndBox: '#ffffff',
-    font: 'Arial, sans-serif',
-    logo: '',
-    botProfilePicture: '',
-    userChatFontColor: '#000000',
-    botChatFontColor: '#000000',
-};
-
-// Helper functions formatColor and hexToRgba are now imported from colorUtils.ts
-
-const Container = styled('div')({
-    display: 'flex',
-    flexDirection: 'column',
-    width: '100%',
-    height: '100vh',
-    padding: '20px',
-    backgroundColor: '#f5f5f5',
-});
-
-const LoaderContainer = styled(Container)({
-    position: 'fixed', // Keep the loader fixed over the page
-    top: 0,
-    left: 0,
-    backgroundColor: 'rgba(255, 255, 255, 0.8)', // Slightly dim background
-    zIndex: 1000, // Ensure it stays above other elements
-    justifyContent: 'center', // Center loader horizontally
-    alignItems: 'center', // Center loader vertically
-});
-const ChatContainer = styled('div')({
-    flex: 1,
-    overflowY: 'auto',
-    display: 'flex',
-    flexDirection: 'column',
-    gap: '10px',
-    padding: '20px',
-});
-
-const ChatTextField = styled(HCTextareaAutosize)({
-    flex: 1,
-});
-
-// Define chat data message type
-interface ChatDataMsg {
-   role: string;
-   content: string;
+interface LocationState {
+  sessionId?: string;
 }
 
-// Added interface for the fetch_chat_conversation response
-interface FetchChatConversationResponse {
-    chatMessagesId?: number;
-    messages?: ChatDataMsg[];
-    // Potentially other fields like session_id, user_id, etc.
+interface SummaryData {
+  projectName: string;
+  documentTitle: string;
+  documentDescription: string;
+  author: string;
+  documentDate: string;
+  version: string;
+  conversationCount: number;
+  status: string;
+  [key: string]: unknown;
 }
 
-// Define BotMessage and UserMessage with direct props
-const UserMessage = styled('div')({
-    alignSelf: 'flex-end',
-    padding: '10px',
-    borderRadius: '10px',
-    maxWidth: '70%',
-});
+const CollectorSummaryPage: React.FC = () => {
+  const [loading, setLoading] = useState(false);
+  const [summary, setSummary] = useState<SummaryData | null>(null);
+  const authContext = useAuthContext();
+  const navigate = useNavigate();
+  const location = useLocation();
+  const { sessionId } = (location.state as LocationState) || {};
 
-const BotMessage = styled('div')({
-    alignSelf: 'flex-start',
-    padding: '10px',
-    borderRadius: '10px',
-    maxWidth: '70%',
-    display: 'flex',
-    alignItems: 'center',
-});
-
-const BotIcon = styled('img')({
-    width: '30px',
-    height: '30px',
-    marginRight: '10px',
-    borderRadius: '50%',
-});
-
-const ButtonsContainer = styled('div')({
-    display: 'flex',
-    justifyContent: 'center',
-    gap: '50px',
-    margin: 30,
-});
-
-const CollectorChatPage = () => {
-    // State for the chat messages
-    const navigate = useNavigate();
-    const [loading, setLoading] = useState(false);
-
-    const location = useLocation();  // Get the location object
-    const {question, sessionId, chat_msgId: chatMsgId, isResume} = location.state || {};  // Retrieved state keys
-
-    const [messages, setMessages] = useState([
-        {id: 1, text: question ? question : 'Welcome! How can I help you today?', sender: 'bot'},
-    ]);
-    // State for the new message input
-    const [newMessage, setNewMessage] = useState('');
-    const authContextHook = useAuthContext();
-
-    // Handle undefined context before destructuring
-    if (!authContextHook) {
-        return <HCLoader />;
+  const fetchSummary = async () => {
+    if (
+      !authContext ||
+      !authContext.user?.user?.id ||
+      !authContext.isLoggedIn
+    ) {
+      if (!authContext?.isLoadingUser) {
+        toast.error("User not authenticated or session has expired.");
+        setLoading(false);
+      }
+      return;
     }
-    const {user} = authContextHook;
 
-    // Theme settings state
-    const [themeSettings, setThemeSettings] = useState<ChatThemeSettings>(defaultThemeSettings);
+    if (!sessionId) {
+      toast.error("Session ID not found.");
+      navigate("/applications/collector/CollectorMainPage");
+      return;
+    }
 
-    // Load theme settings from API on mount
-    useEffect(() => {
-        async function loadThemeSettings() {
-            try {
-                if (!user?.user?.id) {
-                    console.warn('[CollectorChatPage] User not logged in, cannot load theme settings');
-                    return;
-                }
-                const userId = user.user.id;
-                const response = await Api.post(
-                    '/api/v1/companies/get_theme_settings',
-                    { user_id: userId }
-                );
-                if (response.data?.status === 'success') {
-                    const settings = response.data.theme_settings;
-                    console.log('[CollectorChatPage] API theme settings received:', settings);
-                    setThemeSettings({
-                        userChatBubbleColor: formatColor(settings.userChatBubbleColor) || defaultThemeSettings.userChatBubbleColor,
-                        botChatBubbleColor: formatColor(settings.botChatBubbleColor) || defaultThemeSettings.botChatBubbleColor,
-                        sendButtonAndBox: formatColor(settings.sendButtonAndBox) || defaultThemeSettings.sendButtonAndBox,
-                        font: settings.font ?? defaultThemeSettings.font,
-                        logo: settings.logo ?? defaultThemeSettings.logo,
-                        // Ensure that if settings.botProfilePicture is null/undefined, we use defaultThemeSettings.botProfilePicture
-                        botProfilePicture: settings.botProfilePicture || defaultThemeSettings.botProfilePicture, 
-                        userChatFontColor: formatColor(settings.userChatFontColor) || defaultThemeSettings.userChatFontColor,
-                        botChatFontColor: formatColor(settings.botChatFontColor) || defaultThemeSettings.botChatFontColor,
-                    });
-                } else {
-                    console.warn('[CollectorChatPage] Failed to get success status for theme settings:', response.data);
-                }
-            } catch (err) {
-                console.error('[CollectorChatPage] Error loading theme settings:', err);
-                if (!(err instanceof AxiosError && err.response?.status === 401)) {
-                    showError({ message: 'Failed to load theme settings.' });
-                }
-            }
-        }
-        if (user?.user?.id) loadThemeSettings();
-    }, [user]);
+    try {
+      setLoading(true);
+      const response = await Api.get(`/api/v1/collector/summary/${sessionId}`);
+      setSummary(response.data);
+    } catch (err: unknown) {
+      console.error("Error fetching summary:", err);
+      if (!(err instanceof AxiosError && err.response?.status === 401)) {
+        toast.error(
+          err instanceof Error ? err.message : "Failed to fetch summary.",
+        );
+      }
+    } finally {
+      setLoading(false);
+    }
+  };
 
-    useEffect(() => {
-        (async () => {
-            try {
-                if (!authContextHook.user) {
-                    showError('User not logged in');
-                    return;
-                }
-                
-                if (!sessionId) {
-                    return;
-                }
+  const handleSubmit = async () => {
+    try {
+      setLoading(true);
+      await Api.post("/api/v1/collector/submit", { sessionId });
+      toast.success("Session submitted successfully!");
+      navigate("/applications/collector/CollectorMainPage");
+    } catch (err: unknown) {
+      console.error("Error submitting session:", err);
+      if (!(err instanceof AxiosError && err.response?.status === 401)) {
+        toast.error(
+          err instanceof Error ? err.message : "Failed to submit session.",
+        );
+      }
+    } finally {
+      setLoading(false);
+    }
+  };
 
-                if (!isResume) {
-                    return;
-                }
+  useEffect(() => {
+    if (authContext && !authContext.isLoadingUser && authContext.isLoggedIn) {
+      fetchSummary();
+    }
+  }, [authContext]);
 
-                const response = await Api.post(
-                    '/api/v1/collector/fetch_chat_conversation',
-                    { session_id: sessionId }
-                );
+  return (
+    <div className="relative">
+      {loading && (
+        <div className="fixed top-0 left-0 w-full h-full bg-white/80 z-[1000] flex justify-center items-center">
+          <Loader />
+        </div>
+      )}
 
-                const rawData = response.data;
-                const fetchedMessages = rawData.messages;
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-start">
+        <DancingBot state="greeting" className="w-full max-w-[600px] mx-auto" />
 
-                if (!fetchedMessages) {
-                    console.log('No stored messages found.');
-                    return;
-                }
+        <div>
+          <div className="mb-6">
+            <h1 className="text-2xl font-bold">Session Summary</h1>
+            <p className="text-gray-600 mt-2">
+              Review your session details before submitting.
+            </p>
+          </div>
 
-                // Filter out system messages and map to the correct format
-                interface ChatMessage {
-                    role: string;
-                    content: string;
-                }
+          <Card className="bg-[#d3d3d3] p-6 shadow-md space-y-4">
+            {summary && (
+              <>
+                <div>
+                  <h3 className="text-sm font-semibold text-gray-600">
+                    Project
+                  </h3>
+                  <p className="text-lg">{summary.projectName}</p>
+                </div>
 
-                const formattedMessages = fetchedMessages
-                    .filter((m: ChatMessage) => m.role !== 'system')
-                    .map((m: ChatMessage, index: number) => ({
-                        id: Date.now() + index,
-                        text: m.content,
-                        sender: m.role === 'assistant' ? 'bot' : m.role
-                    }));
+                <div>
+                  <h3 className="text-sm font-semibold text-gray-600">
+                    Document Title
+                  </h3>
+                  <p className="text-lg">{summary.documentTitle}</p>
+                </div>
 
-                setMessages(formattedMessages);
-            } catch (err: unknown) {
-                const message = err instanceof Error ? err.message : String(err);
-                if (!(err instanceof AxiosError && err.response?.status === 401)) {
-                    showError({ message });
-                }
-            }
-        })();
-    }, [isResume, sessionId, authContextHook.user]);
+                <div>
+                  <h3 className="text-sm font-semibold text-gray-600">
+                    Description
+                  </h3>
+                  <p className="text-lg">{summary.documentDescription}</p>
+                </div>
 
-    const generateFollowUpQuestions = async (userAnswer: string) => {
-        try {
-            if (!authContextHook.user) {
-                showError({message: 'User not logged in'});
-                return;
-            }
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <h3 className="text-sm font-semibold text-gray-600">
+                      Author
+                    </h3>
+                    <p className="text-lg">{summary.author}</p>
+                  </div>
 
-            const response = await Api.post(
-                '/api/v1/collector/generate_question_response',
-                {
-                    chat_prompt_id: chatMsgId,
-                    user_text: userAnswer
-                }
-            );
-            if (!response.data || !response.data.follow_up_question) {
-                showError({message: 'Invalid response from the server.'});
-                return;
-            }
+                  <div>
+                    <h3 className="text-sm font-semibold text-gray-600">
+                      Version
+                    </h3>
+                    <p className="text-lg">{summary.version}</p>
+                  </div>
+                </div>
 
-            const followUpQuestion = response.data.follow_up_question;
-            setMessages((prevMessages) => [
-                ...prevMessages,
-                {id: Date.now() + 1, text: followUpQuestion, sender: 'bot'},
-            ]);
-        } catch (error: unknown) {
-            const message = error instanceof Error ? error.message : String(error);
-            if (!(error instanceof AxiosError && error.response?.status === 401)) {
-                showError({ message });
-            }
-        }
-    };
+                <div>
+                  <h3 className="text-sm font-semibold text-gray-600">
+                    Document Date
+                  </h3>
+                  <p className="text-lg">
+                    {new Date(summary.documentDate).toLocaleDateString()}
+                  </p>
+                </div>
 
-    // Handler for sending a new message
-    const handleSendMessage = async () => {
-        try {
-            if (newMessage.trim() !== '') {
-                const message = {
-                    id: Date.now(),
-                    text: newMessage,
-                    sender: 'user',
-                };
-                setLoading(true);
-                setMessages([...messages, message]);
-                setNewMessage('');
-                await generateFollowUpQuestions(message.text);
-            }
-        } catch (error: unknown) {
-            const message = error instanceof Error ? error.message : String(error);
-            if (!(error instanceof AxiosError && error.response?.status === 401)) {
-                showError({ message });
-            }
-        } finally {
-            setLoading(false);
-        }
-    };
-    const handleContinue = async () => {
-        try {
-            setLoading(true);
-            if (!authContextHook.user) {
-                showError({message: 'User not logged in'});
-                setLoading(false);
-                return;
-            }
+                <div>
+                  <h3 className="text-sm font-semibold text-gray-600">
+                    Conversations
+                  </h3>
+                  <p className="text-lg">
+                    {summary.conversationCount} messages
+                  </p>
+                </div>
 
-            const response = await Api.post(
-                '/api/v1/collector/generate_summary',
-                {chat_prompt_id: chatMsgId}
-            );
-
-            if (!response.data || !response.data.chat_summary) {
-                showError({message: 'Error generating text.'});
-                setLoading(false);
-                return;
-            }
-
-            const generatedSummary = response.data.chat_summary;
-            navigate('/applications/collector/CollectorSummaryPage', {state: {generatedSummary, sessionId, isResume}});
-        } catch (error: unknown) {
-            const message = error instanceof Error ? error.message : String(error);
-            if (!(error instanceof AxiosError && error.response?.status === 401)) {
-                showError({ message });
-            }
-        } finally {
-            setLoading(false);
-        }
-    };
-
-    // Add a log inside the map function to see what src is being used
-    console.log('[CollectorChatPage] Rendering messages. Current themeSettings.botProfilePicture:', themeSettings.botProfilePicture);
-
-    return (
-        <Container>
-            {/* Loader overlay */}
-            {loading && (
-                <LoaderContainer>
-                    <HCLoader/>
-                </LoaderContainer>
+                <div>
+                  <h3 className="text-sm font-semibold text-gray-600">
+                    Status
+                  </h3>
+                  <p className="text-lg capitalize">{summary.status}</p>
+                </div>
+              </>
             )}
+          </Card>
 
-            <ChatContainer>
-                {messages.map((message) => {
-                    const botIconSrc = themeSettings.botProfilePicture ? themeSettings.botProfilePicture : assistantIcon;
-                    if (message.sender === 'bot') {
-                        console.log('[CollectorChatPage] Rendering BotMessage. Using icon src:', botIconSrc);
-                    }
-                    return message.sender === 'bot' ? (
-                        <BotMessage
-                            key={message.id}
-                            style={{
-                                backgroundColor: themeSettings.botChatBubbleColor,
-                                color: themeSettings.botChatFontColor,
-                                fontFamily: themeSettings.font,
-                            }}
-                        >
-                            <BotIcon src={botIconSrc} alt="AI"/>
-                            <span>{message.text}</span>
-                        </BotMessage>
-                    ) : (
-                        <UserMessage
-                            key={message.id}
-                            style={{
-                                backgroundColor: themeSettings.userChatBubbleColor,
-                                color: themeSettings.userChatFontColor,
-                                fontFamily: themeSettings.font,
-                            }}
-                        >
-                            {message.text}
-                        </UserMessage>
-                    );
-                })}
-            </ChatContainer>
-
-            <ChatTextField
-                value={newMessage}
-                inputPadding="0 16px 0 0 !important"
-                inputProps={{
-                    endAdornment: <Box sx={{
-                        // Primarily for positioning and click handling
-                        bottom: 0, 
-                        display: 'flex', 
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        padding: '16px 14px', 
-                        position: 'absolute', 
-                        right: 0, 
-                        cursor: 'pointer' 
-                    }}
-                    onClick={handleSendMessage}
-                    >
-                        <Box sx={{ // Wrapper for icon styling
-                            display: 'flex', 
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            transition: 'filter 0.2s ease-in-out',
-                            ...(newMessage.trim() !== '' && {
-                                filter: `drop-shadow(0px 1px 3px ${hexToRgba(themeSettings.sendButtonAndBox, 1)})`,
-                            })
-                        }}>
-                            <HCIcon 
-                                icon="Send" 
-                                color={formatColor(themeSettings.sendButtonAndBox) || undefined} 
-                            />
-                        </Box>
-                    </Box>,
-                    placeholder: 'Type your message here...',
-                    style: {
-                        fontFamily: themeSettings.font,
-                        color: themeSettings.userChatFontColor,
-                    }
-                }}
-                type="textArea"
-                onKeyDown={e => {
-                    if (e.key.toLowerCase() === 'enter') handleSendMessage();
-                }}
-                onTextChanged={(text) => {
-                    setNewMessage(text || '');
-                }}
-            />
-            {/* Continue Button */}
-            <ButtonsContainer>
-                <HCButton sx={{mt: 2, background: '#e66334', ':hover': {background: '#FF8234'}}} hcVariant="primary"
-                    size="large" endIcon={<HCIcon icon={'ArrowRight1'}/>}
-                    text={loading ? 'Summarizing...' : 'Finish Chat & Summarize'}
-                    disabled={loading || messages.length <= 1} onClick={handleContinue}/>
-            </ButtonsContainer>
-        </Container>
-    );
+          <div className="mt-6 flex justify-end gap-4">
+            <Button variant="outline" onClick={() => navigate(-1)} size="lg">
+              Back
+            </Button>
+            <Button
+              onClick={handleSubmit}
+              disabled={loading}
+              className="bg-[#e66334] hover:bg-[#FF8234]"
+              size="lg"
+            >
+              Submit Session
+            </Button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
 };
-export default CollectorChatPage;
 
+export default CollectorSummaryPage;

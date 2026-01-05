@@ -1,266 +1,240 @@
-/* eslint linebreak-style: 0 */
-import React, {useEffect, useState} from 'react';
-import {useNavigate} from 'react-router-dom';
-import {error as showError, HCDataTable, HCIcon, HCLoader} from 'generic-components';
-import {useAuthContext} from '../../../hooks/useAuthContext';
-import {styled} from '@mui/material';
-import {HeaderContainer, LoaderContainer, WelcomeText} from '../../../components';
-import {DancingBotGridComponent} from '../../../components/DancingBotGridComponent';
-import axios from 'axios';
-import {VAULT_API_URL} from '../../../config';
+import React, { useEffect, useState, useRef } from "react";
+import { useLocation, useNavigate } from "react-router-dom";
+import { toast } from "sonner";
+import { AxiosError } from "axios";
+import { Send } from "lucide-react";
+import { useAuthContext } from "@/hooks/useAuthContext";
+import { DancingBot } from "@/components/media/dancing-bot";
+import { TextField } from "@/components/forms/text-field";
+import { Button } from "@/components/ui/button";
+import { Loader } from "@/components/feedback/loader";
+import Api from "@/services/Instance";
 
-
-const Container = styled('div')({
-});
-
-const TableContainer = styled('div')({
-    flex: 2,
-    display: 'flex',
-    flexDirection: 'column',
-    gap: '20px',
-});
-
-const FormBox = styled('div')({
-    backgroundColor: '#d3d3d3',
-    padding: '40px',
-    borderRadius: '8px',
-    boxShadow: '0 4px 8px rgba(0, 0, 0, 0.1)',
-    display: 'flex',
-    flexDirection: 'column',
-    height: 'auto',  // Allow it to expand dynamically
-    justifyContent: 'space-between', // Ensures proper spacing
-});
-
-// Define interfaces for the data structures
-interface ChatMessage {
-    id: string;
-    created_at: string;  // From Supabase
-    createdAt?: string;  // Optional alternate format
-    messages: [string, string][];
+interface LocationState {
+  chatId?: string;
 }
 
-interface Profile {
-    id: string;
-    fullName: string;
+interface Message {
+  id: string;
+  role: "user" | "assistant";
+  content: string;
+  timestamp: string;
 }
 
-// Update ChatRow to include an index signature to make it compatible with Record<string, unknown>
-interface ChatRow {
-    id: string;
-    createdAt: string;
-    topic: string;
-    [key: string]: unknown;
-}
+const HelperChatPage: React.FC = () => {
+  const [loading, setLoading] = useState(false);
+  const [messages, setMessages] = useState<Message[]>([]);
+  const [inputMessage, setInputMessage] = useState("");
+  const [chatId, setChatId] = useState<string | null>(null);
+  const messagesEndRef = useRef<HTMLDivElement>(null);
+  const authContext = useAuthContext();
+  const location = useLocation();
+  const navigate = useNavigate();
 
-const PreviousChatPage: React.FC = () => {
-    // State Management
-    const [loading, setLoading] = useState(false);
-    const [rows, setRows] = useState<ChatRow[]>([]);
+  const scrollToBottom = () => {
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  };
 
-    const authContext = useAuthContext();
-    const user = authContext?.user;
-    const isLoggedIn = authContext?.isLoggedIn;
-    const isLoadingUser = authContext?.isLoadingUser;
-    const navigate = useNavigate();
+  useEffect(() => {
+    const state = location.state as LocationState;
+    const id = state?.chatId;
 
-    // Table columns for completed documents
-    const columns = [
-        {field: 'topic', headerName: 'Topic', width: 550},
-        {field: 'createdAt', headerName: 'Date', width: 150},
-    ];
+    if (id) {
+      setChatId(id);
+      fetchMessages(id);
+    } else {
+      createNewChat();
+    }
+  }, [location.state]);
 
-    const adaptChatsToRows = async (chatsData: ChatMessage[]): Promise<ChatRow[]> => {
-        const adaptedRows = await Promise.all(
-            chatsData.map(async (chat) => {
-                let firstAssistantMessage = 'No topic found';
+  useEffect(() => {
+    scrollToBottom();
+  }, [messages]);
 
-                // Check that chat.messages exists and that it is an array
-                if (chat.messages && Array.isArray(chat.messages)) {
-                    // Assume each message is an array [userMessage, assistantMessage]
-                    // If there's at least one message pair, use the assistant message from the first pair.
-                    if (chat.messages.length > 0 && Array.isArray(chat.messages[0]) && chat.messages[0].length >= 2) {
-                        firstAssistantMessage = chat.messages[0][0];
-                    }
-                }
+  const createNewChat = async () => {
+    if (
+      !authContext ||
+      !authContext.user?.user?.id ||
+      !authContext.isLoggedIn
+    ) {
+      if (!authContext?.isLoadingUser) {
+        toast.error("User not authenticated or session has expired.");
+      }
+      return;
+    }
 
-                // Handle the date formatting - chat.created_at comes from Supabase
-                let formattedDate = 'Invalid Date';
-                try {
-                    // Use created_at from Supabase
-                    const dateStr = chat.created_at;
-                    if (dateStr) {
-                        const date = new Date(dateStr);
-                        if (!isNaN(date.getTime())) {
-                            formattedDate = date.toLocaleDateString('en-GB');
-                        }
-                    }
-                } catch (e) {
-                    console.error('Error formatting date:', e);
-                }
-
-                return {
-                    id: chat.id,
-                    createdAt: formattedDate,
-                    topic: firstAssistantMessage,
-                };
-            })
+    try {
+      setLoading(true);
+      const response = await Api.post("/api/v1/helper/createchat");
+      setChatId(response.data.chatId);
+    } catch (err: unknown) {
+      console.error("Error creating chat:", err);
+      if (!(err instanceof AxiosError && err.response?.status === 401)) {
+        toast.error(
+          err instanceof Error ? err.message : "Failed to create chat.",
         );
+      }
+    } finally {
+      setLoading(false);
+    }
+  };
 
-        return adaptedRows;
+  const fetchMessages = async (id: string) => {
+    if (
+      !authContext ||
+      !authContext.user?.user?.id ||
+      !authContext.isLoggedIn
+    ) {
+      if (!authContext?.isLoadingUser) {
+        toast.error("User not authenticated or session has expired.");
+      }
+      return;
+    }
+
+    try {
+      setLoading(true);
+      const response = await Api.get(`/api/v1/helper/messages/${id}`);
+      setMessages(response.data.messages || []);
+    } catch (err: unknown) {
+      console.error("Error fetching messages:", err);
+      if (!(err instanceof AxiosError && err.response?.status === 401)) {
+        toast.error(
+          err instanceof Error ? err.message : "Failed to fetch messages.",
+        );
+      }
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleSendMessage = async () => {
+    if (!inputMessage.trim() || !chatId) {
+      return;
+    }
+
+    const userMessage: Message = {
+      id: Date.now().toString(),
+      role: "user",
+      content: inputMessage,
+      timestamp: new Date().toISOString(),
     };
 
-    // Fetch completed documents
-    useEffect(() => {
-        const fetchCompletedDocuments = async () => {
-            try {
-                setLoading(true);
-                if (isLoadingUser) return;
+    setMessages((prev) => [...prev, userMessage]);
+    setInputMessage("");
 
-                if (!isLoggedIn || !user) {
-                    showError({message: 'User not logged in'});
-                    return;
-                }
+    try {
+      setLoading(true);
+      const response = await Api.post("/api/v1/helper/sendmessage", {
+        chatId,
+        message: inputMessage,
+      });
 
-                // const {data: {session}} = await supabase.auth.getSession();
-                // const authToken = session?.access_token;
-                //
-                // if (!authToken) {
-                //     showError({message: 'No valid session'});
-                //     return;
-                // }
+      const assistantMessage: Message = {
+        id: (Date.now() + 1).toString(),
+        role: "assistant",
+        content: response.data.response,
+        timestamp: new Date().toISOString(),
+      };
 
-                // Call FastAPI endpoint
-                const response = await axios.get(
-                    `${VAULT_API_URL}/api/v1/helper/user_maps`, {
-                        headers: {
-                            Authorization: `Bearer ${user.token ?? ''}`,
-                            'Content-Type': 'application/json',
-                        }
-                    });
+      setMessages((prev) => [...prev, assistantMessage]);
+    } catch (err: unknown) {
+      console.error("Error sending message:", err);
+      if (!(err instanceof AxiosError && err.response?.status === 401)) {
+        toast.error(
+          err instanceof Error ? err.message : "Failed to send message.",
+        );
+      }
+    } finally {
+      setLoading(false);
+    }
+  };
 
-                // Validate response structure
-                if (!response.data || !response.data.user_maps) {
-                    showError({message: 'Invalid response from the server.'});
-                }
-                console.log('data response: ', response.data);
+  return (
+    <div className="relative h-[calc(100vh-100px)]">
+      {loading && messages.length === 0 && (
+        <div className="fixed top-0 left-0 w-full h-full bg-white/80 z-[1000] flex justify-center items-center">
+          <Loader />
+        </div>
+      )}
 
-                // // 1️⃣ Fetch all profiles and create a user_id → full_name map
-                // const {data: profiles, error: profileError} = await supabase
-                //     .from('profiles')
-                //     .select('id, full_name');
-                //
-                // if (profileError) {
-                //     showError({message: profileError.message});
-                //     return;
-                // }
-                const profiles = response.data.user_maps.data as Profile[]; // Access the nested data array
-                const userMap = new Map(profiles.map((profile: Profile) => [profile.id, profile.fullName]));
+      <div className="grid grid-cols-1 lg:grid-cols-[400px_1fr] gap-8 h-full">
+        <div className="hidden lg:block">
+          <DancingBot state="idling" className="w-full h-[400px]" />
+        </div>
 
-                console.log('user map: ', userMap);
+        <div className="flex flex-col h-full bg-[#d3d3d3] rounded-lg shadow-md">
+          <div className="p-6 border-b border-gray-300">
+            <div className="flex justify-between items-center">
+              <h1 className="text-2xl font-bold">Helper Chat</h1>
+              <Button
+                onClick={() => navigate("/applications/helper/HelperMainPage")}
+                variant="outline"
+                size="sm"
+              >
+                Back to Main
+              </Button>
+            </div>
+          </div>
 
-                // Call FastAPI endpoint
-                const chatsResponse = await axios.post(
-                    `${VAULT_API_URL}/api/v1/helper/get_previous_chats`,
-                    {
-                        user_id: user.user.id,
-                    },
-                    {
-                        headers: {
-                            Authorization: `Bearer ${user.token ?? ''}`,
-                            'Content-Type': 'application/json',
-                        },
-                    }
-                );
-                // Validate response structure
-                if (!chatsResponse.data || !chatsResponse.data.get_previous_chats) {
-                    showError({message: 'Invalid response from the server.'});
-                }
-
-                console.log('chats response: ', chatsResponse.data.get_previous_chats.data);
-
-                const chatsData = chatsResponse.data.get_previous_chats.data;
-
-                if (!chatsData || chatsData.length === 0) {
-
-                    showError({message: 'No previous chats found.'});
-                    return;
-                }
-
-                try {
-                    // Replace with your actual fetch logic if necessary.
-                    // For example, replace chatsData with the actual response data.
-                    const adaptedRows = await adaptChatsToRows(chatsData);
-                    setRows(adaptedRows);
-                } catch (error) {
-                    console.error('Error adapting chat rows:', error);
-                }
-
-
-
-            } catch (err) {
-                console.error(err);
-                showError({message: err instanceof Error ? err.message : 'An error occurred'});
-            } finally {
-                setLoading(false);
-            }
-        };
-
-        fetchCompletedDocuments();
-    }, [isLoggedIn, isLoadingUser]);
-    // Handle Resume
-    const handleGoToChat = (rowData: { row: ChatRow }) => {
-        console.log(rowData);
-        if (!rowData.row.id) {
-            showError({message: 'Cannot go to Chat: missing chat message ID'});
-            return;
-        }
-
-        // Navigate to the chat page with the session details
-        navigate('/applications/helper/chat', {
-            state: {
-                isResume: true,
-                ChatId: rowData.row.id
-            },
-        });
-    };
-
-    return (
-        <Container>
-            {/* Loader overlay */}
-            {loading && (
-                <LoaderContainer>
-                    <HCLoader />
-                </LoaderContainer>
+          <div className="flex-1 overflow-y-auto p-6 space-y-4">
+            {messages.length === 0 && !loading && (
+              <div className="flex items-center justify-center h-full text-gray-500">
+                <p>Start a conversation by typing a message below.</p>
+              </div>
             )}
 
+            {messages.map((message) => (
+              <div
+                key={message.id}
+                className={`flex ${
+                  message.role === "user" ? "justify-end" : "justify-start"
+                }`}
+              >
+                <div
+                  className={`max-w-[70%] rounded-lg p-4 ${
+                    message.role === "user"
+                      ? "bg-[#e66334] text-white"
+                      : "bg-white text-gray-900"
+                  }`}
+                >
+                  <p className="whitespace-pre-wrap">{message.content}</p>
+                  <span className="text-xs opacity-70 mt-2 block">
+                    {new Date(message.timestamp).toLocaleTimeString()}
+                  </span>
+                </div>
+              </div>
+            ))}
+            <div ref={messagesEndRef} />
+          </div>
 
-            {/* Right Part */}
-            <DancingBotGridComponent botState={'default'}>
-                {/* Header */}
-                <HeaderContainer>
-                    <WelcomeText>Chats previously started</WelcomeText>
-                </HeaderContainer>
-
-                {/* The lower part: a gray form box containing the table + button */}
-                <TableContainer>
-                    <FormBox>
-                        {/* The table for existing sessions */}
-                        <HCDataTable
-                            actions={{
-                                resume: {
-                                    icon: <HCIcon icon="ArrowRight1"/>,
-                                    onClick: (row) => handleGoToChat(row),
-                                },
-                            }}
-                            columns={columns}
-                            rows={rows}
-                            pageLimit={10}
-                        />
-                    </FormBox>
-                </TableContainer>
-            </DancingBotGridComponent>
-        </Container>
-    );
+          <div className="p-6 border-t border-gray-300">
+            <div className="flex gap-2">
+              <TextField
+                value={inputMessage}
+                onChange={(e) => setInputMessage(e.target.value)}
+                placeholder="Ask the Helper anything..."
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" && !e.shiftKey) {
+                    e.preventDefault();
+                    handleSendMessage();
+                  }
+                }}
+                disabled={loading}
+                className="flex-1"
+              />
+              <Button
+                onClick={handleSendMessage}
+                disabled={loading || !inputMessage.trim()}
+                className="bg-[#e66334] hover:bg-[#FF8234]"
+              >
+                <Send className="w-4 h-4" />
+              </Button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
 };
 
-export default PreviousChatPage;
+export default HelperChatPage;

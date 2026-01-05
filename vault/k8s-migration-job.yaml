@@ -4,7 +4,7 @@ apiVersion: batch/v1
 kind: Job
 metadata:
   name: vault-db-migration
-  namespace: hico-vault
+  namespace: -vault
 spec:
   template:
     spec:
@@ -31,7 +31,7 @@ spec:
         command: ['sh', '-c']
         args:
         - |
-          echo "🚀 Starting HICO Vault Database Migrations..."
+          echo "🚀 Starting  Vault Database Migrations..."
           
           # Run migrations in order
           echo "📦 Running database migrations..."
@@ -162,7 +162,7 @@ spec:
           -- Insert seed data
           INSERT INTO public.companies (id, name, company_reg_no, contact_email, registered_since, created_at)
           VALUES 
-              (1, 'HICO Group', 'A001', 'admin@hico-group.com', '2024-01-01', NOW())
+              (1, ' Group', 'A001', 'admin@-group.com', '2024-01-01', NOW())
           ON CONFLICT (company_reg_no) DO UPDATE SET
               name = EXCLUDED.name,
               contact_email = EXCLUDED.contact_email;
@@ -186,7 +186,7 @@ spec:
           EOF
           
           echo "✅ Database migration completed successfully!"
-          echo "Database is ready for HICO Vault!"
+          echo "Database is ready for  Vault!"
         env:
         - name: PGPASSWORD
           value: postgres 

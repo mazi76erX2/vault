@@ -1,17 +1,68 @@
 services:
-  vault:
-    image: truechart/vault:latest
-    container_name: vault
-    restart: unless-stopped
+  # Qdrant Vector Database
+  qdrant:
+    image: qdrant/qdrant:latest
+    container_name: vault-qdrant
     ports:
-      - "7860:7860"
+      - "6333:6333"
+      - "6334:6334" # gRPC port
+    volumes:
+      - ./qdrant_storage:/qdrant/storage
     environment:
-      AZURE_SEARCH_ENDPOINT: ${AZURE_SEARCH_ENDPOINT}
-      AZURE_SEARCH_KEY: ${AZURE_SEARCH_KEY}
-      CLIENT_ID: ${CLIENT_ID}
-      CLIENT_SECRET: ${CLIENT_SECRET}
-      TENANT_ID: ${TENANT_ID}
-      AZURE_OPENAI_ENDPOINT: ${AZURE_OPENAI_ENDPOINT}
-      AZURE_OPENAI_KEY: ${AZURE_OPENAI_KEY}
-      SUPABASE_URL: ${SUPABASE_URL}
-      SUPABASE_KEY: ${SUPABASE_KEY}
+      - QDRANT__SERVICE__GRPC_PORT=6334
+    restart: unless-stopped
+    networks:
+      - vault-network
+
+  # PostgreSQL with pgvector extension
+  postgres:
+    image: ankane/pgvector:latest
+    container_name: vault-postgres
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: vault
+    ports:
+      - "5432:5432"
+    volumes:
+      - ./postgres_data:/var/lib/postgresql/data
+      # Uncomment if you have init script:
+      # - ./init-db.sql:/docker-entrypoint-initdb.d/init.sql
+    restart: unless-stopped
+    networks:
+      - vault-network
+
+  # FastAPI Backend
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: vault-backend
+    ports:
+      - "7860:7860" # Match Dockerfile EXPOSE port
+    environment:
+      - OLLAMA_HOST=http://host.docker.internal:11434
+      - QDRANT_HOST=qdrant
+      - QDRANT_PORT=6333
+      - DATABASE_URL=postgresql://postgres:postgres@postgres:5432/vault_db
+      - LOG_LEVEL=INFO
+    depends_on:
+      - qdrant
+      - postgres
+    volumes:
+      - ./uploads:/app/uploads
+      - ./logs:/app/logs
+    restart: unless-stopped
+    networks:
+      - vault-network
+    # Note: Ollama should run on host, not in Docker
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+
+networks:
+  vault-network:
+    driver: bridge
+
+volumes:
+  qdrant_storage:
+  postgres_data:

@@ -11,13 +11,13 @@ export interface DocumentDTO {
    *
    * You can use RLS to say "Only managers can read 'critical' docs."
    */
-  severityLevel: 'low' | 'medium' | 'high' | 'critical';
+  severityLevel: "low" | "medium" | "high" | "critical";
 
   /**
    * 'pending' | 'in_progress' | 'completed'
    * RLS can also restrict who can update the doc based on status or role.
    */
-  status: 'pending' | 'in_progress' | 'completed';
+  status: "pending" | "in_progress" | "completed";
 
   /** references projects.id or might be optional if not in a project */
   projectId?: number;

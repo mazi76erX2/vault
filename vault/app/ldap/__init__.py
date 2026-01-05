@@ -1,13 +1,7 @@
+from .models import (LDAPConnector, LDAPConnectorStatus, LDAPGroup,
+                     LDAPSearchInputModel, LDAPSearchResult, LDAPUser,
+                     LoginModel)
 from .router import router
-from .models import (
-    LDAPConnector,
-    LDAPConnectorStatus,
-    LDAPUser,
-    LDAPGroup,
-    LDAPSearchResult,
-    LDAPSearchInputModel,
-    LoginModel,
-)
 
 __all__ = [
     "router",

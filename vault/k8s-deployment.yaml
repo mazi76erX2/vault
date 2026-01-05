@@ -3,14 +3,14 @@
 apiVersion: v1
 kind: Namespace
 metadata:
-  name: hico-vault
+  name: -vault
 ---
 # PostgreSQL ConfigMap
 apiVersion: v1
 kind: ConfigMap
 metadata:
   name: postgres-config
-  namespace: hico-vault
+  namespace: -vault
 data:
   POSTGRES_DB: postgres
   POSTGRES_USER: postgres
@@ -21,7 +21,7 @@ apiVersion: v1
 kind: PersistentVolumeClaim
 metadata:
   name: postgres-pvc
-  namespace: hico-vault
+  namespace: -vault
 spec:
   accessModes:
     - ReadWriteOnce
@@ -34,7 +34,7 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: postgres
-  namespace: hico-vault
+  namespace: -vault
 spec:
   replicas: 1
   selector:
@@ -85,7 +85,7 @@ apiVersion: v1
 kind: Service
 metadata:
   name: postgres-service
-  namespace: hico-vault
+  namespace: -vault
 spec:
   selector:
     app: postgres
@@ -99,7 +99,7 @@ apiVersion: v1
 kind: ConfigMap
 metadata:
   name: postgrest-config
-  namespace: hico-vault
+  namespace: -vault
 data:
   PGRST_DB_URI: postgresql://postgres:postgres@postgres-service:5432/postgres
   PGRST_OPENAPI_SERVER_PROXY_URI: http://127.0.0.1:3000
@@ -113,7 +113,7 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: postgrest
-  namespace: hico-vault
+  namespace: -vault
 spec:
   replicas: 1
   selector:
@@ -150,7 +150,7 @@ apiVersion: v1
 kind: Service
 metadata:
   name: postgrest-service
-  namespace: hico-vault
+  namespace: -vault
 spec:
   selector:
     app: postgrest
@@ -159,12 +159,12 @@ spec:
     targetPort: 3000
   type: ClusterIP
 ---
-# HICO Vault Backend ConfigMap
+#  Vault Backend ConfigMap
 apiVersion: v1
 kind: ConfigMap
 metadata:
   name: vault-backend-config
-  namespace: hico-vault
+  namespace: -vault
 data:
   DATABASE_URL: postgresql://postgres:postgres@postgres-service:5432/postgres
   DB_HOST: postgres-service
@@ -180,12 +180,12 @@ data:
   LOG_LEVEL: INFO
   LOG_FILE: logs/backend_logs.log
 ---
-# HICO Vault Backend Secret (for sensitive data)
+#  Vault Backend Secret (for sensitive data)
 apiVersion: v1
 kind: Secret
 metadata:
   name: vault-backend-secret
-  namespace: hico-vault
+  namespace: -vault
 type: Opaque
 stringData:
   AZURE_SEARCH_ENDPOINT: ""  # Set in production
@@ -201,12 +201,12 @@ stringData:
   SMTP_PASSWORD: ""          # Set in production
   EMAIL_FROM: ""             # Set in production
 ---
-# HICO Vault Backend Deployment
+#  Vault Backend Deployment
 apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: vault-backend
-  namespace: hico-vault
+  namespace: -vault
 spec:
   replicas: 1
   selector:
@@ -219,7 +219,7 @@ spec:
     spec:
       containers:
       - name: vault-backend
-        image: hico-vault:latest  # Build and push your image to a registry
+        image: -vault:latest  # Build and push your image to a registry
         ports:
         - containerPort: 7860
         envFrom:
@@ -252,12 +252,12 @@ spec:
       - name: uploads-volume
         emptyDir: {}
 ---
-# HICO Vault Backend Service
+#  Vault Backend Service
 apiVersion: v1
 kind: Service
 metadata:
   name: vault-backend-service
-  namespace: hico-vault
+  namespace: -vault
 spec:
   selector:
     app: vault-backend
@@ -271,7 +271,7 @@ apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
   name: vault-ingress
-  namespace: hico-vault
+  namespace: -vault
   annotations:
     nginx.ingress.kubernetes.io/rewrite-target: /
 spec:

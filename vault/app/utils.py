@@ -1,67 +1,57 @@
-
-
-
-
+import gradio as gr
+from chat import generate_summary_chat, generate_tags_chat
 from docx2python import docx2python
+
 from app.database import get_all_managers
-from chat import  (generate_summary_chat, generate_tags_chat)
 
+levels_txt_int_map = {"Low": 1, "Medium": 2, "High": 3, "Critical": 4}
 
-levels_txt_int_map = {
-        "Low": 1,
-        "Medium": 2,
-        "High": 3,
-        "Critical": 4
+levels_int_text_map = {1: "Low", 2: "Medium", 3: "High", 4: "Critical"}
 
-    }
-
-levels_int_text_map = {
-        1 : "Low",
-        2: "Medium",
-        3: "High",
-        4: "Critical"
-
-    }
 
 def show_summary(chatbot_history, radio_validation):
-    chat_summary, _ , validation_report = generate_summary_chat(chatbot_history, radio_validation)
+    chat_summary, _, validation_report = generate_summary_chat(chatbot_history, radio_validation)
     return gr.Textbox(chat_summary), gr.Textbox(validation_report)
+
 
 def generate_tags(chatbot_sum):
     suggested_tags = generate_tags_chat(chatbot_sum)
-    return  gr.Markdown(value=" ".join([f"`{tag}`" for tag in suggested_tags])), gr.Textbox(suggested_tags)
+    return gr.Markdown(value=" ".join([f"`{tag}`" for tag in suggested_tags])), gr.Textbox(
+        suggested_tags
+    )
+
 
 def get_plain_text_from_markdown(markdown_str):
     """
     Converts the Markdown Q/A format back into plain Q/A lines.
-    
+
     Expected Markdown format (simplified):
-    
+
         **Q: Could you compare your experiences...?**
-        
-        A: At HICO Group, the focus was...
+
+        A: At  Group, the focus was...
         A: ...
-        
+
         **Q: What are some of the challenges...?**
-        
+
         A: Major challenges included...
         ...
-        
+
     Returns lines like:
-    
+
         Q: Could you compare your experiences...?
-        A: At HICO Group, the focus was...
+        A: At  Group, the focus was...
         A: ...
         Q: What are some of the challenges...?
         A: Major challenges included...
         ...
-    
-    This function removes the Markdown bold formatting, 
+
+    This function removes the Markdown bold formatting,
     and restores "Q:" and "A:" lines for your summary text.
     """
-    lines = markdown_str.split('\n')
+    lines = markdown_str.split("\n")
     plain_text_lines = []
-    
+
     # Track whether we're currently accumulating answer lines
     in_answer = False
     current_answer = []
@@ -98,7 +88,7 @@ def get_plain_text_from_markdown(markdown_str):
             current_answer.append(stripped_line.replace("**", ""))
 
         # Ignore blank lines or lines that do not match Q/A format
-    
+
     # Finalize any leftover answer block
     if in_answer and current_answer:
         plain_text_lines.append(" ".join(current_answer))
@@ -118,8 +108,8 @@ def get_info_markdown_txt(text):
     - str: The formatted Markdown string.
     """
     # Split the input string into lines
-    text_list = text.split('\n')
-    
+    text_list = text.split("\n")
+
     # Initialize an empty list to store formatted markdown content
     markdown_content = []
 
@@ -139,7 +129,7 @@ def get_info_markdown_txt(text):
 
             # Add the question in bold
             markdown_content.append(f"**{stripped_line}**")
-        
+
         elif stripped_line.startswith("A:") or stripped_line.startswith("Answer:"):
             # If it's the start of an answer, set the in_answer flag
             if in_answer:
@@ -148,7 +138,7 @@ def get_info_markdown_txt(text):
 
             in_answer = True
             current_answer = [stripped_line]
-        
+
         elif in_answer:
             # If we're in an answer block, append the current line to the answer
             current_answer.append(stripped_line)
@@ -183,7 +173,7 @@ def get_info_mrkdwn(text_list):
 
             # Add the question in bold
             markdown_content.append(f"**{stripped_line}**")
-        
+
         elif stripped_line.startswith("A:") or stripped_line.startswith("Answer:"):
             # If it's the start of an answer, set the in_answer flag
             if in_answer:
@@ -192,7 +182,7 @@ def get_info_mrkdwn(text_list):
 
             in_answer = True
             current_answer = [stripped_line]
-        
+
         elif in_answer:
             # If we're in an answer block, append the current line to the answer
             current_answer.append(stripped_line)
@@ -206,37 +196,37 @@ def get_info_mrkdwn(text_list):
     return "\n\n".join(markdown_content)
 
 
-
 def generate_markdown_from_info(extracted_info):
     # Generate the markdown content using the extracted information
-    
-    managers = get_all_managers()                         
-        # Transforming the list into the desired dictionary format
+
+    managers = get_all_managers()
+    # Transforming the list into the desired dictionary format
     managers_dict = {
-            manager['Manager_id']: {
-                'username': manager['username'],
-                'manager_mail': manager['manager_mail'],
-                'manager_name': manager['manager_name'],
-            }
-            for manager in managers
+        manager["Manager_id"]: {
+            "username": manager["username"],
+            "manager_mail": manager["manager_mail"],
+            "manager_name": manager["manager_name"],
         }
+        for manager in managers
+    }
     markdown_content = f"""
-                            # Document Title: {extracted_info['title']}
-                            **Status**: {extracted_info['status']}  
-                            **Document ID**: {extracted_info['doc_id']}  
-                            **Designated Manager**: {managers_dict[int(extracted_info['mng_id'])]['manager_name']}  
-                            **Comment**: {extracted_info['comment']}  
-                            **Author**: {extracted_info['employee_contact']}
-                            **Security Level**: {levels_int_text_map[int(extracted_info['level'])]}
+                            # Document Title: {extracted_info["title"]}
+                            **Status**: {extracted_info["status"]}
+                            **Document ID**: {extracted_info["doc_id"]}
+                            **Designated Manager**: {managers_dict[int(extracted_info["mng_id"])]["manager_name"]}
+                            **Comment**: {extracted_info["comment"]}
+                            **Author**: {extracted_info["employee_contact"]}
+                            **Security Level**: {levels_int_text_map[int(extracted_info["level"])]}
                         """
 
     return markdown_content
+
 
 def extract_text_with_docx2python(file_path):
     try:
         # Extract text using docx2python
         content = docx2python(file_path)
-        
+
         # content.body is a nested list structure
         # Flatten the nested structure to get all paragraphs
         paragraphs = []
@@ -245,15 +235,14 @@ def extract_text_with_docx2python(file_path):
                 for column in page:
                     for paragraph in column:
                         paragraphs.append(paragraph)
-        
+
         # Join paragraphs into a single string
         text_content = "\n".join(paragraphs)
         return text_content
 
-    except IndexError as e:
-        print(f"Error processing the file: The file is a form")
+    except IndexError:
+        print("Error processing the file: The file is a form")
         return ""
     except Exception as e:
         print(f"An error occurred: {e}")
         return ""
-

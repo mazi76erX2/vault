@@ -1,193 +1,146 @@
-import React, {useEffect, useState} from 'react';
-import {useNavigate} from 'react-router-dom';
-import {error as showError, HCDataTable, HCIcon, HCLoader, success} from 'generic-components';
-import {useAuthContext} from '../../../hooks/useAuthContext';
-import {Stack, styled} from '@mui/material';
-import {DancingBotGridComponent} from '../../../components/DancingBotGridComponent';
-import {HeaderContainer, LoaderContainer, WelcomeText} from '../../../components';
-import Api from '../../../services/Instance';
-import { AxiosError } from 'axios';
+import React, { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
+import { toast } from "sonner";
+import { AxiosError } from "axios";
+import type { ColumnDef } from "@tanstack/react-table";
+import { useAuthContext } from "@/hooks/useAuthContext";
+import { DancingBot } from "@/components/media/dancing-bot";
+import { DataTable } from "@/components/data-display/data-table";
+import { Loader } from "@/components/feedback/loader";
+import { Button } from "@/components/ui/button";
+import Api from "@/services/Instance";
 
-
-const Container = styled(Stack)({});
-
-const TableContainer = styled('div')({
-    flex: 2,
-    display: 'flex',
-    flexDirection: 'column',
-    gap: '20px',
-});
-
-const FormBox = styled('div')({
-    backgroundColor: '#d3d3d3',
-    padding: '25px',
-    borderRadius: '8px',
-    boxShadow: '0 4px 8px rgba(0, 0, 0, 0.1)',
-    display: 'flex',
-    flexDirection: 'column',
-    height: 'auto',  // Allow it to expand dynamically
-    justifyContent: 'space-between', // Ensures proper spacing
-});
-
-// Interface for the raw API response with snake_case keys
-interface RawSessionFromAPI {
-    created_at: string;
-    id: string;
-    status?: string;
-    topic?: string;
-    chat_messages_id?: string;
+interface Session {
+  id: string;
+  projectName: string;
+  createdAt: string;
+  status: string;
+  [key: string]: unknown;
 }
 
-// Raw session data as returned by the API, but with camelCase keys for internal use
-interface SessionDataRaw {
-    createdAt: string;
-    id: string;
-    status?: string;
-    topic?: string;
-    chatMessagesId?: string;
-}
-
-interface SessionRow {
-    id: string;
-    createdAt: string;
-    topic: string;
-    status: string;
-    chatMessagesId?: string;
-    [key: string]: unknown;
+interface FetchSessionsResponse {
+  sessions: Session[];
 }
 
 const CollectorResumePage: React.FC = () => {
-    // State Management
-    const [loading, setLoading] = useState(false);
-    const [rows, setRows] = useState<SessionRow[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [rows, setRows] = useState<Session[]>([]);
+  const [selectedSession, setSelectedSession] = useState<Session | null>(null);
+  const authContext = useAuthContext();
+  const navigate = useNavigate();
 
-    const authContext = useAuthContext(); // Call hook once
-    const navigate = useNavigate();
+  const columns: ColumnDef<Session>[] = [
+    {
+      accessorKey: "projectName",
+      header: "Project Name",
+    },
+    {
+      accessorKey: "createdAt",
+      header: "Created At",
+      cell: ({ row }) => {
+        const date = new Date(row.getValue("createdAt"));
+        return date.toLocaleDateString();
+      },
+    },
+    {
+      accessorKey: "status",
+      header: "Status",
+    },
+  ];
 
-    const columns = [
-        {field: 'createdAt', headerName: 'Date', width: 150},
-        {field: 'topic', headerName: 'Topic', flex: 2},
-        {field: 'status', headerName: 'Status', width: 150},
-    ];
+  const fetchSessions = async () => {
+    if (
+      !authContext ||
+      !authContext.user?.user?.id ||
+      !authContext.isLoggedIn
+    ) {
+      if (!authContext?.isLoadingUser) {
+        toast.error("User not authenticated or session has expired.");
+        setLoading(false);
+      }
+      return;
+    }
 
-    // Fetch existing sessions on mount (and when user logs in)
-    useEffect(() => {
-        const fetchUserSessions = async () => {
-            if (!authContext || !authContext.user?.user?.id || !authContext.isLoggedIn) { // Check authContext and its properties
-                if (!authContext?.isLoadingUser) { // Only show error if not loading user
-                    showError({ message: 'User not authenticated or session has expired.' });
-                }
-                setLoading(false);
-                return;
-            }
+    try {
+      setLoading(true);
+      const response = await Api.get<FetchSessionsResponse>(
+        "/api/v1/collector/fetchsessions",
+      );
+      setRows(response.data.sessions);
+    } catch (err: unknown) {
+      console.error("Error fetching sessions:", err);
+      if (!(err instanceof AxiosError && err.response?.status === 401)) {
+        toast.error(
+          err instanceof Error ? err.message : "Failed to fetch sessions.",
+        );
+      }
+    } finally {
+      setLoading(false);
+    }
+  };
 
-            try {
-                setLoading(true);
-                
-                const response = await Api.post<{ sessions: RawSessionFromAPI[] }>(
-                    '/api/v1/collector/fetch_resume_sessions',
-                    {}
-                );
+  const handleResumeSession = () => {
+    if (!selectedSession) {
+      toast.error("Please select a session first.");
+      return;
+    }
 
-                const sessionsRawMapped: SessionDataRaw[] = response.data.sessions.map(item => ({
-                    createdAt: item.created_at,
-                    id: item.id,
-                    status: item.status,
-                    topic: item.topic,
-                    chatMessagesId: item.chat_messages_id
-                }));
+    navigate("/applications/collector/CollectorChatPage", {
+      state: { session: selectedSession },
+    });
+  };
 
-                if (!Array.isArray(sessionsRawMapped)) {
-                    console.error('Unexpected API response format:', sessionsRawMapped);
-                    showError('Unexpected API response format.');
-                    return;
-                }
+  useEffect(() => {
+    if (authContext && !authContext.isLoadingUser && authContext.isLoggedIn) {
+      fetchSessions();
+    }
+  }, [authContext]);
 
-                if (sessionsRawMapped.length === 0) {
-                    showError('No existing sessions found.');
-                    return;
-                }
-                success({message: 'Existing sessions found.'});
+  return (
+    <div className="relative">
+      {loading && (
+        <div className="fixed top-0 left-0 w-full h-full bg-white/80 z-[1000] flex justify-center items-center">
+          <Loader />
+        </div>
+      )}
 
-                const sessionRows: SessionRow[] = sessionsRawMapped.map((raw) => ({
-                    id: raw.id,
-                    createdAt: new Date(raw.createdAt).toLocaleDateString('en-GB'),
-                    topic: raw.topic ?? 'No topic found',
-                    status: raw.status ?? 'Started',
-                    chatMessagesId: raw.chatMessagesId
-                }));
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-start">
+        <DancingBot state="greeting" className="w-full max-w-[600px] mx-auto" />
 
-                setRows(sessionRows);
-            } catch (error) {
-                if (!(error instanceof AxiosError && error.response?.status === 401)) {
-                    showError(error instanceof Error ? error.message : 'An error occurred while fetching sessions');
-                }
-            } finally {
-                setLoading(false);
-            }
-        };
+        <div>
+          <div className="mb-6">
+            <h1 className="text-2xl font-bold">Resume a session</h1>
+            <p className="text-gray-600 mt-2">
+              Select an existing session to continue your interview.
+            </p>
+          </div>
 
-        if (authContext && !authContext.isLoadingUser && authContext.isLoggedIn) { // Ensure context is loaded and user is logged in
-            fetchUserSessions();
-        }
-    }, [authContext]); // Depend on the entire authContext object
+          <div className="bg-[#d3d3d3] p-6 rounded-lg shadow-md">
+            <DataTable
+              columns={columns}
+              data={rows}
+              pageSize={5}
+              onRowClick={(params) => setSelectedSession(params.row as Session)}
+              getRowClassName={(params) =>
+                params.row.id === selectedSession?.id ? "bg-blue-100" : ""
+              }
+            />
+          </div>
 
-
-    // Handle Resume
-    const handleResumeSession = (rowData: { row: SessionRow }) => {
-        console.log('Resume session data:', rowData);
-        if (!rowData.row.id) {
-            showError('Cannot resume: missing session ID');
-            return;
-        }
-
-        success({message: 'Resuming session...'});
-
-        // Navigate to the chat page with the session details
-        navigate('/applications/collector/CollectorChatPage', {
-            state: {
-                sessionId: rowData.row.id,
-                chat_msgId: rowData.row.chatMessagesId,
-                isResume: true
-            },
-        });
-    };
-
-    return (
-        <Container>
-            {loading && (
-                <LoaderContainer>
-                    <HCLoader/>
-                </LoaderContainer>
-            )}
-
-            <DancingBotGridComponent botState={'thinking'}>
-                {/* Header */}
-                <HeaderContainer>
-                    <WelcomeText>Resume a previous session</WelcomeText>
-                </HeaderContainer>
-
-                {/* The lower part: a gray form box containing the table + button */}
-                <TableContainer>
-                    <FormBox>
-                        {/* The table for existing sessions */}
-                        <HCDataTable
-                            actions={{
-                                resume: {
-                                    icon: <HCIcon icon="ArrowRight1"/>,
-                                    onClick: (row) => handleResumeSession(row),
-                                },
-                            }}
-                            columns={columns}
-                            rows={rows}
-                            pageLimit={5}
-                            tableSx={rows.length > 0 ? {height: '50vh'} : undefined}
-                        />
-                    </FormBox>
-                </TableContainer>
-            </DancingBotGridComponent>
-        </Container>
-    );
+          <div className="mt-6 flex justify-end">
+            <Button
+              onClick={handleResumeSession}
+              disabled={!selectedSession}
+              className="bg-[#e66334] hover:bg-[#FF8234]"
+              size="lg"
+            >
+              Resume Session
+            </Button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
 };
 
 export default CollectorResumePage;

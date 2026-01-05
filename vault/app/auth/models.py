@@ -1,8 +1,10 @@
-from vault.app.db.base_class import Base
 import uuid
-from sqlalchemy import Column, String, Text, DateTime, func, ForeignKey
+
+from sqlalchemy import Column, DateTime, ForeignKey, String, Text, func
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import relationship
+
+from vault.app.db.base_class import Base
 
 # Define your Auth-related SQLAlchemy models here
 # For example, if you have tables for tokens, permissions, etc.

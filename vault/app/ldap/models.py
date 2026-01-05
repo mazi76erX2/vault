@@ -1,8 +1,9 @@
-from pydantic import BaseModel, Field
-from typing import Optional, List, Dict, Any
+import uuid
 from datetime import datetime
 from enum import Enum
-import uuid
+from typing import Any
+
+from pydantic import BaseModel, Field
 
 
 class LDAPConnectorStatus(str, Enum):
@@ -16,14 +17,14 @@ class LDAPConnectorStatus(str, Enum):
 class LDAPConnector(BaseModel):
     """Model for an LDAP connector configuration"""
 
-    id: Optional[str] = Field(default_factory=lambda: str(uuid.uuid4()))
+    id: str | None = Field(default_factory=lambda: str(uuid.uuid4()))
     name: str
     company_id: str
     domain: str
     host: str
     port: str
     username: str
-    vault_secret_name: Optional[str] = None
+    vault_secret_name: str | None = None
     status: LDAPConnectorStatus = LDAPConnectorStatus.INACTIVE
     base_dn: str
     user_dn: str
@@ -35,7 +36,7 @@ class LDAPConnector(BaseModel):
 
     # User object settings
     user_object: str = "user"
-    user_object_filter: Optional[str] = None
+    user_object_filter: str | None = None
     attribute_username: str = "sAMAccountName"
     attribute_username_rdn: str = "cn"
     attribute_first_name: str = "givenName"
@@ -48,7 +49,7 @@ class LDAPConnector(BaseModel):
 
     # Group object settings
     group_object: str = "group"
-    group_object_filter: Optional[str] = None
+    group_object_filter: str | None = None
     group_recursive: bool = True
     attribute_group_guid: str = "objectGUID"
     attribute_group_name: str = "cn"
@@ -56,9 +57,9 @@ class LDAPConnector(BaseModel):
     attribute_group_members: str = "member"
 
     # Status fields
-    status_message: Optional[str] = None
-    error: Optional[str] = None
-    last_sync: Optional[datetime] = None
+    status_message: str | None = None
+    error: str | None = None
+    last_sync: datetime | None = None
     created_at: datetime = Field(default_factory=datetime.now)
     updated_at: datetime = Field(default_factory=datetime.now)
 
@@ -68,11 +69,11 @@ class LDAPUser(BaseModel):
 
     type: str = "user"
     name: str
-    directoryId: str
+    directory_id: str
     username: str
     email: str
-    firstName: Optional[str] = None
-    lastName: Optional[str] = None
+    first_name: str | None = None
+    last_name: str | None = None
 
 
 class LDAPGroup(BaseModel):
@@ -80,10 +81,10 @@ class LDAPGroup(BaseModel):
 
     type: str = "group"
     name: str
-    directoryId: str
+    directory_id: str
     username: str
     email: str = ""
-    members: List[dict] = []
+    members: list[dict] = []
 
 
 class LDAPSearchResult(BaseModel):
@@ -91,21 +92,21 @@ class LDAPSearchResult(BaseModel):
 
     type: str
     name: str
-    directoryId: str
+    directory_id: str
     username: str
-    email: Optional[str] = None
-    firstName: Optional[str] = None
-    lastName: Optional[str] = None
-    telephone: Optional[str] = None
-    department: Optional[str] = None
-    members: Optional[List[dict]] = None
+    email: str | None = None
+    first_name: str | None = None
+    last_name: str | None = None
+    telephone: str | None = None
+    department: str | None = None
+    members: list[dict] | None = None
 
 
 class LDAPSearchInputModel(BaseModel):
     """Model for LDAP search input"""
 
     query: str
-    connectorId: str
+    connector_id: str
 
 
 class LoginModel(BaseModel):
@@ -120,5 +121,5 @@ class LDAPTestConnectionResult(BaseModel):
 
     success: bool
     message: str
-    error: Optional[str] = None
-    details: Optional[Dict[str, Any]] = None
+    error: str | None = None
+    details: dict[str, Any] | None = None

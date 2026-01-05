@@ -1,121 +1,280 @@
-import React, {useEffect, useState} from 'react';
-import {Box} from '@mui/material';
-import {useLocation, useNavigate} from 'react-router-dom';
-import {HCIcon, HCModal} from 'generic-components';
-import {UserListTable} from '../../components/UserListTable/UserListTable';
-import {UserDTO} from '../../types/UserDTO';
-import {VAULT_API_URL} from '../../config';
+import React, { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
+import { toast } from "sonner";
+import { AxiosError } from "axios";
+import { Button } from "@/components/ui/button";
+import { TextField } from "@/components/forms/text-field";
+import { CheckBox } from "@/components/forms/checkbox";
+import { Loader } from "@/components/feedback/loader";
+import { DancingBot } from "@/components/media/dancing-bot";
+import { Card } from "@/components/ui/card";
+import { SegmentTabs } from "@/components/layout/segment-tabs";
+import { useAuthContext } from "@/hooks/useAuthContext";
+import Api from "@/services/Instance";
 
-
-interface UsersPageProps {
-    users?: UserDTO[];
+interface UserData {
+  email: string;
+  firstname: string;
+  lastname: string;
+  password: string;
+  isAdmin: boolean;
+  isCollector: boolean;
+  isHelper: boolean;
+  isValidator: boolean;
+  isExpert: boolean;
 }
 
-function AdminsPage(props: UsersPageProps) {
-    const {pathname} = useLocation();
-    const navigate = useNavigate();
-    const [users, setUsers] = useState<UserDTO[]>(props.users ?? []);
-    const [userToDelete, setUserToDelete] = useState<string | undefined>(undefined);
+const UserDirectoryPage: React.FC = () => {
+  const [activeTab, setActiveTab] = useState(0);
+  const [loading, setLoading] = useState(false);
+  const navigate = useNavigate();
+  const authContext = useAuthContext();
 
-    useEffect(() => {
-        loadUsers();
-    }, [pathname]);
+  const [userData, setUserData] = useState<UserData>({
+    email: "",
+    firstname: "",
+    lastname: "",
+    password: "",
+    isAdmin: false,
+    isCollector: false,
+    isHelper: false,
+    isValidator: false,
+    isExpert: false,
+  });
 
-    const loadUsers = async () => {
-        try {
-            const response = await fetch(`${VAULT_API_URL}/api/admin/users`);
-            if (!response.ok) {
-                throw new Error(`HTTP error! status: ${response.status}`);
-            }
-            const data = await response.json();
-            setUsers(data || []);
-        } catch (err) {
-            console.error('Failed to load users:', err);
-        }
-    };
+  const tabs = [
+    { label: "Create User", value: 0 },
+    { label: "Import Users", value: 1 },
+  ];
 
-    const onEdit = (id: string) => {
-        // Navigate to an individual user page, e.g. /users/individual/:id
-        navigate(`/users/individual/${id}`);
-    };
+  const handleInputChange = (
+    field: keyof UserData,
+    value: string | boolean,
+  ) => {
+    setUserData((prev) => ({ ...prev, [field]: value }));
+  };
 
-    const onDelete = async (id: string) => {
-        try {
-            const response = await fetch(`${VAULT_API_URL}/api/admin/users/${id}`, {
-                method: 'DELETE',
-                headers: {
-                    'Content-Type': 'application/json'
-                }
-            });
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
 
-            if (!response.ok) {
-                const errorData = await response.json();
-                throw new Error(errorData.detail || 'Error deleting the user');
-            }
+    if (
+      !userData.email ||
+      !userData.firstname ||
+      !userData.lastname ||
+      !userData.password
+    ) {
+      toast.error("Please fill in all required fields.");
+      return;
+    }
 
-            await loadUsers(); // Refresh the user list after deletion
-        } catch (err) {
-            console.error('Failed to delete user', err);
-        }
-    };
+    if (
+      !userData.isAdmin &&
+      !userData.isCollector &&
+      !userData.isHelper &&
+      !userData.isValidator &&
+      !userData.isExpert
+    ) {
+      toast.error("Please select at least one role for the user.");
+      return;
+    }
 
+    try {
+      setLoading(true);
+      const userId = authContext?.user?.user?.id;
 
-    // If you have a separate UpdateUser type:
-    // interface UpdateUserDTO { id: string; username?: string; email?: string; ... }
+      const roles: string[] = [];
+      if (userData.isAdmin) roles.push("Administrator");
+      if (userData.isCollector) roles.push("Collector");
+      if (userData.isHelper) roles.push("Helper");
+      if (userData.isValidator) roles.push("Validator");
+      if (userData.isExpert) roles.push("Expert");
 
-    // const onUserUpdate = async (userData: any /* or UpdateUserDTO */) => {
-    //     try {
-    //         if (userData.id) {
-    //             const {error} = await supabase
-    //                 .from('profiles')
-    //                 .update({
-    //                     username: userData.username,
-    //                     email: userData.email,
-    //                     updated_at: new Date().toISOString()
-    //                 })
-    //                 .eq('id', userData.id);
-    //
-    //             if (error) throw error;
-    //             await loadUsers();
-    //         }
-    //     } catch (err) {
-    //         console.error('Failed to update user:', err);
-    //     }
-    // };
+      await Api.post("/api/v1/admin/createuser", {
+        userid: userId,
+        email: userData.email,
+        firstname: userData.firstname,
+        lastname: userData.lastname,
+        password: userData.password,
+        roles,
+      });
 
-    return (
-        <Box sx={{display: 'flex', flexDirection: 'column', height: '80vh'}}>
-            <Box sx={{height: 'calc(100% - 60px)'}}>
-                <UserListTable
-                    users={users}
-                    // Force re-render when `users` changes
-                    key={users.map(u => u.username?.trim() || 'unknown').join('-')}
+      toast.success("User created successfully.");
 
-                    // Remove permission toggling
-                    // Instead, we only provide onEdit and onDelete
-                    onEdit={(u) => onEdit(u.id!)}
-                    onDelete={(u) => setUserToDelete(u.id!)}
+      // Reset form
+      setUserData({
+        email: "",
+        firstname: "",
+        lastname: "",
+        password: "",
+        isAdmin: false,
+        isCollector: false,
+        isHelper: false,
+        isValidator: false,
+        isExpert: false,
+      });
+    } catch (err) {
+      console.error("Error creating user:", err);
+      if (!(err instanceof AxiosError && err.response?.status === 401)) {
+        const message =
+          err instanceof AxiosError && err.response?.data?.detail
+            ? err.response.data.detail
+            : "Failed to create user.";
+        toast.error(message);
+      }
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleCancel = () => {
+    navigate(-1);
+  };
+
+  return (
+    <div className="relative">
+      {loading && (
+        <div className="fixed top-0 left-0 w-full h-full bg-white/80 z-[1000] flex justify-center items-center">
+          <Loader />
+        </div>
+      )}
+
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-start">
+        <DancingBot state="greeting" className="w-full max-w-[600px] mx-auto" />
+
+        <div>
+          <h1 className="text-2xl font-bold mb-6">User Directory</h1>
+
+          <SegmentTabs
+            tabs={tabs}
+            value={activeTab}
+            onChange={setActiveTab}
+            className="mb-6"
+          />
+
+          {activeTab === 0 && (
+            <form onSubmit={handleSubmit}>
+              <Card className="bg-[#d3d3d3] p-6 shadow-md space-y-6">
+                <TextField
+                  label="Email"
+                  type="email"
+                  value={userData.email}
+                  onChange={(e) => handleInputChange("email", e.target.value)}
+                  placeholder="user@example.com"
+                  required
                 />
-            </Box>
 
-            <HCModal
-                options={{
-                    title: 'Delete User',
-                    renderContent: () => 'Are you sure you want to remove this user?',
-                    onConfirm() {
-                        if (userToDelete) onDelete(userToDelete);
-                    },
-                    icon: <HCIcon icon="Trash"/>,
-                    confirmText: 'Delete',
-                    type: 'confirm',
-                    onCancel() {
-                        setUserToDelete(undefined);
-                    },
-                }}
-                open={!!userToDelete}
-            />
-        </Box>
-    );
-}
+                <div className="grid grid-cols-2 gap-4">
+                  <TextField
+                    label="First Name"
+                    value={userData.firstname}
+                    onChange={(e) =>
+                      handleInputChange("firstname", e.target.value)
+                    }
+                    required
+                  />
 
-export default AdminsPage;
+                  <TextField
+                    label="Last Name"
+                    value={userData.lastname}
+                    onChange={(e) =>
+                      handleInputChange("lastname", e.target.value)
+                    }
+                    required
+                  />
+                </div>
+
+                <TextField
+                  label="Password"
+                  type="password"
+                  value={userData.password}
+                  onChange={(e) =>
+                    handleInputChange("password", e.target.value)
+                  }
+                  placeholder="Minimum 8 characters"
+                  required
+                />
+
+                <div>
+                  <h3 className="text-lg font-semibold mb-3">Roles</h3>
+                  <div className="space-y-2">
+                    <CheckBox
+                      label="Administrator"
+                      checked={userData.isAdmin}
+                      onChange={(checked) =>
+                        handleInputChange("isAdmin", checked)
+                      }
+                    />
+                    <CheckBox
+                      label="Collector"
+                      checked={userData.isCollector}
+                      onChange={(checked) =>
+                        handleInputChange("isCollector", checked)
+                      }
+                    />
+                    <CheckBox
+                      label="Helper"
+                      checked={userData.isHelper}
+                      onChange={(checked) =>
+                        handleInputChange("isHelper", checked)
+                      }
+                    />
+                    <CheckBox
+                      label="Validator"
+                      checked={userData.isValidator}
+                      onChange={(checked) =>
+                        handleInputChange("isValidator", checked)
+                      }
+                    />
+                    <CheckBox
+                      label="Expert"
+                      checked={userData.isExpert}
+                      onChange={(checked) =>
+                        handleInputChange("isExpert", checked)
+                      }
+                    />
+                  </div>
+                </div>
+              </Card>
+
+              <div className="flex justify-end gap-4 mt-6">
+                <Button
+                  variant="outline"
+                  type="button"
+                  onClick={handleCancel}
+                  size="lg"
+                >
+                  Cancel
+                </Button>
+                <Button
+                  type="submit"
+                  disabled={loading}
+                  className="bg-[#e66334] hover:bg-[#FF8234]"
+                  size="lg"
+                >
+                  Create User
+                </Button>
+              </div>
+            </form>
+          )}
+
+          {activeTab === 1 && (
+            <Card className="bg-[#d3d3d3] p-6 shadow-md">
+              <h3 className="text-lg font-semibold mb-4">
+                Import Users from CSV
+              </h3>
+              <p className="text-gray-600 mb-4">
+                Upload a CSV file to import multiple users at once.
+              </p>
+              <input type="file" accept=".csv" className="mb-4" />
+              <Button className="bg-[#e66334] hover:bg-[#FF8234]" size="lg">
+                Import
+              </Button>
+            </Card>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+};
+
+export default UserDirectoryPage;

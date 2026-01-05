@@ -2,8 +2,8 @@
 
 import logging
 import os
-import sys
-from typing import Dict, List, Optional, Tuple, Any
+from typing import Any
+
 import ldap
 
 # Try to import ldap module, fall back to mock_ldap on Windows
@@ -14,25 +14,21 @@ try:
 except ImportError:
     try:
         # First try relative import from the app package
-        from .mock_ldap import *
         import app.ldap.mock_ldap as ldap
+
+        # # from .mock_ldap import initialize  # Unused  # Unused
 
         USING_MOCK = True
     except ImportError:
         # Fallback to direct import if the module is at the same level
-        from mock_ldap import *
         import mock_ldap as ldap
+
+        # Removed star import - using explicit imports above
 
         USING_MOCK = True
     logging.warning("Using mock LDAP module - limited functionality available")
 
-from .models import (
-    LDAPConnector,
-    LDAPUser,
-    LDAPGroup,
-    LDAPSearchResult,
-    LDAPTestConnectionResult,
-)
+from .models import LDAPConnector, LDAPGroup, LDAPSearchResult, LDAPUser
 
 # Configure logger
 logger = logging.getLogger(__name__)
@@ -67,18 +63,14 @@ def get_ldap_client(
     if connector.is_ssl:
         # Get certificate file path
         cert_dir = os.path.dirname(os.path.abspath(__file__))
-        cert_path = os.path.join(cert_dir, "CAhico-group.local.cer")
+        cert_path = os.path.join(cert_dir, "CA-group.local.cer")
 
         # --- Added for testing: Bypass cert verification if requested ---
         # Note: This should only be used for testing/debugging, NOT production connections
         if bypass_cert_verification:
-            logger.warning(
-                "Bypassing LDAP SSL certificate verification. ONLY for testing!"
-            )
+            logger.warning("Bypassing LDAP SSL certificate verification. ONLY for testing!")
             ldap_client.set_option(ldap.OPT_X_TLS_REQUIRE_CERT, ldap.OPT_X_TLS_NEVER)
-            ldap_client.set_option(
-                ldap.OPT_X_TLS_NEWCTX, 0
-            )  # Set NEWCTX when bypassing
+            ldap_client.set_option(ldap.OPT_X_TLS_NEWCTX, 0)  # Set NEWCTX when bypassing
             ldap_client.set_option(
                 ldap.OPT_REFERRALS, 0
             )  # Set REFERRALS when bypassing, matching test script
@@ -110,7 +102,7 @@ def get_ldap_client(
 
 
 def format_user_ldap_entry(
-    entry: Tuple[str, Dict[str, List[bytes]]], connector: LDAPConnector
+    entry: tuple[str, dict[str, list[bytes]]], connector: LDAPConnector
 ) -> LDAPUser:
     """
     Format LDAP user entry to a standardized model
@@ -152,17 +144,17 @@ def format_user_ldap_entry(
 
 
 def get_ldap_group_members(
-    member_list: List[str], connector: LDAPConnector
-) -> List[Dict[str, Any]]:
+    member_list: list[str], connector: LDAPConnector
+) -> list[dict[str, Any]]:
     """
     Extract group members from LDAP member list
 
     Args:
-        member_list: List of member DNs
+        member_list: list of member DNs
         connector: LDAP connector configuration
 
     Returns:
-        List of user dictionaries
+        list of user dictionaries
     """
     if not member_list:
         return []
@@ -195,9 +187,7 @@ def get_ldap_group_members(
             "password": "",
             "directoryId": connector.id,
             "firstName": name_parts[0] if name_parts else "",
-            "username": (
-                f"{connector.domain}\\{name_parts[0]}".lower() if name_parts else ""
-            ),
+            "username": (f"{connector.domain}\\{name_parts[0]}".lower() if name_parts else ""),
             "colourBlind": False,
             "disabled": False,
         }
@@ -208,7 +198,7 @@ def get_ldap_group_members(
 
 
 def format_group_ldap_entry(
-    entry: Tuple[str, Dict[str, List[bytes]]], connector: LDAPConnector
+    entry: tuple[str, dict[str, list[bytes]]], connector: LDAPConnector
 ) -> LDAPGroup:
     """
     Format LDAP group entry to a standardized model
@@ -249,9 +239,7 @@ def format_group_ldap_entry(
     )
 
 
-async def get_ldap_search_results(
-    query: str, connector: LDAPConnector
-) -> List[LDAPSearchResult]:
+async def get_ldap_search_results(query: str, connector: LDAPConnector) -> list[LDAPSearchResult]:
     """
     Search LDAP directory for users and groups matching the query
 
@@ -260,7 +248,7 @@ async def get_ldap_search_results(
         connector: LDAP connector configuration
 
     Returns:
-        List of search results (users and groups)
+        list of search results (users and groups)
     """
     try:
         # Get LDAP client
@@ -302,12 +290,12 @@ async def get_ldap_search_results(
 
             # Search for users
             logger.info(f"Searching for users with filter: {user_filter}")
-            user_results = client.search_s(
-                user_dn, ldap.SCOPE_SUBTREE, user_filter, user_attrs
-            )
+            user_results = client.search_s(user_dn, ldap.SCOPE_SUBTREE, user_filter, user_attrs)
 
             # Group search configuration
-            group_dn = f"{connector.group_dn + ',' if connector.group_dn else ''}{connector.base_dn}"
+            group_dn = (
+                f"{connector.group_dn + ',' if connector.group_dn else ''}{connector.base_dn}"
+            )
 
             # Build group filter
             if account_name == "*":
@@ -330,9 +318,7 @@ async def get_ldap_search_results(
 
             # Search for groups
             logger.info(f"Searching for groups with filter: {group_filter}")
-            group_results = client.search_s(
-                group_dn, ldap.SCOPE_SUBTREE, group_filter, group_attrs
-            )
+            group_results = client.search_s(group_dn, ldap.SCOPE_SUBTREE, group_filter, group_attrs)
 
             # Format results
             users = [
@@ -360,7 +346,7 @@ async def get_ldap_search_results(
             # Always unbind
             try:
                 client.unbind_s()
-            except:
+            except Exception:
                 pass
 
     except Exception as e:
@@ -368,9 +354,7 @@ async def get_ldap_search_results(
         return []
 
 
-async def authenticate_ldap(
-    connector: LDAPConnector, credentials: Dict[str, str]
-) -> bool:
+async def authenticate_ldap(connector: LDAPConnector, credentials: dict[str, str]) -> bool:
     """
     Authenticate a user against LDAP
 
@@ -400,22 +384,20 @@ async def authenticate_ldap(
         try:
             # Search for user
             search_dn = f"{connector.user_dn + ',' if connector.user_dn else ''}{connector.base_dn}"
-            search_filter = f"(&(objectClass={connector.user_object})({connector.attribute_email}={email}))"
+            search_filter = (
+                f"(&(objectClass={connector.user_object})({connector.attribute_email}={email}))"
+            )
 
             # Bind with service account to search
             client.simple_bind_s(connector.username, connector.password)
 
             # Get user's DN
-            results = client.search_s(
-                search_dn, ldap.SCOPE_SUBTREE, search_filter, ["dn"]
-            )
+            results = client.search_s(search_dn, ldap.SCOPE_SUBTREE, search_filter, ["dn"])
 
             if not results:
                 # Try with username instead
                 search_filter = f"(&(objectClass={connector.user_object})({connector.attribute_username}={username}))"
-                results = client.search_s(
-                    search_dn, ldap.SCOPE_SUBTREE, search_filter, ["dn"]
-                )
+                results = client.search_s(search_dn, ldap.SCOPE_SUBTREE, search_filter, ["dn"])
 
             if not results or not results[0][0]:
                 logger.warning(f"User not found in LDAP: {email}")
@@ -446,7 +428,7 @@ async def authenticate_ldap(
             # Always unbind
             try:
                 client.unbind_s()
-            except:
+            except Exception:
                 pass
 
     except Exception as e:

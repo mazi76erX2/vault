@@ -214,7 +214,7 @@ exports[`should test a default HCIcon - ExpressionlessFaceIcon 1`] = `
 }
 `;
 
-exports[`should test a default HCIcon - TrashIcon 1`] = `
+exports[`should test a default HCIcon - Trasn 1`] = `
 {
   "asFragment": [Function],
   "baseElement": <body>

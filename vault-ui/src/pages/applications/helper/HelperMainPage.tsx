@@ -1,67 +1,45 @@
-import React from 'react';
-import {useNavigate} from 'react-router-dom';
-import {styled} from '@mui/material';
-import {DancingBotGridComponent} from '../../../components/DancingBotGridComponent';
-import {HeaderContainer, WelcomeText} from '../../../components';
+import React from "react";
+import { useNavigate } from "react-router-dom";
+import { DancingBot } from "@/components/media/dancing-bot";
 
-const Container = styled('div')({
-    display: 'flex',
-    width: '100%',
-    // height: '100vh', // Full height of the viewport
-});
+const HelperMainPage: React.FC = () => {
+  const navigate = useNavigate();
 
-const ActionContainer = styled('div')({
-    display: 'flex',
-    flexDirection: 'column',
-    gap: '20px',
-    justifyContent: 'center',
-});
+  return (
+    <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-center">
+      <DancingBot state="greeting" className="w-full max-w-[600px] mx-auto" />
 
-const ActionCard = styled('div')({
-    backgroundColor: '#d3d3d3',
-    padding: '20px',
-    borderRadius: '8px',
-    boxShadow: '0 4px 8px rgba(0, 0, 0, 0.1)',
-    flex: 1,
-    textAlign: 'center',
-    cursor: 'pointer',
-    transition: 'transform 0.2s',
-    width: '500px',
-    margin: '0 auto',
+      <div className="space-y-6">
+        <div className="mb-8">
+          <h1 className="text-3xl font-bold text-center">
+            Welcome to <br /> Vault Helper Chat.
+          </h1>
+        </div>
 
+        <div className="flex flex-col gap-5">
+          <div
+            className="bg-[#d3d3d3] p-5 rounded-lg shadow-md text-center cursor-pointer transition-transform hover:scale-105 w-full max-w-[500px] mx-auto"
+            onClick={() => navigate("/applications/helper/HelperChatPage")}
+          >
+            <h3 className="text-lg font-semibold mb-2">
+              Start <br /> a new chat
+            </h3>
+            <p className="text-sm">
+              Click here to start a new conversation with the Helper.
+            </p>
+          </div>
 
-
-});
-
-const HelperMainPage = () => {
-    const navigate = useNavigate();
-
-    return (
-        <Container>
-            {/* Middle Part (2/3 of the screen, split into two sections) */}
-            <DancingBotGridComponent botState={'idling'}>
-                {/* Upper part (header section) */}
-                <HeaderContainer>
-                    <WelcomeText>Welcome to HICO Vault Helper Chat.</WelcomeText>
-                </HeaderContainer>
-
-                {/* Action Cards */}
-                <ActionContainer>
-                    <ActionCard onClick={() => navigate('/applications/helper/chat', {state: {isResume: false}})}>
-                        <h3>Start a new chat</h3>
-                        <p>Click here to start a new chat conversation.</p>
-                    </ActionCard>
-
-                    <ActionCard onClick={() => navigate('/applications/helper/HelperPreviousChats', {state: {isResume: true}})}>
-                        <h3>Previous chat sessions</h3>
-                        <p>Click here to resume a previous chat conversation.</p>
-                    </ActionCard>
-                </ActionContainer>
-
-            </DancingBotGridComponent>
-        </Container>
-    );
+          <div
+            className="bg-[#d3d3d3] p-5 rounded-lg shadow-md text-center cursor-pointer transition-transform hover:scale-105 w-full max-w-[500px] mx-auto"
+            onClick={() => navigate("/applications/helper/HelperPreviousChats")}
+          >
+            <h3 className="text-lg font-semibold mb-2">Previous chats</h3>
+            <p className="text-sm">Click here to view your chat history.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
 };
 
 export default HelperMainPage;
-

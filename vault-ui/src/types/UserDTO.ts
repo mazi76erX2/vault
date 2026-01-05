@@ -6,7 +6,7 @@ export interface UserRoleDTO {
   role: Role;
 }
 
-export type Role = 'manager' | 'reviewer' | 'collector' | 'admin';
+export type Role = "manager" | "reviewer" | "collector" | "admin";
 
 export interface UserDTO {
   id: string;

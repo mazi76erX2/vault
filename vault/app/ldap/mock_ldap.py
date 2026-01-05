@@ -39,8 +39,8 @@ RES_EXTENDED_PARTIAL = 0x79
 
 # LDAP Result Codes
 REFERRAL = 10
-SERVER_DOWN = 81
-TIMEOUT = 85
+SERVER_DOWN_CODE = 81
+TIMEOUT_CODE = 85
 UNAVAILABLE = 52
 
 # LDAP TLS Options
@@ -64,25 +64,25 @@ class LDAPError(Exception):
         return f"LDAP Error: {self.desc} - {self.info}"
 
 
-class SERVER_DOWN(LDAPError):
+class ServerDownError(LDAPError):
     """Server is down or unavailable."""
 
     pass
 
 
-class INVALID_CREDENTIALS(LDAPError):
+class InvalidCredentialsError(LDAPError):
     """Invalid credentials."""
 
     pass
 
 
-class TIMEOUT(LDAPError):
+class TimeoutError(LDAPError):
     """The operation timed out."""
 
     pass
 
 
-class FILTER_ERROR(LDAPError):
+class FilterError(LDAPError):
     """Invalid filter."""
 
     pass
@@ -110,16 +110,14 @@ class MockConnection:
         # Simulate authentication
         if who and "invalid" in str(who).lower():
             self.bound = False
-            raise INVALID_CREDENTIALS(
+            raise InvalidCredentialsError(
                 "Invalid credentials", {"desc": "Invalid username or password"}
             )
 
         self.bound = True
         return (97, [])
 
-    def search_s(
-        self, base, scope, filterstr="(objectClass=*)", attrlist=None, attrsonly=0
-    ):
+    def search_s(self, base, scope, filterstr="(objectClass=*)", attrlist=None, attrsonly=0):
         """Synchronous search operation."""
         print(f"[MOCK LDAP] Searching: base={base}, filter={filterstr}, scope={scope}")
 

@@ -68,3 +68,25 @@ Thumbs.db
 # Node.js dependencies (if any frontend stuff accidentally gets in context)
 node_modules/
 # --- End of new critical suggestions ---
+
+# Python cache
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+*.egg-info/
+
+# Data
+postgres_data/
+qdrant_storage/
+uploads/
+logs/
+
+# Backups
+*.backup
+*.bak
+
+# CRITICAL - INCLUDE THESE!
+!pyproject.toml
+!uv.lock
+!README.md

@@ -1,6 +1,3 @@
-
-from chat import initiate_conversations, update_user
-
 def generate_unstructured_doc(summary, tags, employee_contact, link, title, responsible, levels):
     """
     Generates an unstructured document combining the summary and metadata.
@@ -13,31 +10,25 @@ def generate_unstructured_doc(summary, tags, employee_contact, link, title, resp
     - unstructured_doc (str): The combined unstructured document as a string.
     """
     metadata = {
-        'tags': tags,
-        'employee_contact': employee_contact,
-        'link': link,
-        'responsible': responsible,
-        'title': title,
-        'level': levels
+        "tags": tags,
+        "employee_contact": employee_contact,
+        "link": link,
+        "responsible": responsible,
+        "title": title,
+        "level": levels,
     }
     # Extract metadata
-    tags = metadata.get('tags', [])
-    employee_contact = metadata.get('employee_contact', 'Not Provided')
-    link = metadata.get('link', 'Not Provided')
-    title = metadata.get('title', 'Not Provided')
-    level = metadata.get('level', 'Not Provided')
-    responsible = metadata.get('responsible', 'Not Provided')
+    tags = metadata.get("tags", [])
+    employee_contact = metadata.get("employee_contact", "Not Provided")
+    link = metadata.get("link", "Not Provided")
+    title = metadata.get("title", "Not Provided")
+    level = metadata.get("level", "Not Provided")
+    responsible = metadata.get("responsible", "Not Provided")
 
     # Convert tags list to a comma-separated string
-    tags_str = ', '.join(tags)
+    tags_str = ", ".join(tags)
 
-    levels_map = {
-        "Low": 1,
-        "Medium": 2,
-        "High": 3,
-        "Critical": 4
-
-    }
+    levels_map = {"Low": 1, "Medium": 2, "High": 3, "Critical": 4}
     # Create the unstructured document
     unstructured_doc = f"""
         Summary:
@@ -55,5 +46,3 @@ def generate_unstructured_doc(summary, tags, employee_contact, link, title, resp
         """
 
     return unstructured_doc
-
-

@@ -1,66 +1,63 @@
-import React from 'react';
-import {useNavigate} from 'react-router-dom';
-import {styled} from '@mui/material';
-import {DancingBotGridComponent} from '../../../components/DancingBotGridComponent';
-import {HeaderContainer, WelcomeText} from '../../../components';
-
-const Container = styled('div')({});
-
-const ActionContainer = styled('div')({
-    display: 'flex',
-    flexDirection: 'column',
-    gap: '20px',
-    justifyContent: 'center',
-});
-
-const ActionCard = styled('div')({
-    backgroundColor: '#d3d3d3',
-    padding: '20px',
-    borderRadius: '8px',
-    boxShadow: '0 4px 8px rgba(0, 0, 0, 0.1)',
-    flex: 1,
-    textAlign: 'center',
-    cursor: 'pointer',
-    transition: 'transform 0.2s',
-    width: '500px',
-    margin: '0 auto',
-
-
-
-});
+import React from "react";
+import { useNavigate } from "react-router-dom";
+import { DancingBot } from "@/components/media/dancing-bot";
 
 const CollectorMainPage: React.FC = () => {
-    const navigate = useNavigate();
+  const navigate = useNavigate();
 
-    return (
-        <Container>
-            {/* Right Part (Welcome & Action Cards) */}
-            <DancingBotGridComponent botState={'greeting'}>
-                {/* Welcome Header */}
-                <HeaderContainer>
-                    <WelcomeText>Welcome to <br /> HICO Vault Collector Chat.</WelcomeText>
-                </HeaderContainer>
+  return (
+    <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-center">
+      <DancingBot state="greeting" className="w-full max-w-[600px] mx-auto" />
 
-                {/* Action Cards */}
-                <ActionContainer>
-                    <ActionCard onClick={() => navigate('/applications/collector/CollectorResumePage')}>
-                        <h3>Continue <br /> an existing session</h3>
-                        <p>Click here to select one of your unfinished interviews.</p>
-                    </ActionCard>
+      <div className="space-y-6">
+        <div className="mb-8">
+          <h1 className="text-3xl font-bold text-center">
+            Welcome to <br /> Vault Collector Chat.
+          </h1>
+        </div>
 
-                    <ActionCard onClick={() => navigate('/applications/collector/CollectorStartPage')}>
-                        <h3>Start <br /> a new session</h3>
-                        <p>Click here to start a new interview.</p>
-                    </ActionCard>
+        <div className="flex flex-col gap-5">
+          <div
+            className="bg-[#d3d3d3] p-5 rounded-lg shadow-md text-center cursor-pointer transition-transform hover:scale-105 w-full max-w-[500px] mx-auto"
+            onClick={() =>
+              navigate("/applications/collector/CollectorResumePage")
+            }
+          >
+            <h3 className="text-lg font-semibold mb-2">
+              Continue <br /> an existing session
+            </h3>
+            <p className="text-sm">
+              Click here to select one of your unfinished interviews.
+            </p>
+          </div>
 
-                    <ActionCard onClick={() => navigate('/applications/collector/CollectorDocumentsStatusPage')}>
-                        <h3>Previous sessions</h3>
-                        <p>Click here to view the status of previous sessions.</p>
-                    </ActionCard>
-                </ActionContainer>
-            </DancingBotGridComponent>
-        </Container>
-    );
+          <div
+            className="bg-[#d3d3d3] p-5 rounded-lg shadow-md text-center cursor-pointer transition-transform hover:scale-105 w-full max-w-[500px] mx-auto"
+            onClick={() =>
+              navigate("/applications/collector/CollectorStartPage")
+            }
+          >
+            <h3 className="text-lg font-semibold mb-2">
+              Start <br /> a new session
+            </h3>
+            <p className="text-sm">Click here to start a new interview.</p>
+          </div>
+
+          <div
+            className="bg-[#d3d3d3] p-5 rounded-lg shadow-md text-center cursor-pointer transition-transform hover:scale-105 w-full max-w-[500px] mx-auto"
+            onClick={() =>
+              navigate("/applications/collector/CollectorDocumentsStatusPage")
+            }
+          >
+            <h3 className="text-lg font-semibold mb-2">Previous sessions</h3>
+            <p className="text-sm">
+              Click here to view the status of previous sessions.
+            </p>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
 };
 
 export default CollectorMainPage;
