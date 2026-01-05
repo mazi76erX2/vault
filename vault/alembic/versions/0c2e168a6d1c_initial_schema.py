@@ -1,8 +1,8 @@
 """initial schema
 
-Revision ID: 47708068ce1a
+Revision ID: 0c2e168a6d1c
 Revises: 
-Create Date: 2026-01-05 01:12:06.775583
+Create Date: 2026-01-05 22:34:45.748357
 
 """
 from typing import Sequence, Union
@@ -13,7 +13,7 @@ import pgvector.sqlalchemy
 from sqlalchemy.dialects import postgresql
 
 # revision identifiers, used by Alembic.
-revision: str = '47708068ce1a'
+revision: str = '0c2e168a6d1c'
 down_revision: Union[str, Sequence[str], None] = None
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
@@ -116,6 +116,18 @@ def upgrade() -> None:
     op.create_index(op.f('ix_profiles_company_reg_no'), 'profiles', ['company_reg_no'], unique=False)
     op.create_index(op.f('ix_profiles_email'), 'profiles', ['email'], unique=False)
     op.create_index(op.f('ix_profiles_username'), 'profiles', ['username'], unique=True)
+    op.create_table('refresh_tokens',
+    sa.Column('id', sa.UUID(), nullable=False),
+    sa.Column('user_id', sa.UUID(), nullable=False),
+    sa.Column('token', sa.Text(), nullable=False),
+    sa.Column('expires_at', sa.DateTime(timezone=True), nullable=False),
+    sa.Column('revoked_at', sa.DateTime(timezone=True), nullable=True),
+    sa.Column('created_at', sa.DateTime(timezone=True), server_default=sa.text('now()'), nullable=True),
+    sa.ForeignKeyConstraint(['user_id'], ['auth.users.id'], ondelete='CASCADE'),
+    sa.PrimaryKeyConstraint('id')
+    )
+    op.create_index(op.f('ix_refresh_tokens_token'), 'refresh_tokens', ['token'], unique=True)
+    op.create_index(op.f('ix_refresh_tokens_user_id'), 'refresh_tokens', ['user_id'], unique=False)
     op.create_table('chatmessages',
     sa.Column('id', sa.UUID(), nullable=False),
     sa.Column('user_id', sa.UUID(), nullable=True),
@@ -211,6 +223,9 @@ def downgrade() -> None:
     op.drop_table('chatmessagescollector')
     op.drop_index(op.f('ix_chatmessages_user_id'), table_name='chatmessages')
     op.drop_table('chatmessages')
+    op.drop_index(op.f('ix_refresh_tokens_user_id'), table_name='refresh_tokens')
+    op.drop_index(op.f('ix_refresh_tokens_token'), table_name='refresh_tokens')
+    op.drop_table('refresh_tokens')
     op.drop_index(op.f('ix_profiles_username'), table_name='profiles')
     op.drop_index(op.f('ix_profiles_email'), table_name='profiles')
     op.drop_index(op.f('ix_profiles_company_reg_no'), table_name='profiles')

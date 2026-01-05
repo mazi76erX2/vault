@@ -8,9 +8,11 @@ from app.models.chat import ChatMessage, ChatMessageCollector
 from app.models.company import Company
 from app.models.document import Document, DocumentAssignment
 from app.models.profile import Profile
+from app.models.refresh_token import RefreshToken
 from app.models.role import Role, UserRole
 from app.models.session import Question, Session
 from app.models.user import User
+
 
 __all__ = [
     "Base",
@@ -23,6 +25,7 @@ __all__ = [
     "Question",
     "Role",
     "UserRole",
+    "RefreshToken",
     "ChatMessage",
     "ChatMessageCollector",
 ]
