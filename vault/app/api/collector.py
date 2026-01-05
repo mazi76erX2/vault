@@ -139,7 +139,7 @@ async def fetch_user_profile(
             )
 
         return {
-            "fullname": profile.full_name or "",
+            "full_name": profile.full_name or "",
             "yearsofexperience": getattr(profile, "years_of_experience", None),
             "fieldofexpertise": getattr(profile, "field_of_expertise", "") or "",
             "department": profile.department or "",
@@ -170,7 +170,7 @@ async def update_profile(
             # Create new profile
             profile = Profile(
                 id=request.user_id,
-                full_name=request.fullname,
+                full_name=request.full_name,
                 department=request.department,
             )
             if hasattr(request, "yearsofexperience"):
@@ -180,7 +180,7 @@ async def update_profile(
             db.add(profile)
         else:
             # Update existing
-            profile.full_name = request.fullname
+            profile.full_name = request.full_name
             profile.department = request.department
             if hasattr(request, "yearsofexperience"):
                 profile.years_of_experience = request.yearsofexperience
@@ -369,7 +369,7 @@ async def generate_questions(
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Profile not found")
 
         profile_dict = {
-            "fullname": prof.full_name,
+            "full_name": prof.full_name,
             "yearsofexperience": getattr(prof, "years_of_experience", None),
             "fieldofexpertise": getattr(prof, "field_of_expertise", None),
             "department": prof.department,

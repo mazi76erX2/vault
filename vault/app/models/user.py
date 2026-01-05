@@ -23,53 +23,76 @@ class User(Base):
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     email = Column(Text, unique=True, nullable=False, index=True)
-    encrypted_password = Column(Text)  # Supabase uses this field name
-    email_confirmed_at = Column(TIMESTAMP(timezone=True))
-    invited_at = Column(TIMESTAMP(timezone=True))
-    confirmation_token = Column(Text)
-    confirmation_sent_at = Column(TIMESTAMP(timezone=True))
-    recovery_token = Column(Text)
-    recovery_sent_at = Column(TIMESTAMP(timezone=True))
-    email_change_token_new = Column(Text)
-    email_change = Column(Text)
-    email_change_sent_at = Column(TIMESTAMP(timezone=True))
-    last_sign_in_at = Column(TIMESTAMP(timezone=True))
-    raw_app_meta_data = Column(JSONB)
-    raw_user_meta_data = Column(JSONB)
-    is_super_admin = Column(Boolean)
-    created_at = Column(TIMESTAMP(timezone=True), default=datetime.utcnow)
-    updated_at = Column(TIMESTAMP(timezone=True), default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    # IMPORTANT: map python attr -> real DB column name
+    encryptedpassword = Column("encrypted_password", Text)  # Supabase uses this field name
+
+    emailconfirmedat = Column("email_confirmed_at", TIMESTAMP(timezone=True))
+    invitedat = Column("invited_at", TIMESTAMP(timezone=True))
+
+    confirmationtoken = Column("confirmation_token", Text)
+    confirmationsentat = Column("confirmation_sent_at", TIMESTAMP(timezone=True))
+
+    recoverytoken = Column("recovery_token", Text)
+    recoverysentat = Column("recovery_sent_at", TIMESTAMP(timezone=True))
+
+    emailchangetokennew = Column("email_change_token_new", Text)
+    emailchange = Column("email_change", Text)
+    emailchangesentat = Column("email_change_sent_at", TIMESTAMP(timezone=True))
+
+    lastsigninat = Column("last_sign_in_at", TIMESTAMP(timezone=True))
+
+    rawappmetadata = Column("raw_app_meta_data", JSONB)
+    rawusermetadata = Column("raw_user_meta_data", JSONB)
+
+    issuperadmin = Column("is_super_admin", Boolean)
+
+    createdat = Column("created_at", TIMESTAMP(timezone=True), default=datetime.utcnow)
+    updatedat = Column(
+        "updated_at",
+        TIMESTAMP(timezone=True),
+        default=datetime.utcnow,
+        onupdate=datetime.utcnow,
+    )
+
     phone = Column(Text)
-    phone_confirmed_at = Column(TIMESTAMP(timezone=True))
-    phone_change = Column(Text)
-    phone_change_token = Column(Text)
-    phone_change_sent_at = Column(TIMESTAMP(timezone=True))
-    confirmed_at = Column(TIMESTAMP(timezone=True))
-    email_change_token_current = Column(Text)
-    email_change_confirm_status = Column(Integer)
-    banned_until = Column(TIMESTAMP(timezone=True))
-    reauthentication_token = Column(Text)
-    reauthentication_sent_at = Column(TIMESTAMP(timezone=True))
-    is_sso_user = Column(Boolean, default=False)
-    deleted_at = Column(TIMESTAMP(timezone=True))
+    phoneconfirmedat = Column("phone_confirmed_at", TIMESTAMP(timezone=True))
+    phonechange = Column("phone_change", Text)
+    phonechangetoken = Column("phone_change_token", Text)
+    phonechangesentat = Column("phone_change_sent_at", TIMESTAMP(timezone=True))
 
-    # Helper properties
-    @property
-    def is_active(self):
-        """User is active if not deleted and not banned"""
-        return self.deleted_at is None and (
-            self.banned_until is None or self.banned_until < datetime.utcnow()
-        )
+    confirmedat = Column("confirmed_at", TIMESTAMP(timezone=True))
 
-    @property
-    def email_confirmed(self):
-        """Check if email is confirmed"""
-        return self.email_confirmed_at is not None or self.confirmed_at is not None
+    emailchangetokencurrent = Column("email_change_token_current", Text)
+    emailchangeconfirmstatus = Column("email_change_confirm_status", Integer)
+
+    banneduntil = Column("banned_until", TIMESTAMP(timezone=True))
+
+    reauthenticationtoken = Column("reauthentication_token", Text)
+    reauthenticationsentat = Column("reauthentication_sent_at", TIMESTAMP(timezone=True))
+
+    isssouser = Column("is_sso_user", Boolean, default=False)
+    deletedat = Column("deleted_at", TIMESTAMP(timezone=True))
 
     # Relationships
     profile = relationship("Profile", back_populates="user", uselist=False)
 
-    def __repr__(self):
+    # Match RefreshToken.user back_populates="refresh_tokens" in your repo snapshot
+    refresh_tokens = relationship(
+        "RefreshToken",
+        back_populates="user",
+        cascade="all, delete-orphan",
+    )
+
+    @property
+    def isactive(self) -> bool:
+        return self.deletedat is None and (
+            self.banneduntil is None or self.banneduntil < datetime.utcnow()
+        )
+
+    @property
+    def emailconfirmed(self) -> bool:
+        return self.emailconfirmedat is not None or self.confirmedat is not None
+
+    def __repr__(self) -> str:
         return f"<User(id={self.id}, email={self.email})>"
-
-

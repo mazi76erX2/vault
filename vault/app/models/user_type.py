@@ -22,15 +22,12 @@ class Role(Base):
 class UserRole(Base):
     __tablename__ = "user_roles"
 
-    user_id = Column(
-        UUID(as_uuid=True), ForeignKey("profiles.id", ondelete="CASCADE"), primary_key=True
-    )
-    role_id = Column(
-        UUID(as_uuid=True), ForeignKey("roles.id", ondelete="RESTRICT"), primary_key=True
-    )
-    company_reg_no = Column(Text, primary_key=True, index=True)
-    assigned_at = Column(DateTime(timezone=True), server_default=func.now())
+    id = Column(BigInteger, primary_key=True, autoincrement=True)
+    user_id = Column(UUID(as_uuid=True), ForeignKey("profiles.id"), nullable=False)
+    role_id = Column(BigInteger, ForeignKey("roles.id"), nullable=False)
+    company_reg_no = Column(Text, nullable=True)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
 
     # Relationships
-    user_profile = relationship("Profile", back_populates="user_roles")
+    profile = relationship("Profile", back_populates="user_roles")
     role = relationship("Role", back_populates="user_roles")

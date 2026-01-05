@@ -35,7 +35,7 @@ def generate_topic_from_question(question: str) -> str:
 def generate_initial_questions(
     profile: dict[str, Any], n: int = 8
 ) -> tuple[list[str], list[dict[str, str]]]:
-    fullname = profile.get("fullname") or ""
+    full_name = profile.get("full_name") or ""
     dept = profile.get("department") or ""
     field = profile.get("fieldofexpertise") or ""
     yoe = profile.get("yearsofexperience") or ""
@@ -45,7 +45,7 @@ def generate_initial_questions(
 Create {n} open-ended knowledge-transfer interview questions for an employee.
 
 Employee context:
-- Full name: {fullname}
+- Full name: {full_name}
 - Department: {dept}
 - Field of expertise: {field}
 - Years of experience: {yoe}

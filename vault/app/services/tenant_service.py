@@ -39,7 +39,7 @@ class TenantService:
                 {
                     "id": str(profile.id),
                     "email": profile.email,
-                    "fullname": profile.fullname,
+                    "full_name": profile.full_name,
                     "username": profile.username,
                     "telephone": profile.telephone,
                     "company_name": profile.company_name,
@@ -84,7 +84,7 @@ class TenantService:
             return {
                 "id": str(profile.id),
                 "email": profile.email,
-                "fullname": profile.fullname,
+                "full_name": profile.full_name,
                 "username": profile.username,
                 "telephone": profile.telephone,
                 "company_name": profile.company_name,

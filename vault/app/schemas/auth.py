@@ -3,6 +3,7 @@ Authentication Schemas
 Pydantic models for authentication requests/responses
 """
 
+
 from pydantic import BaseModel, EmailStr, Field, ValidationInfo, field_validator
 
 
@@ -14,20 +15,18 @@ class UserLogin(BaseModel):
 
 
 class UserCreate(BaseModel):
-    """User creation request"""
-
     email: EmailStr
-    password: str = Field(..., min_length=8)
+    password: str
+    full_name: str | None = None
     first_name: str | None = None
     last_name: str | None = None
-    full_name: str | None = None
     username: str | None = None
     telephone: str | None = None
     company_id: int | None = None
     company_name: str | None = None
     company_reg_no: str | None = None
     department: str | None = None
-    user_access: str | None = "employee"
+    user_access: str | int | None = None
     email_confirmed: bool = False
 
     @field_validator("full_name", mode="before")

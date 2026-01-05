@@ -108,7 +108,9 @@ class AuthService:
 
         # Check if username exists
         if user_data.username:
-            existing_u = await db.execute(select(Profile).where(Profile.username == user_data.username))
+            existing_u = await db.execute(
+                select(Profile).where(Profile.username == user_data.username)
+            )
             if existing_u.scalar_one_or_none():
                 raise ValueError(f"Username '{user_data.username}' is already taken")
 
@@ -116,9 +118,9 @@ class AuthService:
         user_id = uuid.uuid4()
 
         # Build full name
-        fullname = user_data.fullname
-        if not fullname and (user_data.firstname or user_data.lastname):
-            fullname = f"{user_data.firstname or ''} {user_data.lastname or ''}".strip() or None
+        full_name = user_data.full_name
+        if not full_name and (user_data.firstname or user_data.lastname):
+            full_name = f"{user_data.firstname or ''} {user_data.lastname or ''}".strip() or None
 
         # Create auth user (auth.users)
         new_user = User(
@@ -130,7 +132,7 @@ class AuthService:
             createdat=now,
             updatedat=now,
             rawappmetadata={},
-            rawusermetadata={"fullname": fullname} if fullname else {},
+            rawusermetadata={"full_name": full_name} if full_name else {},
         )
         db.add(new_user)
 
@@ -141,15 +143,19 @@ class AuthService:
             id=user_id,
             userid=user_id,
             email=user_data.email,
-            fullname=fullname,
+            full_name=full_name,
             username=user_data.username,
             telephone=user_data.telephone,
             companyid=user_data.companyid,
             companyname=user_data.companyname,
             companyregno=companyregno or user_data.companyregno,
             department=user_data.department,
-            fieldofexpertise=user_data.fieldofexpertise if hasattr(user_data, "fieldofexpertise") else None,
-            yearsofexperience=user_data.yearsofexperience if hasattr(user_data, "yearsofexperience") else None,
+            fieldofexpertise=(
+                user_data.fieldofexpertise if hasattr(user_data, "fieldofexpertise") else None
+            ),
+            yearsofexperience=(
+                user_data.yearsofexperience if hasattr(user_data, "yearsofexperience") else None
+            ),
             useraccess=_coerce_useraccess(user_data.useraccess),
             status="active",
             createdat=now,
@@ -190,13 +196,10 @@ class AuthService:
                 return None
 
             # Get profile: try userid link first, then id fallback (for safety)
-            prof_q = (
-                select(Profile)
-                .where(
-                    or_(
-                        Profile.userid == user.id,
-                        Profile.id == user.id,
-                    )
+            prof_q = select(Profile).where(
+                or_(
+                    Profile.userid == user.id,
+                    Profile.id == user.id,
                 )
             )
             prof_res = await db.execute(prof_q)
@@ -392,12 +395,13 @@ class AuthService:
                     "id": str(user.id),
                     "email": user.email,
                     "emailconfirmed": bool(
-                        getattr(user, "emailconfirmedat", None) or getattr(user, "confirmedat", None)
+                        getattr(user, "emailconfirmedat", None)
+                        or getattr(user, "confirmedat", None)
                     ),
                 },
                 "profile": {
                     "id": str(profile.id),
-                    "fullname": getattr(profile, "fullname", None),
+                    "full_name": getattr(profile, "full_name", None),
                     "email": profile.email,
                     "username": getattr(profile, "username", None),
                     "telephone": getattr(profile, "telephone", None),
@@ -496,7 +500,7 @@ async def register(user_data: UserCreate, db: AsyncSession = Depends(get_async_d
         return UserResponse(
             id=str(profile.id),
             email=profile.email,
-            fullname=getattr(profile, "fullname", None),
+            full_name=getattr(profile, "full_name", None),
             username=getattr(profile, "username", None),
             companyregno=getattr(profile, "companyregno", None),
             roles=roles,
@@ -559,11 +563,15 @@ async def refresh_token_endpoint(refreshtoken: str, db: AsyncSession = Depends(g
     try:
         payload = AuthService.decode_token(refreshtoken)
         if payload.get("type") != "refresh":
-            raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid token type")
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid token type"
+            )
 
         user_id = payload.get("sub")
         if not user_id:
-            raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid token payload")
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid token payload"
+            )
 
         user_data = await AuthService.get_user_with_roles(db, user_id)
         if not user_data:
@@ -610,7 +618,10 @@ async def request_password_reset(
         except Exception:
             logger.exception("Failed to send password reset email")
 
-    return {"status": "success", "message": "If the email exists, a password reset link has been sent"}
+    return {
+        "status": "success",
+        "message": "If the email exists, a password reset link has been sent",
+    }
 
 
 @router.post("/password-reset")
@@ -638,11 +649,15 @@ async def change_password(
     # Verify old password
     result = await AuthService.authenticate_user(db, email, password_data.oldpassword)
     if not result:
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Incorrect current password")
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED, detail="Incorrect current password"
+        )
 
     ok = await AuthService.update_password(db, user_id, password_data.newpassword)
     if not ok:
-        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Error updating password")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Error updating password"
+        )
 
     return {"status": "success", "message": "Password changed successfully"}
 
@@ -652,7 +667,7 @@ async def me(current_user: dict[str, Any] = Depends(get_current_user)):
     return UserResponse(
         id=current_user["profile"]["id"],
         email=current_user["user"]["email"],
-        fullname=current_user["profile"]["fullname"],
+        full_name=current_user["profile"]["full_name"],
         username=current_user["profile"]["username"],
         companyregno=current_user.get("companyregno"),
         roles=current_user.get("roles", []),
