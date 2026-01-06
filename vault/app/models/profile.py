@@ -57,6 +57,7 @@ class Profile(Base):
     avatar_url = Column(Text, nullable=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
+    user_type_id = Column(BigInteger, ForeignKey("user_types.id"), nullable=True)
 
     # Relationships
     user = relationship("User", back_populates="profile")
@@ -66,3 +67,4 @@ class Profile(Base):
     sessions = relationship("Session", back_populates="user", cascade="all, delete-orphan")
     questions = relationship("Question", back_populates="user", cascade="all, delete-orphan")
     documents_reviewed = relationship("Document", back_populates="reviewer_profile")
+    user_type = relationship("UserType", back_populates="profiles")

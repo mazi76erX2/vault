@@ -1,18 +1,13 @@
 import React, { useState } from "react";
 import { Outlet, useNavigate } from "react-router-dom";
-import { Menu, ChevronLeft, _ChevronRight } from "lucide-react";
+import { Menu, ChevronLeft } from "lucide-react";
 import { MenuListItems } from "./MenuItems";
-// Removed ExternalMenuItems import;
-import { useAuthContext } from "@/hooks/useAuthContext";
 import Logo from "@/assets/VAULT_LOGO_ORANGE_NEW.svg";
 import { ThemeToggle } from "@/components/theme/theme-toggle";
-
-const DRAWER_WIDTH = 240;
 
 const RootLayout: React.FC = () => {
   const [open, setOpen] = useState(true);
   const navigate = useNavigate();
-  const authContext = useAuthContext();
 
   const handleDrawerToggle = () => {
     setOpen(!open);
@@ -37,7 +32,8 @@ const RootLayout: React.FC = () => {
               onClick={() => navigate("/dashboard")}
             />
           )}
-          <button type="button"
+          <button
+            type="button"
             onClick={handleDrawerToggle}
             className="p-2 hover:bg-gray-800 rounded"
           >
@@ -50,9 +46,9 @@ const RootLayout: React.FC = () => {
           <MenuListItems open={open} />
         </nav>
 
-        {/* Footer */}
+        {/* Footer - removed ExternalMenuItems since it was removed from imports */}
         <div className="border-t border-gray-700 py-4">
-          <ExternalMenuItems />
+          {/* Add footer content here if needed, or remove this div entirely */}
         </div>
       </div>
 

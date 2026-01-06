@@ -35,7 +35,7 @@ interface DocumentDetails {
 const ExpertPreviousReviewsPage: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [documentData, setDocumentData] = useState<DocumentDetails | null>(
-    null,
+    null
   );
   const authContext = useAuthContext();
   const navigate = useNavigate();
@@ -43,13 +43,10 @@ const ExpertPreviousReviewsPage: React.FC = () => {
   const { document } = (location.state as LocationState) || {};
 
   useEffect(() => {
-    if (document) {
-      fetchDocumentDetails(document.id);
-    } else {
-      toast.error("Document not found.");
-      navigate("/applications/console/ExpertStartPage");
-    }
-  }, [document]);
+    if (!document?.id) return; // do nothing on /dashboard direct load
+    fetchDocumentDetails(document.id);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [document?.id]);
 
   const fetchDocumentDetails = async (docId: string) => {
     if (
@@ -73,7 +70,7 @@ const ExpertPreviousReviewsPage: React.FC = () => {
         toast.error(
           err instanceof Error
             ? err.message
-            : "Failed to fetch document details.",
+            : "Failed to fetch document details."
         );
       }
     } finally {
@@ -206,7 +203,7 @@ const ExpertPreviousReviewsPage: React.FC = () => {
                       </h3>
                       <p className="text-lg">
                         {new Date(
-                          documentData.expertReviewedAt,
+                          documentData.expertReviewedAt
                         ).toLocaleString()}
                       </p>
                     </div>

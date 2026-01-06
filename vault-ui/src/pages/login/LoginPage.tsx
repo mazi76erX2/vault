@@ -1,77 +1,92 @@
 import * as React from "react";
-import { useState, useEffect } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { TextField } from "@/components/forms/text-field";
 import { Loader } from "@/components/feedback/loader";
 import { useAuthContext } from "@/hooks/useAuthContext";
+import { setCurrentUser } from "@/services/auth/Auth.service";
 import instance from "@/services/Instance";
 
 const LoginPage: React.FC = () => {
   const navigate = useNavigate();
   const authContext = useAuthContext();
+
   const [loading, setLoading] = useState(false);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
 
-  const onLogin = async (emailParam: string, passwordParam: string) => {
-    setLoading(true);
-    try {
-      const response = await instance.post("/api/auth/login", {
-        email: emailParam,
-        password: passwordParam,
-      });
+  const onLogin = useCallback(
+    async (emailParam: string, passwordParam: string) => {
+      setLoading(true);
+      try {
+        const response = await instance.post("/api/auth/login", {
+          email: emailParam,
+          password: passwordParam,
+        });
 
-      if (response.data.access_token) {
-        console.log("Login successful:", response.data);
-        localStorage.setItem("token", response.data.access_token);
-        await authContext?.login(response.data);
+        // Handle both backend response styles (snake_case vs camelCase/legacy) [file:3]
+        const accessToken =
+          response.data?.access_token ??
+          response.data?.accesstoken ??
+          response.data?.token;
+
+        const refreshToken =
+          response.data?.refresh_token ??
+          response.data?.refreshtoken ??
+          response.data?.refreshToken;
+
+        if (!accessToken) {
+          console.error("Login response data:", response.data);
+          toast.error("Login failed: missing access token.");
+          return;
+        }
+
+        setCurrentUser({
+          token: accessToken,
+          refreshToken: refreshToken ?? null,
+          user: response.data?.user ?? null,
+        });
+
+        await authContext?.login({
+          token: accessToken,
+          refreshToken: refreshToken ?? null,
+          user: response.data?.user ?? null,
+        });
+
         toast.success("Login successful!");
-        navigate("/");
+        navigate("/dashboard");
+      } catch (error) {
+        console.error("Login failed:", error);
+        toast.error("Login failed. Please check your credentials.");
+      } finally {
+        setLoading(false);
       }
-    } catch (error) {
-      console.error("Login failed:", error);
-      toast.error("Login failed. Please check your credentials.");
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  // ✅ Move BOTH useEffects BEFORE early return
-  useEffect(() => {
-    const token = localStorage.getItem("token");
-    if (token && authContext?.user) {
-      navigate("/");
-    }
-  }, [navigate, authContext?.user]);
+    },
+    [authContext, navigate]
+  );
 
   useEffect(() => {
-    const handleKeyPress = (event: KeyboardEvent) => {
-      if (event.key === "Enter") {
-        onLogin(email, password);
-      }
-    };
+    const stored = localStorage.getItem("currentUser");
+    if (stored) navigate("/dashboard");
+  }, [navigate]);
 
-    window.addEventListener("keypress", handleKeyPress);
-    return () => {
-      window.removeEventListener("keypress", handleKeyPress);
+  useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Enter") onLogin(email, password);
     };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
   }, [email, password, onLogin]);
 
-  // NOW the early return (after ALL hooks)
-  if (!authContext) {
-    return <div>Loading...</div>;
-  }
+  if (!authContext) return <div>Loading...</div>;
+  if (loading) return <Loader />;
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     onLogin(email, password);
   };
-
-  if (loading) {
-    return <Loader />;
-  }
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-gray-100">
@@ -129,22 +144,9 @@ const LoginPage: React.FC = () => {
           </div>
 
           <Button type="submit" className="w-full" disabled={loading}>
-            {loading ? "Signing in..." : "Sign in"}
+            Sign in
           </Button>
         </form>
-
-        <div className="text-center">
-          <span className="text-sm text-gray-600">
-            Don&apos;t have an account?{" "}
-            <button
-              type="button"
-              className="cursor-pointer text-blue-600 hover:text-blue-500"
-              onClick={() => navigate("/signup")}
-            >
-              Sign up
-            </button>
-          </span>
-        </div>
       </div>
     </div>
   );

@@ -30,7 +30,7 @@ from app.models.role import Role, UserRole
 from app.models.user import User
 from app.schemas.auth import (PasswordChange, PasswordReset,
                               PasswordResetRequest, TokenResponse, UserCreate,
-                              UserLogin, UserResponse)
+                              UserLogin, UserResponse, LoginResponse)
 
 # Shared DB dependency (matches usage elsewhere in your repo)
 try:
@@ -547,7 +547,7 @@ async def register(user_data: UserCreate, db: AsyncSession = Depends(get_async_d
         ) from e
 
 
-@router.post("/login", response_model=TokenResponse)
+@router.post("/login", response_model=LoginResponse)
 async def login(credentials: UserLogin, db: AsyncSession = Depends(get_async_db)):
     try:
         result = await AuthService.authenticate_user(db, credentials.email, credentials.password)
@@ -560,7 +560,6 @@ async def login(credentials: UserLogin, db: AsyncSession = Depends(get_async_db)
 
         user, profile = result
 
-        # Update last login
         user.lastsigninat = datetime.utcnow()
         await db.commit()
 
@@ -573,11 +572,14 @@ async def login(credentials: UserLogin, db: AsyncSession = Depends(get_async_db)
         )
         refresh_token = AuthService.create_refresh_token(str(user.id))
 
-        return TokenResponse(
+        current_user = await AuthService.get_user_with_roles(db, str(user.id))
+
+        return LoginResponse(
             access_token=access_token,
             refresh_token=refresh_token,
             token_type="bearer",
             expires_in=settings.ACCESS_TOKEN_EXPIRE_MINUTES * 60,
+            user=current_user,
         )
 
     except HTTPException:
@@ -588,6 +590,7 @@ async def login(credentials: UserLogin, db: AsyncSession = Depends(get_async_db)
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Error during authentication",
         ) from e
+
 
 
 @router.post("/refresh", response_model=TokenResponse)

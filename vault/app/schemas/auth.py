@@ -49,6 +49,14 @@ class TokenResponse(BaseModel):
     token_type: str = "bearer"
     expires_in: int
 
+class CurrentUser(BaseModel):
+    user: dict
+    profile: dict
+    roles: list[str] = []
+    company_reg_no: str | None = None
+
+class LoginResponse(TokenResponse):
+    current_user: CurrentUser
 
 class UserResponse(BaseModel):
     """User response with profile"""

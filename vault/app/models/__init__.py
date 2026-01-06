@@ -12,6 +12,7 @@ from app.models.refresh_token import RefreshToken
 from app.models.role import Role, UserRole
 from app.models.session import Question, Session
 from app.models.user import User
+from app.models.user_type import UserType
 
 __all__ = [
     "Base",
@@ -27,4 +28,5 @@ __all__ = [
     "RefreshToken",
     "ChatMessage",
     "ChatMessageCollector",
+    "UserType",
 ]

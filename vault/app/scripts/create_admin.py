@@ -12,54 +12,61 @@ from app.schemas.auth import UserCreate
 from app.services.auth_service import AuthService
 
 
-def _async_db_url(url: str) -> str:
+def async_db_url(url: str) -> str:
     if url.startswith("postgresql://"):
         return url.replace("postgresql://", "postgresql+asyncpg://", 1)
     return url
 
 
-async def create_admin_user(email: str, password: str, full_name: str, company_reg_no: str) -> bool:
-    db_url = getattr(settings, "DATABASEURL", None) or getattr(settings, "DATABASE_URL", None)
-    if not db_url:
-        raise RuntimeError("DATABASE_URL / DATABASEURL is not configured (check your .env)")
+ALL_APP_ROLES = ["Administrator", "Collector", "Helper", "Validator", "Expert"]
 
-    engine = create_async_engine(_async_db_url(db_url), echo=False)
+
+async def create_admin_user(email: str, password: str, fullname: str, companyregno: str) -> bool:
+    dburl = getattr(settings, "DATABASEURL", None) or getattr(settings, "DATABASE_URL", None)
+    if not dburl:
+        raise RuntimeError("DATABASEURL / DATABASE_URL is not configured; check your .env")
+
+    engine = create_async_engine(async_db_url(dburl), echo=False)
     async_session_local = sessionmaker(bind=engine, class_=AsyncSession, expire_on_commit=False)
 
     async with async_session_local() as db:
-        # 1) Check if user already exists
         res = await db.execute(select(User).where(User.email == email))
         if res.scalar_one_or_none():
             print(f"User with email {email} already exists.")
             return False
 
-        # 2) Create user + profile via AuthService
         user_data = UserCreate(
             email=email,
             password=password,
-            full_name=full_name,
-            company_reg_no=company_reg_no,
-            user_access="admin",
-            email_confirmed=True,
+            fullname=fullname,
+            company_reg_no=companyregno,
+            useraccess="admin",
+            emailconfirmed=True,
         )
 
-        profile = await AuthService.create_user(db, user_data, company_reg_no)
+        profile = await AuthService.create_user(db, user_data, companyregno)
 
-        # 3) Assign Administrator role (if it exists)
-        role_res = await db.execute(select(Role).where(Role.name == "Administrator"))
-        admin_role = role_res.scalar_one_or_none()
-        if admin_role:
+        roles_res = await db.execute(select(Role).where(Role.name.in_(ALL_APP_ROLES)))
+        roles = roles_res.scalars().all()
+
+        found_role_names = {r.name for r in roles}
+        missing_role_names = [r for r in ALL_APP_ROLES if r not in found_role_names]
+        if missing_role_names:
+            print(f"Warning: roles not found in roles table: {missing_role_names}")
+
+        for role in roles:
             db.add(
                 UserRole(
                     user_id=profile.id,
-                    role_id=admin_role.id,
-                    company_reg_no=company_reg_no,
+                    role_id=role.id,
+                    company_reg_no=companyregno,
                 )
             )
-            await db.commit()
 
+        await db.commit()
         print(
-            f"✅ Admin created: {email} (profile_id={profile.id}, company_reg_no={company_reg_no})"
+            f"Admin created: email={email}, profile_id={profile.id}, "
+            f"companyregno={companyregno}, roles={sorted(found_role_names)}"
         )
         return True
 
@@ -68,11 +75,11 @@ def main() -> None:
     parser = argparse.ArgumentParser(description="Create an admin user")
     parser.add_argument("email")
     parser.add_argument("password")
-    parser.add_argument("full_name")
-    parser.add_argument("--company-reg-no", dest="company_reg_no", default="ADMIN001")
+    parser.add_argument("fullname")
+    parser.add_argument("--company-reg-no", dest="companyregno", default="ADMIN001")
     args = parser.parse_args()
 
-    asyncio.run(create_admin_user(args.email, args.password, args.full_name, args.company_reg_no))
+    asyncio.run(create_admin_user(args.email, args.password, args.fullname, args.companyregno))
 
 
 if __name__ == "__main__":

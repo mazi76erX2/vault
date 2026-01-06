@@ -26,10 +26,14 @@ target_metadata = Base.metadata
 
 
 def include_name(name: str | None, type_: str, parent_names: dict) -> bool:
-    # Ensure Alembic "sees" both your custom auth schema and the default public schema
     if type_ == "schema":
         return name in (None, "public", "auth")
+
+    if type_ == "table" and name == "alembic_version":
+        return False
+
     return True
+
 
 
 def run_migrations_offline() -> None:
@@ -42,7 +46,7 @@ def run_migrations_offline() -> None:
         include_schemas=True,
         include_name=include_name,
         compare_type=True,
-        # Keep Alembic's version table in public (explicit)
+        version_table="alembic_version",
         version_table_schema="public",
     )
 
@@ -65,7 +69,7 @@ def run_migrations_online() -> None:
             include_schemas=True,
             include_name=include_name,
             compare_type=True,
-            # Keep Alembic's version table in public (explicit)
+            version_table="alembic_version",
             version_table_schema="public",
         )
 
