@@ -1,231 +1,77 @@
-import React, { useEffect, useState } from "react";
-import { useNavigate, useLocation } from "react-router-dom";
-import { toast } from "sonner";
-import { AxiosError } from "axios";
-import { useAuthContext } from "@/hooks/useAuthContext";
-import { DancingBot } from "@/components/media/dancing-bot";
+import React from "react";
+import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
+import { DancingBot } from "@/components/media/dancing-bot";
+import { useAuthContext } from "@/hooks/useAuthContext";
 import { Loader } from "@/components/feedback/loader";
-import { Card } from "@/components/ui/card";
-import Api from "@/services/Instance";
 
-interface LocationState {
-  document?: {
-    id: string;
-    title: string;
-    author: string;
-  };
-}
+const DRAWER_WIDTH = 240;
 
-interface DocumentDetails {
-  title: string;
-  author: string;
-  description: string;
-  content: string;
-  validatorDecision: string;
-  validatorComments: string;
-  validatorReviewedBy: string;
-  expertDecision: string;
-  expertComments: string;
-  expertReviewedBy: string;
-  expertReviewedAt: string;
-  [key: string]: unknown;
-}
-
-const ExpertPreviousReviewsPage: React.FC = () => {
-  const [loading, setLoading] = useState(false);
-  const [documentData, setDocumentData] = useState<DocumentDetails | null>(
-    null
-  );
+const HomePage: React.FC = () => {
   const authContext = useAuthContext();
-  const navigate = useNavigate();
-  const location = useLocation();
-  const { document } = (location.state as LocationState) || {};
 
-  useEffect(() => {
-    if (!document?.id) return; // do nothing on /dashboard direct load
-    fetchDocumentDetails(document.id);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [document?.id]);
+  if (!authContext || authContext.isLoadingUser) {
+    return <Loader />;
+  }
 
-  const fetchDocumentDetails = async (docId: string) => {
-    if (
-      !authContext ||
-      !authContext.user?.user?.id ||
-      !authContext.isLoggedIn
-    ) {
-      if (!authContext?.isLoadingUser) {
-        toast.error("User not authenticated or session has expired.");
-      }
-      return;
-    }
+  const { userRoles: contextUserRoles } = authContext;
 
-    try {
-      setLoading(true);
-      const response = await Api.get(`/api/v1/expert/reviewed/${docId}`);
-      setDocumentData(response.data);
-    } catch (err: unknown) {
-      console.error("Error fetching document details:", err);
-      if (!(err instanceof AxiosError && err.response?.status === 401)) {
-        toast.error(
-          err instanceof Error
-            ? err.message
-            : "Failed to fetch document details."
-        );
-      }
-    } finally {
-      setLoading(false);
-    }
+  const roles = Array.isArray(contextUserRoles) ? contextUserRoles : [];
+
+  const hasRole = (roleName: string): boolean => {
+    return roles.some((role) => role.toLowerCase() === roleName.toLowerCase());
   };
+
+  const isAdmin = hasRole("Administrator");
+  const isCollector = hasRole("Collector");
+  const isHelper = hasRole("Helper");
+  const isValidator = hasRole("Validator");
 
   return (
-    <div className="relative">
-      {loading && (
-        <div className="fixed top-0 left-0 w-full h-full bg-white/80 z-[1000] flex justify-center items-center">
-          <Loader />
-        </div>
-      )}
+    <div
+      className="flex items-center justify-center p-5 flex-wrap relative min-h-[80vh]"
+      style={{
+        marginLeft: `-${DRAWER_WIDTH}px`,
+        width: `calc(100% + ${DRAWER_WIDTH}px)`,
+      }}
+    >
+      <div className="flex justify-center items-center">
+        <DancingBot state="greeting" className="w-[600px] h-[600px]" />
+      </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-start">
-        <DancingBot state="idling" className="w-full max-w-[600px] mx-auto" />
+      <div className="flex flex-col gap-5 justify-center">
+        <Link to="/applications/collector/CollectorMainPage">
+          <Button
+            className="w-[250px] h-[60px] text-base font-bold"
+            size="lg"
+            disabled={!isCollector && !isAdmin}
+          >
+            COLLECTOR
+          </Button>
+        </Link>
 
-        <div>
-          <div className="mb-6">
-            <h1 className="text-2xl font-bold">Previous Expert Review</h1>
-            {document && (
-              <p className="text-gray-600 mt-2">
-                Document:{" "}
-                <span className="font-semibold">{document.title}</span>
-              </p>
-            )}
-          </div>
+        <Link to="/applications/helper/HelperMainPage">
+          <Button
+            className="w-[250px] h-[60px] text-base font-bold"
+            size="lg"
+            disabled={!isHelper && !isAdmin}
+          >
+            HELPER
+          </Button>
+        </Link>
 
-          <Card className="bg-[#d3d3d3] p-6 shadow-md space-y-6">
-            {documentData && (
-              <>
-                <div>
-                  <h3 className="text-sm font-semibold text-gray-600">Title</h3>
-                  <p className="text-lg">{documentData.title}</p>
-                </div>
-
-                <div>
-                  <h3 className="text-sm font-semibold text-gray-600">
-                    Author
-                  </h3>
-                  <p className="text-lg">{documentData.author}</p>
-                </div>
-
-                <div>
-                  <h3 className="text-sm font-semibold text-gray-600">
-                    Description
-                  </h3>
-                  <p className="text-lg">{documentData.description}</p>
-                </div>
-
-                <div>
-                  <h3 className="text-sm font-semibold text-gray-600">
-                    Content
-                  </h3>
-                  <div className="bg-white p-4 rounded mt-2 max-h-[300px] overflow-y-auto">
-                    <p className="whitespace-pre-wrap">
-                      {documentData.content}
-                    </p>
-                  </div>
-                </div>
-
-                <div className="border-t border-gray-400 pt-4">
-                  <h2 className="text-xl font-bold mb-4">Validator Review</h2>
-
-                  <div className="space-y-4">
-                    <div>
-                      <h3 className="text-sm font-semibold text-gray-600">
-                        Decision
-                      </h3>
-                      <p className="text-lg capitalize">
-                        {documentData.validatorDecision}
-                      </p>
-                    </div>
-
-                    {documentData.validatorComments && (
-                      <div>
-                        <h3 className="text-sm font-semibold text-gray-600">
-                          Comments
-                        </h3>
-                        <p className="text-lg">
-                          {documentData.validatorComments}
-                        </p>
-                      </div>
-                    )}
-
-                    <div>
-                      <h3 className="text-sm font-semibold text-gray-600">
-                        Reviewed By
-                      </h3>
-                      <p className="text-lg">
-                        {documentData.validatorReviewedBy}
-                      </p>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="border-t border-gray-400 pt-4">
-                  <h2 className="text-xl font-bold mb-4">Expert Review</h2>
-
-                  <div className="space-y-4">
-                    <div>
-                      <h3 className="text-sm font-semibold text-gray-600">
-                        Decision
-                      </h3>
-                      <p className="text-lg capitalize">
-                        {documentData.expertDecision}
-                      </p>
-                    </div>
-
-                    {documentData.expertComments && (
-                      <div>
-                        <h3 className="text-sm font-semibold text-gray-600">
-                          Comments
-                        </h3>
-                        <p className="text-lg">{documentData.expertComments}</p>
-                      </div>
-                    )}
-
-                    <div>
-                      <h3 className="text-sm font-semibold text-gray-600">
-                        Reviewed By
-                      </h3>
-                      <p className="text-lg">{documentData.expertReviewedBy}</p>
-                    </div>
-
-                    <div>
-                      <h3 className="text-sm font-semibold text-gray-600">
-                        Reviewed At
-                      </h3>
-                      <p className="text-lg">
-                        {new Date(
-                          documentData.expertReviewedAt
-                        ).toLocaleString()}
-                      </p>
-                    </div>
-                  </div>
-                </div>
-              </>
-            )}
-          </Card>
-
-          <div className="mt-6 flex justify-end">
-            <Button
-              onClick={() => navigate("/applications/console/ExpertStartPage")}
-              className="bg-[#e66334] hover:bg-[#FF8234]"
-              size="lg"
-            >
-              Back to Documents
-            </Button>
-          </div>
-        </div>
+        <Link to="/applications/console/ConsoleMainPage">
+          <Button
+            className="w-[250px] h-[60px] text-base font-bold"
+            size="lg"
+            disabled={!isValidator && !isAdmin}
+          >
+            VALIDATOR
+          </Button>
+        </Link>
       </div>
     </div>
   );
 };
 
-export default ExpertPreviousReviewsPage;
+export default HomePage;

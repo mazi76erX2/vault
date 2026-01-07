@@ -152,12 +152,6 @@ const MenuListItem: React.FC<MenuListItemProps> = ({
   const [isExpanded, setIsExpanded] = React.useState(false);
   const navigate = useNavigate();
 
-  const _isFirstInParent = React.useMemo(() => {
-    if (!parent) return true;
-    const index = parent.subMenu?.findIndex((i) => i.to === item.to);
-    return index === 0;
-  }, [parent, item]);
-
   const isActive = React.useMemo(
     () => pathname.includes(item.to),
     [pathname, item.to]
@@ -207,12 +201,7 @@ const MenuListItem: React.FC<MenuListItemProps> = ({
         title={item.title}
       >
         {!subItem && item.icon && (
-          <span
-            className={cn(
-              "min-w-[20px] flex items-center justify-center",
-              "currentColor"
-            )}
-          >
+          <span className="min-w-[20px] flex items-center justify-center">
             {item.icon}
           </span>
         )}

@@ -15,14 +15,12 @@ const RootLayout: React.FC = () => {
 
   return (
     <div className="flex h-screen overflow-hidden">
-      {/* Sidebar */}
       <div
-        className={`bg-gray-900 text-white transition-all duration-300 flex flex-col ${
+        className={`bg-card text-card-foreground border-r border-border transition-all duration-300 flex flex-col ${
           open ? "w-[240px]" : "w-[60px]"
         }`}
       >
-        {/* Header */}
-        <div className="h-16 flex items-center justify-between px-4 border-b border-gray-700">
+        <div className="h-16 flex items-center justify-between px-4 border-b border-border">
           <ThemeToggle />
           {open && (
             <img
@@ -35,25 +33,20 @@ const RootLayout: React.FC = () => {
           <button
             type="button"
             onClick={handleDrawerToggle}
-            className="p-2 hover:bg-gray-800 rounded"
+            className="p-2 hover:bg-muted rounded text-foreground"
           >
             {open ? <ChevronLeft size={20} /> : <Menu size={20} />}
           </button>
         </div>
 
-        {/* Navigation */}
-        <nav className="flex-1 overflow-y-auto py-4">
+        <nav className="flex-1 overflow-y-auto py-4 scrollbar-thin">
           <MenuListItems open={open} />
         </nav>
 
-        {/* Footer - removed ExternalMenuItems since it was removed from imports */}
-        <div className="border-t border-gray-700 py-4">
-          {/* Add footer content here if needed, or remove this div entirely */}
-        </div>
+        <div className="border-t border-border py-4" />
       </div>
 
-      {/* Main Content */}
-      <div className="flex-1 overflow-auto bg-gray-50">
+      <div className="flex-1 overflow-auto bg-background">
         <Outlet />
       </div>
     </div>

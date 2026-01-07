@@ -26,7 +26,6 @@ export const Page: React.FC<PageProps> = ({ view, headerProps }) => {
         maxWidth: `calc(100vw - ${DRAWER_WIDTH}px)`,
       }}
     >
-      {/* Breadcrumbs */}
       {breadcrumbs && breadcrumbs.length > 0 && (
         <nav className="flex items-center gap-2 px-6 py-4 text-sm text-muted-foreground">
           {breadcrumbs.map((crumb, index) => (
@@ -37,7 +36,7 @@ export const Page: React.FC<PageProps> = ({ view, headerProps }) => {
               {crumb.path ? (
                 <Link
                   to={crumb.path}
-                  className="text-primary hover:underline hover:text-primary/80"
+                  className="text-primary hover:text-primary/80 hover:underline"
                 >
                   {crumb.label}
                 </Link>
@@ -49,13 +48,12 @@ export const Page: React.FC<PageProps> = ({ view, headerProps }) => {
         </nav>
       )}
 
-      {/* Header */}
       {headerProps && (
-        <div className="px-6 py-4 border-b border-border bg-card">
+        <div className="px-6 py-4 border-b border-border bg-card text-card-foreground">
           <div className="flex justify-between items-center">
             <div>
               {headerProps.title && (
-                <h1 className="text-2xl font-bold text-card-foreground">
+                <h1 className="text-2xl font-bold text-foreground">
                   {headerProps.title}
                 </h1>
               )}
@@ -70,7 +68,6 @@ export const Page: React.FC<PageProps> = ({ view, headerProps }) => {
         </div>
       )}
 
-      {/* Content */}
       <div className="p-6">{view}</div>
     </div>
   );

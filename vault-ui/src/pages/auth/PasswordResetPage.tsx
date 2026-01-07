@@ -8,7 +8,7 @@ import { TextField } from "@/components/forms/text-field";
 import Logo from "@/assets/VAULT_LOGO_ORANGE_NEW.svg";
 import Map from "@/assets/truechart_map.png";
 
-function PasswordResetPage() {
+const PasswordResetPage: React.FC = () => {
   const navigate = useNavigate();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -86,16 +86,16 @@ function PasswordResetPage() {
 
   return (
     <div className="grid grid-cols-1 md:grid-cols-[44%_56%] h-screen">
-      <div className="bg-gray-800 h-screen flex flex-col justify-center p-10 md:p-4 lg:p-10">
+      <div className="bg-tertiary h-screen flex flex-col justify-center p-10 md:p-4 lg:p-10">
         <div className="flex justify-center mb-8">
           <img src={Logo} alt="Logo" className="w-[400px]" />
         </div>
 
-        <h1 className="text-white text-2xl md:text-[25px] text-center mb-14 font-bold -mt-4">
+        <h1 className="text-tertiary-foreground text-2xl md:text-[25px] text-center mb-14 font-bold -mt-4">
           MANAGEMENT CONSOLE
         </h1>
 
-        <h2 className="text-white text-2xl md:text-[25px] mb-8 font-bold">
+        <h2 className="text-tertiary-foreground text-2xl md:text-[25px] mb-8 font-bold">
           PASSWORD RESET
         </h2>
 
@@ -105,7 +105,7 @@ function PasswordResetPage() {
           label="EMAIL"
           value={email}
           onChange={(e) => setEmail(e.target.value)}
-          className="mb-6 bg-transparent text-white"
+          className="mb-6"
           startIcon={<User className="w-5 h-5" />}
           disabled={!isOnResetRequest}
         />
@@ -118,7 +118,7 @@ function PasswordResetPage() {
               label="PASSWORD"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              className="mb-6 bg-transparent text-white"
+              className="mb-6"
               startIcon={<Lock className="w-5 h-5" />}
             />
 
@@ -128,14 +128,14 @@ function PasswordResetPage() {
               label="CONFIRM PASSWORD"
               value={passwordConfirmation}
               onChange={(e) => setPasswordConfirmation(e.target.value)}
-              className="mb-6 bg-transparent text-white"
+              className="mb-6"
               startIcon={<Lock className="w-5 h-5" />}
             />
           </>
         )}
 
         <Button
-          className="mt-2 bg-[#e66334] hover:bg-[#FF8234]"
+          className="mt-2"
           onClick={isOnResetRequest ? handleResetRequest : handlePasswordUpdate}
           disabled={loading}
           size="sm"
@@ -144,7 +144,7 @@ function PasswordResetPage() {
         </Button>
 
         <span
-          className="mt-2.5 text-white cursor-pointer"
+          className="mt-2.5 text-tertiary-foreground cursor-pointer hover:underline"
           onClick={() => navigate("/login")}
         >
           Back to Login
@@ -156,6 +156,6 @@ function PasswordResetPage() {
       </div>
     </div>
   );
-}
+};
 
 export default PasswordResetPage;

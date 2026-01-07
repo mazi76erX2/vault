@@ -1,235 +1,223 @@
-import React, { useEffect, useState, useRef } from "react";
-import { useLocation, useNavigate } from "react-router-dom";
+import React, { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import { AxiosError } from "axios";
-import { Send } from "lucide-react";
+import { ArrowRight } from "lucide-react";
+import type { ColumnDef } from "@tanstack/react-table";
 import { useAuthContext } from "@/hooks/useAuthContext";
 import { DancingBot } from "@/components/media/dancing-bot";
-import { TextField } from "@/components/forms/text-field";
-import { Button } from "@/components/ui/button";
+import { DataTable } from "@/components/data-display/data-table";
 import { Loader } from "@/components/feedback/loader";
+import { Button } from "@/components/ui/button";
 import Api from "@/services/Instance";
 
-interface LocationState {
-  chatId?: string;
-}
-
-interface Message {
+interface ChatMessage {
   id: string;
-  role: "user" | "assistant";
-  content: string;
-  timestamp: string;
+  created_at: string;
+  createdAt?: string;
+  messages: [string, string][];
 }
 
-const HelperChatPage: React.FC = () => {
+interface Profile {
+  id: string;
+  fullName: string;
+}
+
+interface ChatRow {
+  id: string;
+  createdAt: string;
+  topic: string;
+  [key: string]: unknown;
+}
+
+const HelperPreviousChatsPage: React.FC = () => {
   const [loading, setLoading] = useState(false);
-  const [messages, setMessages] = useState<Message[]>([]);
-  const [inputMessage, setInputMessage] = useState("");
-  const [chatId, setChatId] = useState<string | null>(null);
-  const messagesEndRef = useRef<HTMLDivElement>(null);
+  const [rows, setRows] = useState<ChatRow[]>([]);
+  const [selectedChat, setSelectedChat] = useState<ChatRow | null>(null);
+
   const authContext = useAuthContext();
-  const location = useLocation();
+  const user = authContext?.user;
+  const isLoggedIn = authContext?.isLoggedIn;
+  const isLoadingUser = authContext?.isLoadingUser;
   const navigate = useNavigate();
 
-  const scrollToBottom = () => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  const columns: ColumnDef<ChatRow>[] = [
+    {
+      accessorKey: "topic",
+      header: "Topic",
+    },
+    {
+      accessorKey: "createdAt",
+      header: "Date",
+    },
+  ];
+
+  const adaptChatsToRows = async (
+    chatsData: ChatMessage[]
+  ): Promise<ChatRow[]> => {
+    const adaptedRows = await Promise.all(
+      chatsData.map(async (chat) => {
+        let firstAssistantMessage = "No topic found";
+
+        if (chat.messages && Array.isArray(chat.messages)) {
+          if (
+            chat.messages.length > 0 &&
+            Array.isArray(chat.messages[0]) &&
+            chat.messages[0].length >= 2
+          ) {
+            firstAssistantMessage = chat.messages[0][0];
+          }
+        }
+
+        let formattedDate = "Invalid Date";
+        try {
+          const dateStr = chat.created_at;
+          if (dateStr) {
+            const date = new Date(dateStr);
+            if (!isNaN(date.getTime())) {
+              formattedDate = date.toLocaleDateString("en-GB");
+            }
+          }
+        } catch (e) {
+          console.error("Error formatting date:", e);
+        }
+
+        return {
+          id: chat.id,
+          createdAt: formattedDate,
+          topic: firstAssistantMessage,
+        };
+      })
+    );
+
+    return adaptedRows;
   };
 
   useEffect(() => {
-    const state = location.state as LocationState;
-    const id = state?.chatId;
+    const fetchPreviousChats = async () => {
+      try {
+        setLoading(true);
+        if (isLoadingUser) return;
 
-    if (id) {
-      setChatId(id);
-      fetchMessages(id);
-    } else {
-      createNewChat();
-    }
-  }, [location.state]);
+        if (!isLoggedIn || !user) {
+          toast.error("User not logged in");
+          return;
+        }
 
-  useEffect(() => {
-    scrollToBottom();
-  }, [messages]);
+        const response = await Api.get("/api/v1/helper/user_maps");
 
-  const createNewChat = async () => {
-    if (
-      !authContext ||
-      !authContext.user?.user?.id ||
-      !authContext.isLoggedIn
-    ) {
-      if (!authContext?.isLoadingUser) {
-        toast.error("User not authenticated or session has expired.");
-      }
-      return;
-    }
+        if (!response.data || !response.data.user_maps) {
+          toast.error("Invalid response from the server.");
+          return;
+        }
 
-    try {
-      setLoading(true);
-      const response = await Api.post("/api/v1/helper/createchat");
-      setChatId(response.data.chatId);
-    } catch (err: unknown) {
-      console.error("Error creating chat:", err);
-      if (!(err instanceof AxiosError && err.response?.status === 401)) {
-        toast.error(
-          err instanceof Error ? err.message : "Failed to create chat.",
+        const profiles = response.data.user_maps.data as Profile[];
+        const userMap = new Map(
+          profiles.map((profile: Profile) => [profile.id, profile.fullName])
         );
-      }
-    } finally {
-      setLoading(false);
-    }
-  };
 
-  const fetchMessages = async (id: string) => {
-    if (
-      !authContext ||
-      !authContext.user?.user?.id ||
-      !authContext.isLoggedIn
-    ) {
-      if (!authContext?.isLoadingUser) {
-        toast.error("User not authenticated or session has expired.");
-      }
-      return;
-    }
-
-    try {
-      setLoading(true);
-      const response = await Api.get(`/api/v1/helper/messages/${id}`);
-      setMessages(response.data.messages || []);
-    } catch (err: unknown) {
-      console.error("Error fetching messages:", err);
-      if (!(err instanceof AxiosError && err.response?.status === 401)) {
-        toast.error(
-          err instanceof Error ? err.message : "Failed to fetch messages.",
+        const chatsResponse = await Api.post(
+          "/api/v1/helper/get_previous_chats",
+          {
+            user_id: user.user.id,
+          }
         );
+
+        if (!chatsResponse.data || !chatsResponse.data.get_previous_chats) {
+          toast.error("Invalid response from the server.");
+          return;
+        }
+
+        const chatsData = chatsResponse.data.get_previous_chats.data;
+
+        if (!chatsData || chatsData.length === 0) {
+          toast.error("No previous chats found.");
+          return;
+        }
+
+        try {
+          const adaptedRows = await adaptChatsToRows(chatsData);
+          setRows(adaptedRows);
+        } catch (error) {
+          console.error("Error adapting chat rows:", error);
+        }
+      } catch (err) {
+        console.error(err);
+        if (!(err instanceof AxiosError && err.response?.status === 401)) {
+          toast.error(err instanceof Error ? err.message : "An error occurred");
+        }
+      } finally {
+        setLoading(false);
       }
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleSendMessage = async () => {
-    if (!inputMessage.trim() || !chatId) {
-      return;
-    }
-
-    const userMessage: Message = {
-      id: Date.now().toString(),
-      role: "user",
-      content: inputMessage,
-      timestamp: new Date().toISOString(),
     };
 
-    setMessages((prev) => [...prev, userMessage]);
-    setInputMessage("");
+    fetchPreviousChats();
+  }, [isLoggedIn, isLoadingUser]);
 
-    try {
-      setLoading(true);
-      const response = await Api.post("/api/v1/helper/sendmessage", {
-        chatId,
-        message: inputMessage,
-      });
-
-      const assistantMessage: Message = {
-        id: (Date.now() + 1).toString(),
-        role: "assistant",
-        content: response.data.response,
-        timestamp: new Date().toISOString(),
-      };
-
-      setMessages((prev) => [...prev, assistantMessage]);
-    } catch (err: unknown) {
-      console.error("Error sending message:", err);
-      if (!(err instanceof AxiosError && err.response?.status === 401)) {
-        toast.error(
-          err instanceof Error ? err.message : "Failed to send message.",
-        );
-      }
-    } finally {
-      setLoading(false);
+  const handleGoToChat = (chat: ChatRow) => {
+    if (!chat.id) {
+      toast.error("Cannot go to Chat: missing chat message ID");
+      return;
     }
+
+    navigate("/applications/helper/HelperChatPage", {
+      state: {
+        isResume: true,
+        chatId: chat.id,
+      },
+    });
   };
 
   return (
-    <div className="relative h-[calc(100vh-100px)]">
-      {loading && messages.length === 0 && (
-        <div className="fixed top-0 left-0 w-full h-full bg-white/80 z-[1000] flex justify-center items-center">
+    <div className="relative">
+      {loading && (
+        <div className="fixed top-0 left-0 w-full h-full bg-background/80 z-[1000] flex justify-center items-center backdrop-blur-sm">
           <Loader />
         </div>
       )}
 
-      <div className="grid grid-cols-1 lg:grid-cols-[400px_1fr] gap-8 h-full">
-        <div className="hidden lg:block">
-          <DancingBot state="idling" className="w-full h-[400px]" />
-        </div>
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-start">
+        <DancingBot state="idling" className="w-full max-w-[600px] mx-auto" />
 
-        <div className="flex flex-col h-full bg-[#d3d3d3] rounded-lg shadow-md">
-          <div className="p-6 border-b border-gray-300">
-            <div className="flex justify-between items-center">
-              <h1 className="text-2xl font-bold">Helper Chat</h1>
-              <Button
-                onClick={() => navigate("/applications/helper/HelperMainPage")}
-                variant="outline"
-                size="sm"
-              >
-                Back to Main
-              </Button>
-            </div>
+        <div>
+          <div className="mb-6">
+            <h1 className="text-2xl font-bold text-foreground">
+              Chats previously started
+            </h1>
+            <p className="text-muted-foreground mt-2">
+              Select a chat to continue your conversation.
+            </p>
           </div>
 
-          <div className="flex-1 overflow-y-auto p-6 space-y-4">
-            {messages.length === 0 && !loading && (
-              <div className="flex items-center justify-center h-full text-gray-500">
-                <p>Start a conversation by typing a message below.</p>
-              </div>
-            )}
-
-            {messages.map((message) => (
-              <div
-                key={message.id}
-                className={`flex ${
-                  message.role === "user" ? "justify-end" : "justify-start"
-                }`}
-              >
-                <div
-                  className={`max-w-[70%] rounded-lg p-4 ${
-                    message.role === "user"
-                      ? "bg-[#e66334] text-white"
-                      : "bg-white text-gray-900"
-                  }`}
-                >
-                  <p className="whitespace-pre-wrap">{message.content}</p>
-                  <span className="text-xs opacity-70 mt-2 block">
-                    {new Date(message.timestamp).toLocaleTimeString()}
-                  </span>
-                </div>
-              </div>
-            ))}
-            <div ref={messagesEndRef} />
+          <div className="bg-card text-card-foreground p-6 rounded-lg shadow-md border border-border">
+            <DataTable
+              columns={columns}
+              data={rows}
+              pageSize={10}
+              onRowClick={(params) => setSelectedChat(params.row as ChatRow)}
+              getRowClassName={(params) =>
+                params.row.id === selectedChat?.id ? "bg-primary/20" : ""
+              }
+            />
           </div>
 
-          <div className="p-6 border-t border-gray-300">
-            <div className="flex gap-2">
-              <TextField
-                value={inputMessage}
-                onChange={(e) => setInputMessage(e.target.value)}
-                placeholder="Ask the Helper anything..."
-                onKeyDown={(e) => {
-                  if (e.key === "Enter" && !e.shiftKey) {
-                    e.preventDefault();
-                    handleSendMessage();
-                  }
-                }}
-                disabled={loading}
-                className="flex-1"
-              />
-              <Button
-                onClick={handleSendMessage}
-                disabled={loading || !inputMessage.trim()}
-                className="bg-[#e66334] hover:bg-[#FF8234]"
-              >
-                <Send className="w-4 h-4" />
-              </Button>
-            </div>
+          <div className="mt-6 flex justify-end gap-4">
+            <Button
+              variant="outline"
+              onClick={() => navigate("/applications/helper/HelperMainPage")}
+              size="lg"
+            >
+              Back
+            </Button>
+            <Button
+              onClick={() => selectedChat && handleGoToChat(selectedChat)}
+              disabled={!selectedChat}
+              size="lg"
+              className="gap-2"
+            >
+              Resume Chat
+              <ArrowRight className="h-5 w-5" />
+            </Button>
           </div>
         </div>
       </div>
@@ -237,4 +225,4 @@ const HelperChatPage: React.FC = () => {
   );
 };
 
-export default HelperChatPage;
+export default HelperPreviousChatsPage;

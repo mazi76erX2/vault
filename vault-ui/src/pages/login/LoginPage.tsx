@@ -1,5 +1,4 @@
-import * as React from "react";
-import { useCallback, useEffect, useState } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -26,7 +25,6 @@ const LoginPage: React.FC = () => {
           password: passwordParam,
         });
 
-        // Handle both backend response styles (snake_case vs camelCase/legacy) [file:3]
         const accessToken =
           response.data?.access_token ??
           response.data?.accesstoken ??
@@ -89,11 +87,11 @@ const LoginPage: React.FC = () => {
   };
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-gray-100">
-      <div className="w-full max-w-md space-y-8 rounded-lg bg-white p-8 shadow-lg">
+    <div className="flex min-h-screen items-center justify-center bg-background">
+      <div className="w-full max-w-md space-y-8 rounded-lg bg-card text-card-foreground p-8 shadow-lg border border-border">
         <div className="text-center">
-          <h2 className="text-3xl font-bold">Sign In</h2>
-          <p className="mt-2 text-gray-600">
+          <h2 className="text-3xl font-bold text-foreground">Sign In</h2>
+          <p className="mt-2 text-muted-foreground">
             Welcome back! Please sign in to continue.
           </p>
         </div>
@@ -124,11 +122,11 @@ const LoginPage: React.FC = () => {
                 id="remember-me"
                 name="remember-me"
                 type="checkbox"
-                className="h-4 w-4 rounded border-gray-300"
+                className="h-4 w-4 rounded border-border bg-input"
               />
               <label
                 htmlFor="remember-me"
-                className="ml-2 text-sm text-gray-900"
+                className="ml-2 text-sm text-foreground"
               >
                 Remember me
               </label>
@@ -136,7 +134,7 @@ const LoginPage: React.FC = () => {
 
             <button
               type="button"
-              className="cursor-pointer text-sm text-blue-600 hover:text-blue-500"
+              className="cursor-pointer text-sm text-primary hover:text-primary/80"
               onClick={() => navigate("/reset-password")}
             >
               Forgot password?
