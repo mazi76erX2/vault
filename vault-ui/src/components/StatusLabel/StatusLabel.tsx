@@ -1,43 +1,46 @@
+// vault-ui/src/components/StatusLabel/StatusLabel.tsx
 import React from "react";
-import { Typography, useTheme } from "@mui/material";
-import { HCNotificationType } from "generic-components/src/HCNotification/HCNotification";
-import { MUITheme } from "generic-components/src/theme";
+import { Badge } from "@/components/ui/badge";
 
-type StatusLabelType = HCNotificationType;
-type StatusLabelColors = Record<HCNotificationType, string>;
+type StatusLabelType =
+  | "success"
+  | "info"
+  | "warning"
+  | "failure"
+  | "danger"
+  | "loading";
+
+const statusVariants: Record<
+  StatusLabelType,
+  { variant: React.ComponentProps<typeof Badge>["variant"] }
+> = {
+  success: { variant: "default" },
+  info: { variant: "outline" },
+  warning: { variant: "secondary" },
+  failure: { variant: "destructive" },
+  danger: { variant: "destructive" },
+  loading: { variant: "secondary" },
+};
+
 export interface StatusLabelProps {
   text: string;
   type?: StatusLabelType;
+  className?: string;
 }
-export function StatusLabel(props: StatusLabelProps) {
-  const theme: typeof MUITheme = useTheme();
 
-  const { type = "success", text } = props;
-
-  const colors: StatusLabelColors = React.useMemo(
-    () => ({
-      success: theme.success.hex,
-      info: theme.info.hex,
-      loading: theme.hcPalette.primary["500"]!.hex,
-      warning: theme.hcPalette.primary["500"]!.hex,
-      failure: theme.error.hex,
-      danger: theme.error.hex,
-    }),
-    [theme],
-  );
-
-  const color = colors[type];
+export function StatusLabel({
+  text,
+  type = "success",
+  className,
+}: StatusLabelProps) {
+  const { variant } = statusVariants[type];
 
   return (
-    <Typography
-      sx={{
-        fontWeight: "bold",
-        fontSize: "16px",
-        color,
-        textTransform: "capitalize",
-      }}
+    <Badge
+      variant={variant}
+      className={cn("uppercase font-bold text-sm", className)}
     >
       {text}
-    </Typography>
+    </Badge>
   );
 }
