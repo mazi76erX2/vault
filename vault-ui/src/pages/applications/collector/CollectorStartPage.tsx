@@ -55,14 +55,14 @@ const CollectorStartPage: React.FC = () => {
     try {
       setLoading(true);
       const response = await Api.get<FetchProjectsResponse>(
-        "/api/v1/collector/fetchprojects",
+        "/api/v1/collector/fetchprojects"
       );
       setRows(response.data.projects);
     } catch (err: unknown) {
       console.error("Error fetching projects:", err);
       if (!(err instanceof AxiosError && err.response?.status === 401)) {
         toast.error(
-          err instanceof Error ? err.message : "Failed to fetch projects.",
+          err instanceof Error ? err.message : "Failed to fetch projects."
         );
       }
     } finally {
@@ -90,7 +90,7 @@ const CollectorStartPage: React.FC = () => {
   return (
     <div className="relative">
       {loading && (
-        <div className="fixed top-0 left-0 w-full h-full bg-white/80 z-[1000] flex justify-center items-center">
+        <div className="fixed top-0 left-0 w-full h-full bg-background/80 z-[1000] flex justify-center items-center backdrop-blur-sm">
           <Loader />
         </div>
       )}
@@ -100,20 +100,22 @@ const CollectorStartPage: React.FC = () => {
 
         <div>
           <div className="mb-6">
-            <h1 className="text-2xl font-bold">Start a new session</h1>
-            <p className="text-gray-600 mt-2">
+            <h1 className="text-2xl font-bold text-foreground">
+              Start a new session
+            </h1>
+            <p className="text-muted-foreground mt-2">
               Select a project to begin your interview session.
             </p>
           </div>
 
-          <div className="bg-[#d3d3d3] p-6 rounded-lg shadow-md">
+          <div className="bg-card text-card-foreground p-6 rounded-lg shadow-md border border-border">
             <DataTable
               columns={columns}
               data={rows}
               pageSize={5}
               onRowClick={(params) => setSelectedProject(params.row as Project)}
               getRowClassName={(params) =>
-                params.row.id === selectedProject?.id ? "bg-blue-100" : ""
+                params.row.id === selectedProject?.id ? "bg-primary/20" : ""
               }
             />
           </div>
@@ -122,7 +124,6 @@ const CollectorStartPage: React.FC = () => {
             <Button
               onClick={handleStartSession}
               disabled={!selectedProject}
-              className="bg-[#e66334] hover:bg-[#FF8234]"
               size="lg"
             >
               Start Session

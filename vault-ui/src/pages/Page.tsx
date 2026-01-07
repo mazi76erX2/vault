@@ -21,28 +21,28 @@ export const Page: React.FC<PageProps> = ({ view, headerProps }) => {
 
   return (
     <div
-      className="p-0 mx-0"
+      className="p-0 mx-0 min-h-screen bg-background text-foreground"
       style={{
         maxWidth: `calc(100vw - ${DRAWER_WIDTH}px)`,
       }}
     >
       {/* Breadcrumbs */}
       {breadcrumbs && breadcrumbs.length > 0 && (
-        <nav className="flex items-center gap-2 px-6 py-4 text-sm">
+        <nav className="flex items-center gap-2 px-6 py-4 text-sm text-muted-foreground">
           {breadcrumbs.map((crumb, index) => (
             <React.Fragment key={index}>
               {index > 0 && (
-                <ChevronRight size={16} className="text-gray-400" />
+                <ChevronRight size={16} className="text-muted-foreground/50" />
               )}
               {crumb.path ? (
                 <Link
                   to={crumb.path}
-                  className="text-blue-600 hover:text-blue-800 hover:underline"
+                  className="text-primary hover:underline hover:text-primary/80"
                 >
                   {crumb.label}
                 </Link>
               ) : (
-                <span className="text-gray-600">{crumb.label}</span>
+                <span className="text-muted-foreground">{crumb.label}</span>
               )}
             </React.Fragment>
           ))}
@@ -51,16 +51,18 @@ export const Page: React.FC<PageProps> = ({ view, headerProps }) => {
 
       {/* Header */}
       {headerProps && (
-        <div className="px-6 py-4 border-b bg-white">
+        <div className="px-6 py-4 border-b border-border bg-card">
           <div className="flex justify-between items-center">
             <div>
               {headerProps.title && (
-                <h1 className="text-2xl font-bold text-gray-900">
+                <h1 className="text-2xl font-bold text-card-foreground">
                   {headerProps.title}
                 </h1>
               )}
               {headerProps.subtitle && (
-                <p className="text-gray-600 mt-1">{headerProps.subtitle}</p>
+                <p className="text-muted-foreground mt-1">
+                  {headerProps.subtitle}
+                </p>
               )}
             </div>
             {headerProps.actions && <div>{headerProps.actions}</div>}

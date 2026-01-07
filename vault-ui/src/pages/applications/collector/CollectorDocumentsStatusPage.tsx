@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import { AxiosError } from "axios";
 import type { ColumnDef } from "@tanstack/react-table";
@@ -6,40 +7,39 @@ import { useAuthContext } from "@/hooks/useAuthContext";
 import { DancingBot } from "@/components/media/dancing-bot";
 import { DataTable } from "@/components/data-display/data-table";
 import { Loader } from "@/components/feedback/loader";
+import { Button } from "@/components/ui/button";
 import Api from "@/services/Instance";
 
-interface DocumentStatus {
-  title: string;
-  responsible: string;
-  status: string;
+interface Project {
+  id: string;
+  name: string;
+  description: string;
   [key: string]: unknown;
 }
 
-interface FetchDocumentsResponse {
-  documents: DocumentStatus[];
+interface FetchProjectsResponse {
+  projects: Project[];
 }
 
-const CollectorDocumentsStatusPage: React.FC = () => {
+const CollectorStartPage: React.FC = () => {
   const [loading, setLoading] = useState(false);
-  const [rows, setRows] = useState<DocumentStatus[]>([]);
+  const [rows, setRows] = useState<Project[]>([]);
+  const [selectedProject, setSelectedProject] = useState<Project | null>(null);
   const authContext = useAuthContext();
+  const navigate = useNavigate();
 
-  const columns: ColumnDef<DocumentStatus>[] = [
+  const columns: ColumnDef<Project>[] = [
     {
-      accessorKey: "title",
-      header: "Document Title",
+      accessorKey: "name",
+      header: "Project Name",
     },
     {
-      accessorKey: "responsible",
-      header: "Validator",
-    },
-    {
-      accessorKey: "status",
-      header: "Status",
+      accessorKey: "description",
+      header: "Description",
     },
   ];
 
-  const fetchDocuments = async () => {
+  const fetchProjects = async () => {
     if (
       !authContext ||
       !authContext.user?.user?.id ||
@@ -54,17 +54,15 @@ const CollectorDocumentsStatusPage: React.FC = () => {
 
     try {
       setLoading(true);
-      const response = await Api.get<FetchDocumentsResponse>(
-        "/api/v1/collector/fetchdocumentsstatus",
+      const response = await Api.get<FetchProjectsResponse>(
+        "/api/v1/collector/fetchprojects"
       );
-      setRows(response.data.documents);
+      setRows(response.data.projects);
     } catch (err: unknown) {
-      console.error("Error fetching documents status:", err);
+      console.error("Error fetching projects:", err);
       if (!(err instanceof AxiosError && err.response?.status === 401)) {
         toast.error(
-          err instanceof Error
-            ? err.message
-            : "Failed to fetch document status.",
+          err instanceof Error ? err.message : "Failed to fetch projects."
         );
       }
     } finally {
@@ -72,9 +70,20 @@ const CollectorDocumentsStatusPage: React.FC = () => {
     }
   };
 
+  const handleStartSession = () => {
+    if (!selectedProject) {
+      toast.error("Please select a project first.");
+      return;
+    }
+
+    navigate("/applications/collector/CollectorInitQuestionsPage", {
+      state: { project: selectedProject },
+    });
+  };
+
   useEffect(() => {
     if (authContext && !authContext.isLoadingUser && authContext.isLoggedIn) {
-      fetchDocuments();
+      fetchProjects();
     }
   }, [authContext]);
 
@@ -87,15 +96,37 @@ const CollectorDocumentsStatusPage: React.FC = () => {
       )}
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-start">
-        <DancingBot state="idling" className="w-full max-w-[600px] mx-auto" />
+        <DancingBot state="greeting" className="w-full max-w-[600px] mx-auto" />
 
         <div>
           <div className="mb-6">
-            <h1 className="text-2xl font-bold">Documents status</h1>
+            <h1 className="text-2xl font-bold">Start a new session</h1>
+            <p className="text-gray-600 mt-2">
+              Select a project to begin your interview session.
+            </p>
           </div>
 
           <div className="bg-[#d3d3d3] p-6 rounded-lg shadow-md">
-            <DataTable columns={columns} data={rows} pageSize={5} />
+            <DataTable
+              columns={columns}
+              data={rows}
+              pageSize={5}
+              onRowClick={(params) => setSelectedProject(params.row as Project)}
+              getRowClassName={(params) =>
+                params.row.id === selectedProject?.id ? "bg-blue-100" : ""
+              }
+            />
+          </div>
+
+          <div className="mt-6 flex justify-end">
+            <Button
+              onClick={handleStartSession}
+              disabled={!selectedProject}
+              className="bg-[#e66334] hover:bg-[#FF8234]"
+              size="lg"
+            >
+              Start Session
+            </Button>
           </div>
         </div>
       </div>
@@ -103,4 +134,4 @@ const CollectorDocumentsStatusPage: React.FC = () => {
   );
 };
 
-export default CollectorDocumentsStatusPage;
+export default CollectorStartPage;

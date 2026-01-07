@@ -71,7 +71,7 @@ const CollectorMetaDataPage: React.FC = () => {
       console.error("Error saving metadata:", err);
       if (!(err instanceof AxiosError && err.response?.status === 401)) {
         toast.error(
-          err instanceof Error ? err.message : "Failed to save metadata.",
+          err instanceof Error ? err.message : "Failed to save metadata."
         );
       }
     } finally {
@@ -82,7 +82,7 @@ const CollectorMetaDataPage: React.FC = () => {
   return (
     <div className="relative">
       {loading && (
-        <div className="fixed top-0 left-0 w-full h-full bg-white/80 z-[1000] flex justify-center items-center">
+        <div className="fixed top-0 left-0 w-full h-full bg-background/80 z-[1000] flex justify-center items-center backdrop-blur-sm">
           <Loader />
         </div>
       )}
@@ -92,13 +92,15 @@ const CollectorMetaDataPage: React.FC = () => {
 
         <div>
           <div className="mb-6">
-            <h1 className="text-2xl font-bold">Document Metadata</h1>
-            <p className="text-gray-600 mt-2">
+            <h1 className="text-2xl font-bold text-foreground">
+              Document Metadata
+            </h1>
+            <p className="text-muted-foreground mt-2">
               Please provide additional information about the document.
             </p>
           </div>
 
-          <div className="bg-[#d3d3d3] p-6 rounded-lg shadow-md space-y-6">
+          <div className="bg-card text-card-foreground p-6 rounded-lg shadow-md border border-border space-y-6">
             <TextField
               label="Author"
               value={author}
@@ -139,12 +141,7 @@ const CollectorMetaDataPage: React.FC = () => {
             <Button variant="outline" onClick={() => navigate(-1)} size="lg">
               Back
             </Button>
-            <Button
-              onClick={handleSubmit}
-              disabled={loading}
-              className="bg-[#e66334] hover:bg-[#FF8234]"
-              size="lg"
-            >
+            <Button onClick={handleSubmit} disabled={loading} size="lg">
               Continue
             </Button>
           </div>

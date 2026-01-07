@@ -1,0 +1,122 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    /* --- Light Theme --- */
+    
+    /* Main Background: Light Grey */
+    --background: 240 240 240; 
+    --foreground: 26 26 26;
+
+    /* Card: Pure White (to stand out against the grey background) */
+    --card: 255 255 255;
+    --card-foreground: 26 26 26;
+
+    /* Popover: Pure White */
+    --popover: 255 255 255;
+    --popover-foreground: 26 26 26;
+
+    /* Primary: Deep Purple (Better contrast than the original light purple) */
+    --primary: 80 64 144; 
+    --primary-foreground: 255 255 255;
+
+    /* Secondary: The lighter Blue/Purple */
+    --secondary: 96 97 192; 
+    --secondary-foreground: 255 255 255;
+
+    /* Muted: Light Grey for backgrounds, Dark Grey for text */
+    --muted: 228 228 228; 
+    --muted-foreground: 115 115 115;
+
+    /* Accent: Sky Blue (Great for hover states) */
+    --accent: 80 160 224; 
+    --accent-foreground: 255 255 255;
+
+    /* Destructive: Burgundy */
+    --destructive: 129 51 75;
+    --destructive-foreground: 255 255 255;
+
+    /* Borders & Inputs: Darker Grey to be visible */
+    --border: 160 160 160;
+    --input: 255 255 255;
+    --ring: 80 64 144;
+
+    --radius: 0.5rem;
+  }
+
+  .dark {
+    /* --- Dark Theme --- */
+    
+    /* Background: Deep Indigo (Darkest) */
+    --background: 41 37 74; 
+    --foreground: 219 193 202; /* Pale Pink text */
+
+    /* Card: Lighter Purple (To create depth/layers) */
+    --card: 58 53 101; 
+    --card-foreground: 255 255 255; /* White text on cards for readability */
+
+    /* Popover: Same as card */
+    --popover: 58 53 101;
+    --popover-foreground: 255 255 255;
+
+    /* Primary: Teal/Aqua (High contrast against dark bg) */
+    --primary: 85 187 173; 
+    --primary-foreground: 26 26 26; /* Dark text on Teal button */
+
+    /* Secondary: Muted Purple */
+    --secondary: 108 69 114; 
+    --secondary-foreground: 255 255 255;
+
+    /* Muted: Darker Purple background, Pale Pink text */
+    --muted: 108 69 114; 
+    --muted-foreground: 168 156 170;
+
+    /* Accent: Hot Pink */
+    --accent: 221 87 148; 
+    --accent-foreground: 255 255 255;
+
+    /* Destructive: Hot Pink/Red */
+    --destructive: 221 87 148;
+    --destructive-foreground: 255 255 255;
+
+    /* Borders: Muted Purple (Visible against the deep indigo bg) */
+    --border: 108 69 114;
+    /* Input: Slightly darker than card to look "inset" */
+    --input: 48 43 90; 
+    --ring: 85 187 173;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply bg-background text-foreground;
+    font-feature-settings:
+      "rlig" 1,
+      "calt" 1;
+  }
+}
+
+/* Custom scrollbar */
+@layer utilities {
+  .scrollbar-thin::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+  }
+
+  .scrollbar-thin::-webkit-scrollbar-track {
+    @apply bg-muted/20;
+  }
+
+  .scrollbar-thin::-webkit-scrollbar-thumb {
+    @apply bg-muted rounded-md;
+  }
+
+  .scrollbar-thin::-webkit-scrollbar-thumb:hover {
+    @apply bg-muted/80;
+  }
+}
