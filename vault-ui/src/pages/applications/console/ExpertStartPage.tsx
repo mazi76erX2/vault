@@ -1,59 +1,70 @@
 import React, { useEffect, useState } from "react";
-import { useNavigate, useLocation } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import { AxiosError } from "axios";
+import type { ColumnDef } from "@tanstack/react-table";
 import { useAuthContext } from "@/hooks/useAuthContext";
 import { DancingBot } from "@/components/media/dancing-bot";
-import { Button } from "@/components/ui/button";
+import { DataTable } from "@/components/data-display/data-table";
 import { Loader } from "@/components/feedback/loader";
-import { Card } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import Api from "@/services/Instance";
 
-interface LocationState {
-  document?: {
-    id: string;
-    title: string;
-    author: string;
-  };
-}
-
-interface DocumentDetails {
+interface Document {
+  id: string;
   title: string;
   author: string;
-  description: string;
-  content: string;
-  validatorDecision: string;
-  validatorComments: string;
-  validatorReviewedBy: string;
-  expertDecision?: string;
-  expertComments?: string;
-  expertReviewedBy?: string;
-  expertReviewedAt?: string;
   status: string;
+  validatorReviewedAt: string;
   [key: string]: unknown;
 }
 
-const ValidatorStartExpertReviewPage: React.FC = () => {
+interface FetchDocumentsResponse {
+  documents: Document[];
+}
+
+const ExpertStartPage: React.FC = () => {
   const [loading, setLoading] = useState(false);
-  const [documentData, setDocumentData] = useState<DocumentDetails | null>(
-    null,
+  const [rows, setRows] = useState<Document[]>([]);
+  const [selectedDocument, setSelectedDocument] = useState<Document | null>(
+    null
   );
   const authContext = useAuthContext();
   const navigate = useNavigate();
-  const location = useLocation();
-  const { document } = (location.state as LocationState) || {};
 
-  useEffect(() => {
-    if (document) {
-      fetchDocumentDetails(document.id);
-    } else {
-      toast.error("Document not found.");
-      navigate("/applications/console/ValidatorStartPage");
-    }
-  }, [document]);
+  const columns: ColumnDef<Document>[] = [
+    {
+      accessorKey: "title",
+      header: "Document Title",
+    },
+    {
+      accessorKey: "author",
+      header: "Author",
+    },
+    {
+      accessorKey: "status",
+      header: "Status",
+      cell: ({ row }) => {
+        const status = row.getValue("status") as string;
+        return (
+          <Badge variant="secondary" className="capitalize">
+            {status.replace("_", " ")}
+          </Badge>
+        );
+      },
+    },
+    {
+      accessorKey: "validatorReviewedAt",
+      header: "Validator Reviewed At",
+      cell: ({ row }) => {
+        const date = new Date(row.getValue("validatorReviewedAt"));
+        return date.toLocaleDateString();
+      },
+    },
+  ];
 
-  const fetchDocumentDetails = async (docId: string) => {
+  const fetchDocuments = async () => {
     if (
       !authContext ||
       !authContext.user?.user?.id ||
@@ -61,21 +72,22 @@ const ValidatorStartExpertReviewPage: React.FC = () => {
     ) {
       if (!authContext?.isLoadingUser) {
         toast.error("User not authenticated or session has expired.");
+        setLoading(false);
       }
       return;
     }
 
     try {
       setLoading(true);
-      const response = await Api.get(`/api/v1/validator/expertreview/${docId}`);
-      setDocumentData(response.data);
+      const response = await Api.get<FetchDocumentsResponse>(
+        "/api/v1/expert/documents"
+      );
+      setRows(response.data.documents);
     } catch (err: unknown) {
-      console.error("Error fetching document details:", err);
+      console.error("Error fetching documents:", err);
       if (!(err instanceof AxiosError && err.response?.status === 401)) {
         toast.error(
-          err instanceof Error
-            ? err.message
-            : "Failed to fetch document details.",
+          err instanceof Error ? err.message : "Failed to fetch documents."
         );
       }
     } finally {
@@ -83,167 +95,80 @@ const ValidatorStartExpertReviewPage: React.FC = () => {
     }
   };
 
+  const handleStartReview = () => {
+    if (!selectedDocument) {
+      toast.error("Please select a document first.");
+      return;
+    }
+
+    if (selectedDocument.status === "reviewed") {
+      navigate("/applications/console/ExpertPreviousReviewsPage", {
+        state: { document: selectedDocument },
+      });
+    } else {
+      navigate("/applications/console/ExpertDocPage", {
+        state: { document: selectedDocument },
+      });
+    }
+  };
+
+  useEffect(() => {
+    if (authContext && !authContext.isLoadingUser && authContext.isLoggedIn) {
+      fetchDocuments();
+    }
+  }, [authContext]);
+
   return (
     <div className="relative">
       {loading && (
-        <div className="fixed top-0 left-0 w-full h-full bg-white/80 z-[1000] flex justify-center items-center">
+        <div className="fixed top-0 left-0 w-full h-full bg-background/80 z-[1000] flex justify-center items-center backdrop-blur-sm">
           <Loader />
         </div>
       )}
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-start">
-        <DancingBot state="idling" className="w-full max-w-[600px] mx-auto" />
+        <DancingBot state="greeting" className="w-full max-w-[600px] mx-auto" />
 
         <div>
           <div className="mb-6">
-            <h1 className="text-2xl font-bold">Document in Expert Review</h1>
-            {document && (
-              <p className="text-gray-600 mt-2">
-                Document:{" "}
-                <span className="font-semibold">{document.title}</span>
-              </p>
-            )}
+            <h1 className="text-2xl font-bold text-foreground">
+              Expert Review Documents
+            </h1>
+            <p className="text-muted-foreground mt-2">
+              Select a document to perform expert review.
+            </p>
           </div>
 
-          <Card className="bg-[#d3d3d3] p-6 shadow-md space-y-6">
-            {documentData && (
-              <>
-                <div className="flex items-center justify-between">
-                  <h3 className="text-sm font-semibold text-gray-600">
-                    Status
-                  </h3>
-                  <Badge variant="secondary" className="capitalize">
-                    {documentData.status}
-                  </Badge>
-                </div>
-
-                <div>
-                  <h3 className="text-sm font-semibold text-gray-600">Title</h3>
-                  <p className="text-lg">{documentData.title}</p>
-                </div>
-
-                <div>
-                  <h3 className="text-sm font-semibold text-gray-600">
-                    Author
-                  </h3>
-                  <p className="text-lg">{documentData.author}</p>
-                </div>
-
-                <div>
-                  <h3 className="text-sm font-semibold text-gray-600">
-                    Description
-                  </h3>
-                  <p className="text-lg">{documentData.description}</p>
-                </div>
-
-                <div>
-                  <h3 className="text-sm font-semibold text-gray-600">
-                    Content
-                  </h3>
-                  <div className="bg-white p-4 rounded mt-2 max-h-[300px] overflow-y-auto">
-                    <p className="whitespace-pre-wrap">
-                      {documentData.content}
-                    </p>
-                  </div>
-                </div>
-
-                <div className="border-t border-gray-400 pt-4">
-                  <h2 className="text-xl font-bold mb-4">Validator Review</h2>
-
-                  <div className="space-y-4">
-                    <div>
-                      <h3 className="text-sm font-semibold text-gray-600">
-                        Decision
-                      </h3>
-                      <p className="text-lg capitalize">
-                        {documentData.validatorDecision}
-                      </p>
-                    </div>
-
-                    {documentData.validatorComments && (
-                      <div>
-                        <h3 className="text-sm font-semibold text-gray-600">
-                          Comments
-                        </h3>
-                        <p className="text-lg">
-                          {documentData.validatorComments}
-                        </p>
-                      </div>
-                    )}
-
-                    <div>
-                      <h3 className="text-sm font-semibold text-gray-600">
-                        Reviewed By
-                      </h3>
-                      <p className="text-lg">
-                        {documentData.validatorReviewedBy}
-                      </p>
-                    </div>
-                  </div>
-                </div>
-
-                {documentData.expertDecision && (
-                  <div className="border-t border-gray-400 pt-4">
-                    <h2 className="text-xl font-bold mb-4">Expert Review</h2>
-
-                    <div className="space-y-4">
-                      <div>
-                        <h3 className="text-sm font-semibold text-gray-600">
-                          Decision
-                        </h3>
-                        <p className="text-lg capitalize">
-                          {documentData.expertDecision}
-                        </p>
-                      </div>
-
-                      {documentData.expertComments && (
-                        <div>
-                          <h3 className="text-sm font-semibold text-gray-600">
-                            Comments
-                          </h3>
-                          <p className="text-lg">
-                            {documentData.expertComments}
-                          </p>
-                        </div>
-                      )}
-
-                      <div>
-                        <h3 className="text-sm font-semibold text-gray-600">
-                          Reviewed By
-                        </h3>
-                        <p className="text-lg">
-                          {documentData.expertReviewedBy}
-                        </p>
-                      </div>
-
-                      {documentData.expertReviewedAt && (
-                        <div>
-                          <h3 className="text-sm font-semibold text-gray-600">
-                            Reviewed At
-                          </h3>
-                          <p className="text-lg">
-                            {new Date(
-                              documentData.expertReviewedAt,
-                            ).toLocaleString()}
-                          </p>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                )}
-              </>
-            )}
-          </Card>
-
-          <div className="mt-6 flex justify-end">
-            <Button
-              onClick={() =>
-                navigate("/applications/console/ValidatorStartPage")
+          <div className="bg-card text-card-foreground p-6 rounded-lg shadow-md border border-border">
+            <DataTable
+              columns={columns}
+              data={rows}
+              pageSize={5}
+              onRowClick={(params) =>
+                setSelectedDocument(params.row as Document)
               }
-              className="bg-[#e66334] hover:bg-[#FF8234]"
+              getRowClassName={(params) =>
+                params.row.id === selectedDocument?.id ? "bg-primary/20" : ""
+              }
+            />
+          </div>
+
+          <div className="mt-6 flex justify-end gap-4">
+            <Button
+              variant="outline"
+              onClick={() => navigate("/applications/console/ConsoleMainPage")}
               size="lg"
             >
-              Back to Documents
+              Back
+            </Button>
+            <Button
+              onClick={handleStartReview}
+              disabled={!selectedDocument}
+              size="lg"
+            >
+              {selectedDocument?.status === "reviewed"
+                ? "View Review"
+                : "Start Expert Review"}
             </Button>
           </div>
         </div>
@@ -252,4 +177,4 @@ const ValidatorStartExpertReviewPage: React.FC = () => {
   );
 };
 
-export default ValidatorStartExpertReviewPage;
+export default ExpertStartPage;

@@ -7,7 +7,7 @@ import { DancingBot } from "@/components/media/dancing-bot";
 import { TextField } from "@/components/forms/text-field";
 import { Button } from "@/components/ui/button";
 import { Loader } from "@/components/feedback/loader";
-import { Card } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { RadioButtonGroup as RadioGroup } from "@/components/forms/radio-group";
 import Api from "@/services/Instance";
 
@@ -35,7 +35,7 @@ const ExpertDocPage: React.FC = () => {
   const [decision, setDecision] = useState<string>("");
   const [comments, setComments] = useState("");
   const [documentData, setDocumentData] = useState<DocumentDetails | null>(
-    null,
+    null
   );
   const authContext = useAuthContext();
   const navigate = useNavigate();
@@ -79,7 +79,7 @@ const ExpertDocPage: React.FC = () => {
         toast.error(
           err instanceof Error
             ? err.message
-            : "Failed to fetch document details.",
+            : "Failed to fetch document details."
         );
       }
     } finally {
@@ -107,7 +107,7 @@ const ExpertDocPage: React.FC = () => {
       console.error("Error submitting review:", err);
       if (!(err instanceof AxiosError && err.response?.status === 401)) {
         toast.error(
-          err instanceof Error ? err.message : "Failed to submit review.",
+          err instanceof Error ? err.message : "Failed to submit review."
         );
       }
     } finally {
@@ -118,7 +118,7 @@ const ExpertDocPage: React.FC = () => {
   return (
     <div className="relative">
       {loading && (
-        <div className="fixed top-0 left-0 w-full h-full bg-white/80 z-[1000] flex justify-center items-center">
+        <div className="fixed top-0 left-0 w-full h-full bg-background/80 z-[1000] flex justify-center items-center backdrop-blur-sm">
           <Loader />
         </div>
       )}
@@ -128,88 +128,106 @@ const ExpertDocPage: React.FC = () => {
 
         <div>
           <div className="mb-6">
-            <h1 className="text-2xl font-bold">Expert Review</h1>
+            <h1 className="text-2xl font-bold text-foreground">
+              Expert Review
+            </h1>
             {document && (
-              <p className="text-gray-600 mt-2">
+              <p className="text-muted-foreground mt-2">
                 Document:{" "}
-                <span className="font-semibold">{document.title}</span>
+                <span className="font-semibold text-foreground">
+                  {document.title}
+                </span>
               </p>
             )}
           </div>
 
-          <Card className="bg-[#d3d3d3] p-6 shadow-md space-y-6 mb-6">
-            {documentData && (
-              <>
-                <div>
-                  <h3 className="text-sm font-semibold text-gray-600">Title</h3>
-                  <p className="text-lg">{documentData.title}</p>
-                </div>
-
-                <div>
-                  <h3 className="text-sm font-semibold text-gray-600">
-                    Author
-                  </h3>
-                  <p className="text-lg">{documentData.author}</p>
-                </div>
-
-                <div>
-                  <h3 className="text-sm font-semibold text-gray-600">
-                    Description
-                  </h3>
-                  <p className="text-lg">{documentData.description}</p>
-                </div>
-
-                <div>
-                  <h3 className="text-sm font-semibold text-gray-600">
-                    Content
-                  </h3>
-                  <div className="bg-white p-4 rounded mt-2 max-h-[300px] overflow-y-auto">
-                    <p className="whitespace-pre-wrap">
-                      {documentData.content}
+          <Card className="bg-card text-card-foreground shadow-md mb-6">
+            <CardContent className="p-6 space-y-6">
+              {documentData && (
+                <>
+                  <div>
+                    <h3 className="text-sm font-semibold text-muted-foreground">
+                      Title
+                    </h3>
+                    <p className="text-lg text-foreground">
+                      {documentData.title}
                     </p>
                   </div>
-                </div>
 
-                <div className="border-t border-gray-400 pt-4">
-                  <h2 className="text-xl font-bold mb-4">Validator Review</h2>
+                  <div>
+                    <h3 className="text-sm font-semibold text-muted-foreground">
+                      Author
+                    </h3>
+                    <p className="text-lg text-foreground">
+                      {documentData.author}
+                    </p>
+                  </div>
 
-                  <div className="space-y-4">
-                    <div>
-                      <h3 className="text-sm font-semibold text-gray-600">
-                        Decision
-                      </h3>
-                      <p className="text-lg capitalize">
-                        {documentData.validatorDecision}
-                      </p>
-                    </div>
+                  <div>
+                    <h3 className="text-sm font-semibold text-muted-foreground">
+                      Description
+                    </h3>
+                    <p className="text-lg text-foreground">
+                      {documentData.description}
+                    </p>
+                  </div>
 
-                    {documentData.validatorComments && (
-                      <div>
-                        <h3 className="text-sm font-semibold text-gray-600">
-                          Comments
-                        </h3>
-                        <p className="text-lg">
-                          {documentData.validatorComments}
-                        </p>
-                      </div>
-                    )}
-
-                    <div>
-                      <h3 className="text-sm font-semibold text-gray-600">
-                        Reviewed By
-                      </h3>
-                      <p className="text-lg">
-                        {documentData.validatorReviewedBy}
+                  <div>
+                    <h3 className="text-sm font-semibold text-muted-foreground">
+                      Content
+                    </h3>
+                    <div className="bg-muted/20 border border-border p-4 rounded mt-2 max-h-[300px] overflow-y-auto">
+                      <p className="whitespace-pre-wrap text-foreground">
+                        {documentData.content}
                       </p>
                     </div>
                   </div>
-                </div>
-              </>
-            )}
+
+                  <div className="border-t border-border pt-4">
+                    <h2 className="text-xl font-bold mb-4 text-foreground">
+                      Validator Review
+                    </h2>
+
+                    <div className="space-y-4">
+                      <div>
+                        <h3 className="text-sm font-semibold text-muted-foreground">
+                          Decision
+                        </h3>
+                        <p className="text-lg capitalize text-foreground">
+                          {documentData.validatorDecision}
+                        </p>
+                      </div>
+
+                      {documentData.validatorComments && (
+                        <div>
+                          <h3 className="text-sm font-semibold text-muted-foreground">
+                            Comments
+                          </h3>
+                          <p className="text-lg text-foreground">
+                            {documentData.validatorComments}
+                          </p>
+                        </div>
+                      )}
+
+                      <div>
+                        <h3 className="text-sm font-semibold text-muted-foreground">
+                          Reviewed By
+                        </h3>
+                        <p className="text-lg text-foreground">
+                          {documentData.validatorReviewedBy}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                </>
+              )}
+            </CardContent>
           </Card>
 
-          <div className="bg-[#d3d3d3] p-6 rounded-lg shadow-md space-y-6">
-            <h2 className="text-xl font-bold">Your Expert Review</h2>
+          <div className="bg-card text-card-foreground p-6 rounded-lg shadow-md border border-border space-y-6">
+            <h2 className="text-xl font-bold text-foreground">
+              Your Expert Review
+            </h2>
 
             <RadioGroup
               label="Decision"
@@ -236,7 +254,6 @@ const ExpertDocPage: React.FC = () => {
             <Button
               onClick={handleSubmit}
               disabled={loading || !decision}
-              className="bg-[#e66334] hover:bg-[#FF8234]"
               size="lg"
             >
               Submit Expert Review

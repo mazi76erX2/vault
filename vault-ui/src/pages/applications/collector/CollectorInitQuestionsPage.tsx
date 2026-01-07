@@ -1,46 +1,53 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import axios from "axios";
 import { toast } from "sonner";
 import { AxiosError } from "axios";
+import { ArrowRight, Upload, Sparkles } from "lucide-react";
 import type { ColumnDef } from "@tanstack/react-table";
 import { useAuthContext } from "@/hooks/useAuthContext";
 import { DancingBot } from "@/components/media/dancing-bot";
 import { DataTable } from "@/components/data-display/data-table";
-import { Loader } from "@/components/feedback/loader";
 import { Button } from "@/components/ui/button";
+import { Loader } from "@/components/feedback/loader";
 import Api from "@/services/Instance";
 
-interface Session {
-  id: string;
-  projectName: string;
-  createdAt: string;
+interface QuestionRowData {
+  id: number;
+  question: string;
   status: string;
+  topic?: string;
   [key: string]: unknown;
 }
 
-interface FetchSessionsResponse {
-  sessions: Session[];
+interface UploadedQuestionObject {
+  question: string;
 }
 
-const CollectorResumePage: React.FC = () => {
-  const [loading, setLoading] = useState(false);
-  const [rows, setRows] = useState<Session[]>([]);
-  const [selectedSession, setSelectedSession] = useState<Session | null>(null);
+interface GetQuestionsResponse {
+  questions: string[];
+  status: string[];
+  topics?: string[];
+}
+
+interface GenerateQuestionsResponse {
+  questions: string[];
+  status: string[];
+}
+
+const CollectorInitQuestionsPage: React.FC = () => {
+  const [loading, setLoading] = useState(true);
+  const [rows, setRows] = useState<QuestionRowData[]>([]);
+  const [selectedQuestion, setSelectedQuestion] =
+    useState<QuestionRowData | null>(null);
   const authContext = useAuthContext();
   const navigate = useNavigate();
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
 
-  const columns: ColumnDef<Session>[] = [
+  const columns: ColumnDef<QuestionRowData>[] = [
     {
-      accessorKey: "projectName",
-      header: "Project Name",
-    },
-    {
-      accessorKey: "createdAt",
-      header: "Created At",
-      cell: ({ row }) => {
-        const date = new Date(row.getValue("createdAt"));
-        return date.toLocaleDateString();
-      },
+      accessorKey: "question",
+      header: "Question",
     },
     {
       accessorKey: "status",
@@ -48,94 +55,341 @@ const CollectorResumePage: React.FC = () => {
     },
   ];
 
-  const fetchSessions = async () => {
-    if (
-      !authContext ||
-      !authContext.user?.user?.id ||
-      !authContext.isLoggedIn
-    ) {
+  useEffect(() => {
+    if (authContext && !authContext.isLoadingUser && authContext.isLoggedIn) {
+      fetchQuestions();
+    }
+  }, [authContext]);
+
+  const fetchQuestions = async () => {
+    if (!authContext || !authContext.user?.user?.id) {
       if (!authContext?.isLoadingUser) {
         toast.error("User not authenticated or session has expired.");
-        setLoading(false);
       }
+      setLoading(false);
       return;
     }
 
     try {
       setLoading(true);
-      const response = await Api.get<FetchSessionsResponse>(
-        "/api/v1/collector/fetchsessions",
+      const response = await Api.post<GetQuestionsResponse>(
+        "/api/v1/collector/get-questions",
+        { user_id: authContext.user.user.id }
       );
-      setRows(response.data.sessions);
-    } catch (err: unknown) {
-      console.error("Error fetching sessions:", err);
-      if (!(err instanceof AxiosError && err.response?.status === 401)) {
+
+      if (!response.data) {
+        setRows([]);
+        toast.error(`Error: ${response.statusText}`);
+        return;
+      }
+
+      const data = response.data;
+
+      if (!data.questions || data.questions.length === 0) {
+        setRows([]);
         toast.error(
-          err instanceof Error ? err.message : "Failed to fetch sessions.",
+          'No questions found. Click "Generate" to create new questions or "Upload Questions" to import from a file.'
         );
+      } else {
+        const newRows = data.questions
+          .map((q, idx) => {
+            let currentTopic = "N/A";
+            if (data.topics && data.topics[idx] !== undefined) {
+              currentTopic = data.topics[idx];
+            }
+            return {
+              id: idx + 1,
+              question: q,
+              status: data.status[idx],
+              topic: currentTopic,
+            };
+          })
+          .filter((row: QuestionRowData) => row.status === "Not Started");
+
+        setRows(newRows);
+      }
+    } catch (err: unknown) {
+      setRows([]);
+      if (err instanceof AxiosError) {
+        if (err.response?.status === 404) {
+          toast.error(
+            'No questions found. Click "Generate" to create new questions or "Upload Questions" to import from a file.'
+          );
+        } else if (err.response?.status !== 401) {
+          toast.error(err.response?.data?.detail || "An error occurred");
+        }
+      } else if (err instanceof Error) {
+        toast.error(err.message);
+      } else {
+        toast.error("An unexpected error occurred");
       }
     } finally {
       setLoading(false);
     }
   };
 
-  const handleResumeSession = () => {
-    if (!selectedSession) {
-      toast.error("Please select a session first.");
+  const generateQuestions = async () => {
+    if (!authContext || !authContext.user?.user?.id) {
+      if (!authContext?.isLoadingUser) {
+        toast.error("User not authenticated or session has expired.");
+      }
       return;
     }
 
-    navigate("/applications/collector/CollectorChatPage", {
-      state: { session: selectedSession },
-    });
+    try {
+      setLoading(true);
+      const response = await Api.post<GenerateQuestionsResponse>(
+        "/api/v1/collector/generate_questions",
+        { user_id: authContext.user.user.id }
+      );
+
+      if (!response.data.questions) {
+        throw new Error("Invalid response from the server.");
+      }
+
+      const { questions, status: statusList } = response.data;
+
+      const newRows = questions.map((q, idx) => ({
+        id: idx + 1,
+        question: q,
+        status: statusList[idx],
+      }));
+
+      toast.success("Questions generated successfully.");
+      setRows(newRows);
+    } catch (error: unknown) {
+      console.error("Error:", error);
+      if (!(error instanceof AxiosError && error.response?.status === 401)) {
+        toast.error(error instanceof Error ? error.message : String(error));
+      }
+    } finally {
+      setLoading(false);
+    }
   };
 
-  useEffect(() => {
-    if (authContext && !authContext.isLoadingUser && authContext.isLoggedIn) {
-      fetchSessions();
+  const handleUploadButtonClick = () => {
+    if (fileInputRef.current) {
+      fileInputRef.current.click();
     }
-  }, [authContext]);
+  };
+
+  const handleFileChange = async (
+    event: React.ChangeEvent<HTMLInputElement>
+  ) => {
+    if (!authContext || !authContext.user?.user?.id) {
+      if (!authContext?.isLoadingUser) {
+        toast.error("User not authenticated or session has expired.");
+      }
+      return;
+    }
+    try {
+      const file = event.target.files?.[0];
+      if (!file) {
+        return;
+      }
+
+      const reader = new FileReader();
+      reader.onload = async (e) => {
+        try {
+          const text = e.target?.result;
+          if (!text || typeof text !== "string") {
+            throw new Error("Failed to read file contents.");
+          }
+
+          const jsonArray = JSON.parse(text);
+          if (!Array.isArray(jsonArray)) {
+            throw new Error(
+              "JSON must be an array of objects: [ {question: '...'}, ... ]"
+            );
+          }
+
+          const questionStrings = jsonArray.map(
+            (obj: UploadedQuestionObject) => {
+              if (!obj.question)
+                throw new Error("Each object needs a 'question' field.");
+              return obj.question;
+            }
+          );
+
+          if (
+            !authContext ||
+            !authContext.user ||
+            !authContext.user.user ||
+            !authContext.user.user.id
+          ) {
+            toast.error("User not authenticated or user ID is missing.");
+            return;
+          }
+
+          const response = await Api.post("/api/v1/collector/init_questions", {
+            user_id: authContext.user.user.id,
+            questions: questionStrings,
+          });
+
+          if (response.status < 200 || response.status > 299) {
+            throw new Error(response.statusText);
+          }
+
+          await fetchQuestions();
+        } catch (err: unknown) {
+          console.error("Error parsing or upserting JSON:", err);
+          if (!(err instanceof AxiosError && err.response?.status === 401)) {
+            toast.error(err instanceof Error ? err.message : String(err));
+          }
+        }
+      };
+      reader.readAsText(file);
+    } catch (err: unknown) {
+      console.error("Error in handleFileChange:", err);
+      if (!(err instanceof AxiosError && err.response?.status === 401)) {
+        toast.error(err instanceof Error ? err.message : String(err));
+      }
+    }
+  };
+
+  const handleStartChat = async (question: QuestionRowData) => {
+    if (!authContext || !authContext.user || !authContext.user.user?.id) {
+      if (!authContext?.isLoadingUser) {
+        toast.error("User not authenticated or session has expired.");
+      }
+      setLoading(false);
+      return;
+    }
+
+    const currentUserId = authContext.user.user.id;
+
+    try {
+      setLoading(true);
+
+      const payload = {
+        user_id: currentUserId,
+        id: question.id,
+        question: question.question,
+        topic: question.topic || "",
+      };
+
+      const response = await Api.post("/api/v1/collector/start-chat", payload);
+
+      if (!response.data) {
+        throw new Error("Invalid response from backend.");
+      }
+
+      const { sessionId, chatMessageId, resume } = response.data;
+
+      if (!sessionId || !chatMessageId) {
+        throw new Error(
+          "Invalid response from backend. Missing session or chat message ID."
+        );
+      }
+
+      const questionText = question.question;
+
+      navigate("/applications/collector/CollectorChatPage", {
+        state: {
+          question: questionText,
+          sessionId: sessionId,
+          chat_msgId: chatMessageId,
+          isResume: resume,
+        },
+      });
+    } catch (error) {
+      let errorMessage = "Failed to start chat session";
+
+      if (axios.isAxiosError(error)) {
+        errorMessage =
+          error.response?.data?.detail ||
+          error.message ||
+          "Unknown Axios error occurred";
+      } else if (error instanceof Error) {
+        errorMessage = error.message;
+      }
+
+      console.error(errorMessage);
+      if (!(axios.isAxiosError(error) && error.response?.status === 401)) {
+        toast.error(errorMessage);
+      }
+    } finally {
+      setLoading(false);
+    }
+  };
 
   return (
     <div className="relative">
       {loading && (
-        <div className="fixed top-0 left-0 w-full h-full bg-white/80 z-[1000] flex justify-center items-center">
+        <div className="fixed top-0 left-0 w-full h-full bg-background/80 z-[1000] flex justify-center items-center backdrop-blur-sm">
           <Loader />
         </div>
       )}
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-start">
-        <DancingBot state="greeting" className="w-full max-w-[600px] mx-auto" />
+        <DancingBot state="idling" className="w-full max-w-[600px] mx-auto" />
 
         <div>
           <div className="mb-6">
-            <h1 className="text-2xl font-bold">Resume a session</h1>
-            <p className="text-gray-600 mt-2">
-              Select an existing session to continue your interview.
+            <h1 className="text-2xl font-bold text-foreground">Super!</h1>
+            <p className="text-muted-foreground mt-2">
+              Pick a question to start
             </p>
           </div>
 
-          <div className="bg-[#d3d3d3] p-6 rounded-lg shadow-md">
+          <div className="bg-card text-card-foreground p-6 rounded-lg shadow-md border border-border">
             <DataTable
               columns={columns}
               data={rows}
               pageSize={5}
-              onRowClick={(params) => setSelectedSession(params.row as Session)}
+              onRowClick={(params) =>
+                setSelectedQuestion(params.row as QuestionRowData)
+              }
               getRowClassName={(params) =>
-                params.row.id === selectedSession?.id ? "bg-blue-100" : ""
+                params.row.id === selectedQuestion?.id ? "bg-primary/20" : ""
               }
             />
-          </div>
 
-          <div className="mt-6 flex justify-end">
-            <Button
-              onClick={handleResumeSession}
-              disabled={!selectedSession}
-              className="bg-[#e66334] hover:bg-[#FF8234]"
-              size="lg"
-            >
-              Resume Session
-            </Button>
+            {selectedQuestion && (
+              <div className="mt-4 flex justify-end">
+                <Button
+                  onClick={() => handleStartChat(selectedQuestion)}
+                  disabled={loading}
+                  size="lg"
+                  className="gap-2"
+                >
+                  Start Chat
+                  <ArrowRight className="h-5 w-5" />
+                </Button>
+              </div>
+            )}
+
+            <div className="flex justify-center gap-4 mt-6">
+              <Button
+                onClick={generateQuestions}
+                disabled={loading}
+                size="lg"
+                className="gap-2"
+              >
+                <Sparkles className="h-5 w-5" />
+                {loading ? "Generating..." : "Generate"}
+              </Button>
+
+              <input
+                type="file"
+                accept="application/json"
+                ref={fileInputRef}
+                className="hidden"
+                onChange={handleFileChange}
+                aria-label="Upload questions JSON file"
+                title="Upload questions JSON file"
+              />
+
+              <Button
+                onClick={handleUploadButtonClick}
+                variant="outline"
+                size="lg"
+                className="gap-2"
+              >
+                <Upload className="h-5 w-5" />
+                Upload Questions
+              </Button>
+            </div>
           </div>
         </div>
       </div>
@@ -143,4 +397,4 @@ const CollectorResumePage: React.FC = () => {
   );
 };
 
-export default CollectorResumePage;
+export default CollectorInitQuestionsPage;

@@ -1,201 +1,355 @@
-import React, { useEffect, useState } from "react";
-import { useNavigate, useLocation } from "react-router-dom";
+import React, { useEffect, useState, useRef } from "react";
+import { useLocation, useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import { AxiosError } from "axios";
+import { Send, ArrowRight } from "lucide-react";
 import { useAuthContext } from "@/hooks/useAuthContext";
-import { DancingBot } from "@/components/media/dancing-bot";
 import { Button } from "@/components/ui/button";
+import { Textarea } from "@/components/ui/textarea";
 import { Loader } from "@/components/feedback/loader";
-import { Card } from "@/components/ui/card";
 import Api from "@/services/Instance";
+import assistantIcon from "@/assets/assistant-icon.png";
+import { formatColor, hexToRgba } from "@/utils/colorUtils";
+
+interface ChatThemeSettings {
+  userChatBubbleColor: string;
+  botChatBubbleColor: string;
+  sendButtonAndBox: string;
+  font: string;
+  logo: string;
+  botProfilePicture: string;
+  userChatFontColor: string;
+  botChatFontColor: string;
+}
+
+const defaultThemeSettings: ChatThemeSettings = {
+  userChatBubbleColor: "",
+  botChatBubbleColor: "",
+  sendButtonAndBox: "",
+  font: "",
+  logo: "",
+  botProfilePicture: "",
+  userChatFontColor: "",
+  botChatFontColor: "",
+};
+
+interface ChatMessage {
+  id: number;
+  text: string;
+  sender: string;
+}
 
 interface LocationState {
+  question?: string;
   sessionId?: string;
+  chat_msgId?: number;
+  isResume?: boolean;
 }
 
-interface SummaryData {
-  projectName: string;
-  documentTitle: string;
-  documentDescription: string;
-  author: string;
-  documentDate: string;
-  version: string;
-  conversationCount: number;
-  status: string;
-  [key: string]: unknown;
-}
-
-const CollectorSummaryPage: React.FC = () => {
-  const [loading, setLoading] = useState(false);
-  const [summary, setSummary] = useState<SummaryData | null>(null);
-  const authContext = useAuthContext();
+const CollectorChatPage: React.FC = () => {
   const navigate = useNavigate();
   const location = useLocation();
-  const { sessionId } = (location.state as LocationState) || {};
+  const chatContainerRef = useRef<HTMLDivElement>(null);
+  const authContext = useAuthContext();
 
-  const fetchSummary = async () => {
-    if (
-      !authContext ||
-      !authContext.user?.user?.id ||
-      !authContext.isLoggedIn
-    ) {
-      if (!authContext?.isLoadingUser) {
-        toast.error("User not authenticated or session has expired.");
-        setLoading(false);
-      }
-      return;
-    }
+  const {
+    question,
+    sessionId,
+    chat_msgId: chatMsgId,
+    isResume,
+  } = (location.state as LocationState) || {};
 
-    if (!sessionId) {
-      toast.error("Session ID not found.");
-      navigate("/applications/collector/CollectorMainPage");
-      return;
-    }
-
-    try {
-      setLoading(true);
-      const response = await Api.get(`/api/v1/collector/summary/${sessionId}`);
-      setSummary(response.data);
-    } catch (err: unknown) {
-      console.error("Error fetching summary:", err);
-      if (!(err instanceof AxiosError && err.response?.status === 401)) {
-        toast.error(
-          err instanceof Error ? err.message : "Failed to fetch summary.",
-        );
-      }
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleSubmit = async () => {
-    try {
-      setLoading(true);
-      await Api.post("/api/v1/collector/submit", { sessionId });
-      toast.success("Session submitted successfully!");
-      navigate("/applications/collector/CollectorMainPage");
-    } catch (err: unknown) {
-      console.error("Error submitting session:", err);
-      if (!(err instanceof AxiosError && err.response?.status === 401)) {
-        toast.error(
-          err instanceof Error ? err.message : "Failed to submit session.",
-        );
-      }
-    } finally {
-      setLoading(false);
-    }
-  };
+  const [loading, setLoading] = useState(false);
+  const [messages, setMessages] = useState<ChatMessage[]>([
+    {
+      id: 1,
+      text: question ? question : "Welcome! How can I help you today?",
+      sender: "bot",
+    },
+  ]);
+  const [newMessage, setNewMessage] = useState("");
+  const [themeSettings, setThemeSettings] =
+    useState<ChatThemeSettings>(defaultThemeSettings);
 
   useEffect(() => {
-    if (authContext && !authContext.isLoadingUser && authContext.isLoggedIn) {
-      fetchSummary();
+    if (chatContainerRef.current) {
+      chatContainerRef.current.scrollTop =
+        chatContainerRef.current.scrollHeight;
     }
-  }, [authContext]);
+  }, [messages]);
+
+  useEffect(() => {
+    async function loadThemeSettings() {
+      try {
+        if (!authContext?.user?.user?.id) {
+          return;
+        }
+        const userId = authContext.user.user.id;
+        const response = await Api.post(
+          "/api/v1/companies/get_theme_settings",
+          {
+            user_id: userId,
+          }
+        );
+        if (response.data?.status === "success") {
+          const settings = response.data.theme_settings;
+          setThemeSettings({
+            userChatBubbleColor:
+              formatColor(settings.userChatBubbleColor) || "",
+            botChatBubbleColor: formatColor(settings.botChatBubbleColor) || "",
+            sendButtonAndBox: formatColor(settings.sendButtonAndBox) || "",
+            font: settings.font ?? "",
+            logo: settings.logo ?? "",
+            botProfilePicture: settings.botProfilePicture || "",
+            userChatFontColor: formatColor(settings.userChatFontColor) || "",
+            botChatFontColor: formatColor(settings.botChatFontColor) || "",
+          });
+        }
+      } catch (err) {
+        console.error("Error loading theme settings:", err);
+        if (!(err instanceof AxiosError && err.response?.status === 401)) {
+          toast.error("Failed to load theme settings.");
+        }
+      }
+    }
+    if (authContext?.user?.user?.id) loadThemeSettings();
+  }, [authContext?.user]);
+
+  useEffect(() => {
+    (async () => {
+      try {
+        if (!authContext?.user) {
+          return;
+        }
+
+        if (!sessionId || !isResume) {
+          return;
+        }
+
+        const response = await Api.post(
+          "/api/v1/collector/fetch_chat_conversation",
+          { session_id: sessionId }
+        );
+
+        const rawData = response.data;
+        const fetchedMessages = rawData.messages;
+
+        if (!fetchedMessages) {
+          return;
+        }
+
+        interface ApiChatMessage {
+          role: string;
+          content: string;
+        }
+
+        const formattedMessages = fetchedMessages
+          .filter((m: ApiChatMessage) => m.role !== "system")
+          .map((m: ApiChatMessage, index: number) => ({
+            id: Date.now() + index,
+            text: m.content,
+            sender: m.role === "assistant" ? "bot" : m.role,
+          }));
+
+        setMessages(formattedMessages);
+      } catch (err: unknown) {
+        const message = err instanceof Error ? err.message : String(err);
+        if (!(err instanceof AxiosError && err.response?.status === 401)) {
+          toast.error(message);
+        }
+      }
+    })();
+  }, [isResume, sessionId, authContext?.user]);
+
+  const generateFollowUpQuestions = async (userAnswer: string) => {
+    try {
+      if (!authContext?.user) {
+        toast.error("User not logged in");
+        return;
+      }
+
+      const response = await Api.post(
+        "/api/v1/collector/generate_question_response",
+        {
+          chat_prompt_id: chatMsgId,
+          user_text: userAnswer,
+        }
+      );
+
+      if (!response.data || !response.data.follow_up_question) {
+        toast.error("Invalid response from the server.");
+        return;
+      }
+
+      const followUpQuestion = response.data.follow_up_question;
+      setMessages((prevMessages) => [
+        ...prevMessages,
+        { id: Date.now() + 1, text: followUpQuestion, sender: "bot" },
+      ]);
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : String(error);
+      if (!(error instanceof AxiosError && error.response?.status === 401)) {
+        toast.error(message);
+      }
+    }
+  };
+
+  const handleSendMessage = async () => {
+    try {
+      if (newMessage.trim() !== "") {
+        const message = {
+          id: Date.now(),
+          text: newMessage,
+          sender: "user",
+        };
+        setLoading(true);
+        setMessages([...messages, message]);
+        setNewMessage("");
+        await generateFollowUpQuestions(message.text);
+      }
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : String(error);
+      if (!(error instanceof AxiosError && error.response?.status === 401)) {
+        toast.error(message);
+      }
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleContinue = async () => {
+    try {
+      setLoading(true);
+      if (!authContext?.user) {
+        toast.error("User not logged in");
+        setLoading(false);
+        return;
+      }
+
+      const response = await Api.post("/api/v1/collector/generate_summary", {
+        chat_prompt_id: chatMsgId,
+      });
+
+      if (!response.data || !response.data.chat_summary) {
+        toast.error("Error generating text.");
+        setLoading(false);
+        return;
+      }
+
+      const generatedSummary = response.data.chat_summary;
+      navigate("/applications/collector/CollectorSummaryPage", {
+        state: { generatedSummary, sessionId, isResume },
+      });
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : String(error);
+      if (!(error instanceof AxiosError && error.response?.status === 401)) {
+        toast.error(message);
+      }
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    if (e.key === "Enter" && !e.shiftKey) {
+      e.preventDefault();
+      handleSendMessage();
+    }
+  };
+
+  if (!authContext) {
+    return <Loader />;
+  }
+
+  const botIconSrc = themeSettings.botProfilePicture
+    ? themeSettings.botProfilePicture
+    : assistantIcon;
 
   return (
-    <div className="relative">
+    <div className="flex flex-col w-full h-[calc(100vh-200px)] min-h-[500px] bg-background rounded-lg border border-border">
       {loading && (
-        <div className="fixed top-0 left-0 w-full h-full bg-white/80 z-[1000] flex justify-center items-center">
+        <div className="fixed top-0 left-0 w-full h-full bg-background/80 z-[1000] flex justify-center items-center backdrop-blur-sm">
           <Loader />
         </div>
       )}
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-start">
-        <DancingBot state="greeting" className="w-full max-w-[600px] mx-auto" />
-
-        <div>
-          <div className="mb-6">
-            <h1 className="text-2xl font-bold">Session Summary</h1>
-            <p className="text-gray-600 mt-2">
-              Review your session details before submitting.
-            </p>
-          </div>
-
-          <Card className="bg-[#d3d3d3] p-6 shadow-md space-y-4">
-            {summary && (
-              <>
-                <div>
-                  <h3 className="text-sm font-semibold text-gray-600">
-                    Project
-                  </h3>
-                  <p className="text-lg">{summary.projectName}</p>
-                </div>
-
-                <div>
-                  <h3 className="text-sm font-semibold text-gray-600">
-                    Document Title
-                  </h3>
-                  <p className="text-lg">{summary.documentTitle}</p>
-                </div>
-
-                <div>
-                  <h3 className="text-sm font-semibold text-gray-600">
-                    Description
-                  </h3>
-                  <p className="text-lg">{summary.documentDescription}</p>
-                </div>
-
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <h3 className="text-sm font-semibold text-gray-600">
-                      Author
-                    </h3>
-                    <p className="text-lg">{summary.author}</p>
-                  </div>
-
-                  <div>
-                    <h3 className="text-sm font-semibold text-gray-600">
-                      Version
-                    </h3>
-                    <p className="text-lg">{summary.version}</p>
-                  </div>
-                </div>
-
-                <div>
-                  <h3 className="text-sm font-semibold text-gray-600">
-                    Document Date
-                  </h3>
-                  <p className="text-lg">
-                    {new Date(summary.documentDate).toLocaleDateString()}
-                  </p>
-                </div>
-
-                <div>
-                  <h3 className="text-sm font-semibold text-gray-600">
-                    Conversations
-                  </h3>
-                  <p className="text-lg">
-                    {summary.conversationCount} messages
-                  </p>
-                </div>
-
-                <div>
-                  <h3 className="text-sm font-semibold text-gray-600">
-                    Status
-                  </h3>
-                  <p className="text-lg capitalize">{summary.status}</p>
-                </div>
-              </>
-            )}
-          </Card>
-
-          <div className="mt-6 flex justify-end gap-4">
-            <Button variant="outline" onClick={() => navigate(-1)} size="lg">
-              Back
-            </Button>
-            <Button
-              onClick={handleSubmit}
-              disabled={loading}
-              className="bg-[#e66334] hover:bg-[#FF8234]"
-              size="lg"
+      <div
+        ref={chatContainerRef}
+        className="flex-1 overflow-y-auto flex flex-col gap-3 p-5 scrollbar-thin"
+      >
+        {messages.map((message) =>
+          message.sender === "bot" ? (
+            <div
+              key={message.id}
+              className="self-start p-3 rounded-lg max-w-[70%] flex items-start gap-3 bg-card text-card-foreground border border-border"
+              style={{
+                backgroundColor: themeSettings.botChatBubbleColor || undefined,
+                color: themeSettings.botChatFontColor || undefined,
+                fontFamily: themeSettings.font || undefined,
+              }}
             >
-              Submit Session
-            </Button>
-          </div>
+              <img
+                src={botIconSrc}
+                alt="AI"
+                className="w-8 h-8 rounded-full flex-shrink-0"
+              />
+              <span className="whitespace-pre-wrap">{message.text}</span>
+            </div>
+          ) : (
+            <div
+              key={message.id}
+              className="self-end p-3 rounded-lg max-w-[70%] bg-primary text-primary-foreground"
+              style={{
+                backgroundColor: themeSettings.userChatBubbleColor || undefined,
+                color: themeSettings.userChatFontColor || undefined,
+                fontFamily: themeSettings.font || undefined,
+              }}
+            >
+              <span className="whitespace-pre-wrap">{message.text}</span>
+            </div>
+          )
+        )}
+      </div>
+
+      <div className="p-4 border-t border-border bg-card">
+        <div className="flex gap-3 items-end">
+          <Textarea
+            value={newMessage}
+            onChange={(e) => setNewMessage(e.target.value)}
+            onKeyDown={handleKeyDown}
+            placeholder="Type your message here..."
+            className="flex-1 min-h-[50px] max-h-[150px] resize-none bg-input text-foreground border-border"
+            style={{
+              fontFamily: themeSettings.font || undefined,
+            }}
+          />
+          <Button
+            onClick={handleSendMessage}
+            disabled={newMessage.trim() === "" || loading}
+            size="icon"
+            className="h-[50px] w-[50px] flex-shrink-0"
+            style={{
+              backgroundColor: themeSettings.sendButtonAndBox || undefined,
+            }}
+          >
+            <Send className="h-5 w-5" />
+          </Button>
         </div>
+      </div>
+
+      <div className="flex justify-center gap-4 p-4 border-t border-border bg-card">
+        <Button
+          onClick={handleContinue}
+          disabled={loading || messages.length <= 1}
+          size="lg"
+          className="gap-2"
+        >
+          {loading ? "Summarizing..." : "Finish Chat & Summarize"}
+          <ArrowRight className="h-5 w-5" />
+        </Button>
       </div>
     </div>
   );
 };
 
-export default CollectorSummaryPage;
+export default CollectorChatPage;
