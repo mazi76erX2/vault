@@ -56,7 +56,7 @@ class CurrentUser(BaseModel):
     company_reg_no: str | None = None
 
 class LoginResponse(TokenResponse):
-    current_user: CurrentUser
+    user: CurrentUser
 
 class UserResponse(BaseModel):
     """User response with profile"""

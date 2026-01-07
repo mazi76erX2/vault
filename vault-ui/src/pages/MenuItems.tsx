@@ -32,13 +32,25 @@ export const MenuListItems: React.FC<MenuListItemsProps> = ({ open }) => {
 
   if (!authContext) return null;
 
-  const userRoles = authContext.user?.user?.roles || [];
-  const roles = Array.isArray(userRoles) ? userRoles : [];
+  const { user: loginResponse, userRoles: contextRoles } = authContext;
 
-  const isAdmin = roles.includes("Administrator");
-  const isCollector = roles.includes("Collector");
-  const isHelper = isAdmin || roles.includes("Helper");
-  const isValidator = isAdmin || roles.includes("Validator");
+  let userRoles: string[] = [];
+
+  if (Array.isArray(contextRoles) && contextRoles.length > 0) {
+    userRoles = contextRoles;
+  } else if (
+    loginResponse?.user?.roles &&
+    Array.isArray(loginResponse.user.roles)
+  ) {
+    userRoles = loginResponse.user.roles;
+  } else if (loginResponse?.roles && Array.isArray(loginResponse.roles)) {
+    userRoles = loginResponse.roles;
+  }
+
+  const isAdmin = userRoles.includes("Administrator");
+  const isCollector = userRoles.includes("Collector");
+  const isHelper = isAdmin || userRoles.includes("Helper");
+  const isValidator = isAdmin || userRoles.includes("Validator");
 
   const menuItems: MenuItem[] = [
     {
@@ -133,7 +145,6 @@ const MenuListItem: React.FC<MenuListItemProps> = ({
   activeIndex: _initActiveIndex,
   parent,
 }) => {
-  // ✅ ALL HOOKS MOVED TO TOP (before any conditions)
   const { pathname } = useLocation();
   const [activeIndex, setActiveIndex] = React.useState<string | undefined>(
     pathname
@@ -161,7 +172,6 @@ const MenuListItem: React.FC<MenuListItemProps> = ({
     }
   }, [pathname, isActive, activeIndex, item.subMenu]);
 
-  // NOW the early return (after all hooks)
   if (item.shouldHide) {
     return null;
   }
@@ -188,14 +198,11 @@ const MenuListItem: React.FC<MenuListItemProps> = ({
         onClick={handleClick}
         className={cn(
           "w-full flex items-center gap-3 h-10 transition-all duration-200",
-          "hover:bg-gray-100 dark:hover:bg-gray-800",
+          "hover:bg-muted/50",
           showText ? "px-6" : subItem ? "px-8" : "px-6",
-          isActive &&
-            !subItem &&
-            "border-l-2 border-primary bg-gray-900 text-white",
-          isActive && subItem && "text-primary font-medium bg-gray-50",
-          !isActive && "border-l-2 border-transparent bg-white text-gray-900",
-          !isActive && "dark:bg-gray-900 dark:text-gray-100"
+          isActive && !subItem && "bg-primary text-primary-foreground",
+          isActive && subItem && "text-primary font-medium bg-muted",
+          !isActive && "text-foreground bg-transparent"
         )}
         title={item.title}
       >
@@ -203,7 +210,7 @@ const MenuListItem: React.FC<MenuListItemProps> = ({
           <span
             className={cn(
               "min-w-[20px] flex items-center justify-center",
-              isActive ? "text-white" : "text-gray-900 dark:text-gray-100"
+              "currentColor"
             )}
           >
             {item.icon}
@@ -235,7 +242,7 @@ const MenuListItem: React.FC<MenuListItemProps> = ({
       {item.subMenu && (
         <div
           className={cn(
-            "overflow-hidden transition-all duration-300 ease-in-out",
+            "overflow-hidden transition-all duration-300 ease-in-out bg-black/5 dark:bg-white/5",
             isExpanded ? "max-h-96 opacity-100" : "max-h-0 opacity-0"
           )}
         >
