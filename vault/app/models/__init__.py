@@ -13,6 +13,7 @@ from app.models.role import Role, UserRole
 from app.models.session import Question, Session
 from app.models.user import User
 from app.models.user_type import UserType
+from app.models.project import Project
 
 __all__ = [
     "Base",
@@ -29,4 +30,5 @@ __all__ = [
     "ChatMessage",
     "ChatMessageCollector",
     "UserType",
+    "Project"
 ]

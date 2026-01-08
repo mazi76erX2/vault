@@ -35,6 +35,8 @@ from .user import (CompanyDetails, DeleteUserResponse, GetUserCompanyResponse,
                    UserCompanyRequest, UserInfo, UserProfileRequest,
                    UserProfileResponse)
 
+from .project import ProjectBase, ProjectCreate, ProjectResponse, ProjectUpdate
+
 __all__ = [
     # Auth schemas
     "CheckFirstLoginModel",
@@ -93,4 +95,9 @@ __all__ = [
     "UserInfo",
     "UserProfileRequest",
     "UserProfileResponse",
+    # Project schemas
+    "ProjectBase",
+    "ProjectCreate",
+    "ProjectResponse", 
+    "ProjectUpdate",
 ]

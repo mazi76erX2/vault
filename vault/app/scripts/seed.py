@@ -1,15 +1,20 @@
 import argparse
 import asyncio
+import uuid
 from datetime import date
+
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
 from sqlalchemy.orm import sessionmaker
 
+
 from app.config import settings
 from app.models.company import Company
 from app.models.user_type import UserType
 from app.models.role import Role
+from app.models.project import Project
+from app.models import Profile
 
 
 def async_db_url(url: str) -> str:
@@ -37,6 +42,7 @@ DEFAULT_ROLES = [
         "Access to the expert option on the dashboard",
     ),
 ]
+
 
 DEFAULT_USERTYPES = [
     (1, "Administrator", "System administrator with full access"),
@@ -90,11 +96,61 @@ async def seed(company_reg_no: str) -> None:
                 role.description = description
 
         await db.commit()
-        print(f"Seed complete for company_reg_no={company_reg_no}")
+
+        # 4) Default Project
+        await seed_default_project(db, company)
+
+        print(f"✅ Seed complete for company_reg_no={company_reg_no}")
+
+
+async def seed_default_project(db: AsyncSession, company: Company) -> None:
+    """Seed default project for the company."""
+    
+    # Get first profile for this company to use as manager
+    profile_res = await db.execute(
+        select(Profile)
+        .where(Profile.company_id == company.id)
+        .limit(1)
+    )
+    profile = profile_res.scalar_one_or_none()
+    
+    if not profile:
+        print("⚠️  No profiles found for company. Skipping default project creation.")
+        print("   Create a user account first, then run seed again to create the project.")
+        return
+    
+    # Check if default project already exists
+    project_res = await db.execute(
+        select(Project).where(
+            Project.name == "General Knowledge Base",
+            Project.company_id == company.id
+        )
+    )
+    existing_project = project_res.scalar_one_or_none()
+    
+    if existing_project:
+        print(f"✅ Default project already exists: {existing_project.name}")
+        return
+    
+    # Create default project
+    default_project = Project(
+        id=uuid.UUID("a1b2c3d4-e5f6-4a5b-8c9d-0e1f2a3b4c5d"),
+        name="General Knowledge Base",
+        description="Default project for general knowledge collection",
+        manager_id=profile.id,
+        company_id=company.id,
+        company_regno=company.company_reg_no,
+        status="active",
+    )
+    
+    db.add(default_project)
+    await db.commit()
+    
+    print(f"✅ Created default project: {default_project.name} (ID: {default_project.id})")
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser(description="Seed Vault reference data (companies, usertypes, roles)")
+    parser = argparse.ArgumentParser(description="Seed Vault reference data (companies, usertypes, roles, projects)")
     parser.add_argument("--company-reg-no", dest="company_reg_no", default="A001")
     args = parser.parse_args()
     asyncio.run(seed(args.company_reg_no))

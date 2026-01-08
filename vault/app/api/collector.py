@@ -12,7 +12,7 @@ from pathlib import Path
 from typing import Any
 
 from fastapi import APIRouter, Depends, File, HTTPException, UploadFile, status
-from sqlalchemy import select, update
+from sqlalchemy import select, update, and_
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.database import get_async_db
@@ -28,6 +28,9 @@ from app.services.collector_llm import (generate_follow_up_question,
                                         generate_summary, generate_tags,
                                         generate_topic_from_question)
 from app.services.file_extract import extract_text
+from app.models.project import Project
+from app.schemas.project import ProjectCreate, ProjectUpdate, ProjectResponse
+from app.services.auth_service import get_current_user
 
 router = APIRouter(prefix="/api/v1/collector", tags=["collector"])
 logger = logging.getLogger(__name__)
@@ -822,3 +825,199 @@ async def update_session_and_document(
         await db.rollback()
         logger.error(f"Error updating document: {e}")
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e)) from e
+
+
+@router.get("/fetchprojects", response_model=dict)
+async def fetch_projects(
+    db: AsyncSession = Depends(get_async_db),
+    current_user: dict = Depends(get_current_user),
+):
+    """
+    Fetch all projects accessible to the current user.
+    Returns projects from the user's company.
+    """
+    try:
+        user_company_regno = current_user.get("profile", {}).get("companyregno")
+        user_company_id = current_user.get("profile", {}).get("companyid")
+        
+        if not user_company_regno and not user_company_id:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="User company information not found"
+            )
+        
+        query = select(Project).where(
+            and_(
+                Project.status == "active",
+                Project.company_regno == user_company_regno if user_company_regno else Project.company_id == user_company_id
+            )
+        ).order_by(Project.created_at.desc())
+        
+        result = await db.execute(query)
+        projects = result.scalars().all()
+        
+        projects_data = [
+            {
+                "id": str(project.id),
+                "name": project.name,
+                "description": project.description or "",
+                "status": project.status,
+                "managerId": str(project.manager_id),
+                "companyId": project.company_id,
+                "createdAt": project.created_at.isoformat() if project.created_at else None,
+            }
+            for project in projects
+        ]
+        
+        return {"projects": projects_data}
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Error fetching projects: {str(e)}"
+        )
+
+
+@router.post("/projects", response_model=ProjectResponse, status_code=status.HTTP_201_CREATED)
+async def create_project(
+    project_data: ProjectCreate,
+    db: AsyncSession = Depends(get_async_db),
+    current_user: dict = Depends(get_current_user),
+):
+    """Create a new project."""
+    try:
+        profile = current_user.get("profile", {})
+        user_id = profile.get("id")
+        company_id = profile.get("companyid")
+        company_regno = profile.get("companyregno")
+        
+        if not user_id or not company_id:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="User profile incomplete"
+            )
+        
+        new_project = Project(
+            name=project_data.name,
+            description=project_data.description,
+            manager_id=project_data.manager_id or user_id,
+            company_id=project_data.company_id or company_id,
+            company_regno=company_regno,
+            status=project_data.status or "active",
+        )
+        
+        db.add(new_project)
+        await db.commit()
+        await db.refresh(new_project)
+        
+        return ProjectResponse.from_orm(new_project)
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        await db.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Error creating project: {str(e)}"
+        )
+
+
+@router.get("/projects/{project_id}", response_model=ProjectResponse)
+async def get_project(
+    project_id: str,
+    db: AsyncSession = Depends(get_async_db),
+    current_user: dict = Depends(get_current_user),
+):
+    """Get a specific project by ID."""
+    try:
+        result = await db.execute(select(Project).where(Project.id == project_id))
+        project = result.scalar_one_or_none()
+        
+        if not project:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=f"Project {project_id} not found"
+            )
+        
+        return ProjectResponse.from_orm(project)
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Error fetching project: {str(e)}"
+        )
+
+
+@router.put("/projects/{project_id}", response_model=ProjectResponse)
+async def update_project(
+    project_id: str,
+    project_data: ProjectUpdate,
+    db: AsyncSession = Depends(get_async_db),
+    current_user: dict = Depends(get_current_user),
+):
+    """Update a project."""
+    try:
+        result = await db.execute(select(Project).where(Project.id == project_id))
+        project = result.scalar_one_or_none()
+        
+        if not project:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=f"Project {project_id} not found"
+            )
+        
+        update_data = project_data.dict(exclude_unset=True)
+        for field, value in update_data.items():
+            setattr(project, field, value)
+        
+        project.updated_at = datetime.utcnow()
+        await db.commit()
+        await db.refresh(project)
+        
+        return ProjectResponse.from_orm(project)
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        await db.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Error updating project: {str(e)}"
+        )
+
+
+@router.delete("/projects/{project_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_project(
+    project_id: str,
+    db: AsyncSession = Depends(get_async_db),
+    current_user: dict = Depends(get_current_user),
+):
+    """Delete (archive) a project."""
+    try:
+        result = await db.execute(select(Project).where(Project.id == project_id))
+        project = result.scalar_one_or_none()
+        
+        if not project:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=f"Project {project_id} not found"
+            )
+        
+        project.status = "archived"
+        project.updated_at = datetime.utcnow()
+        await db.commit()
+        
+        return None
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        await db.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Error deleting project: {str(e)}"
+        )
