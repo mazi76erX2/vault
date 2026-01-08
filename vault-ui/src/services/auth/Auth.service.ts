@@ -1,27 +1,22 @@
-import { AxiosError } from "axios";
+// vault-ui/src/services/auth/Auth.service.ts
+import axios, { AxiosError } from "axios";
 import {
   LoginRequestDTO,
   LoginResponseDTO,
 } from "../../types/LoginResponseDTO";
 import Api from "../Instance";
 
-const USER_KEY = "currentUser";
-
-// Determine the correct API path - check your backend main.py for how the router is mounted
-// Common patterns:
-// - app.include_router(auth_router, prefix="/api/auth") -> use "/api/auth"
-// - app.include_router(auth_router, prefix="/api/v1/auth") -> use "/api/v1/auth"
-const AUTH_API_PREFIX = "/api/v1/auth"; // Change this if your backend uses different prefix
+const USERKEY = "currentUser";
+const AUTHAPIPREFIX = "/api/auth"; // Matches backend router prefix
 
 export const getCurrentUser = (): LoginResponseDTO | null => {
-  const userStr = localStorage.getItem(USER_KEY);
+  const userStr = localStorage.getItem(USERKEY);
   if (userStr) {
     try {
       return JSON.parse(userStr) as LoginResponseDTO;
     } catch (error) {
-      console.error("Error parsing user data from localStorage:", error);
-      localStorage.removeItem(USER_KEY);
-      return null;
+      console.error("Error parsing user data from localStorage", error);
+      localStorage.removeItem(USERKEY);
     }
   }
   return null;
@@ -29,87 +24,96 @@ export const getCurrentUser = (): LoginResponseDTO | null => {
 
 export const setCurrentUser = (user: LoginResponseDTO): void => {
   try {
-    localStorage.setItem(USER_KEY, JSON.stringify(user));
+    localStorage.setItem(USERKEY, JSON.stringify(user));
   } catch (error) {
-    console.error("Error saving user data to localStorage:", error);
+    console.error("Error saving user data to localStorage", error);
   }
 };
 
 export const removeCurrentUser = (): void => {
-  localStorage.removeItem(USER_KEY);
+  localStorage.removeItem(USERKEY);
 };
 
-// Helper to get access token from stored user
 export const getAccessToken = (): string | null => {
   const user = getCurrentUser();
-  return user?.access_token || null;
+  return user?.accesstoken ?? null;
 };
 
-// Helper to get refresh token from stored user
 export const getRefreshToken = (): string | null => {
   const user = getCurrentUser();
-  return user?.refresh_token || null;
+  return user?.refreshtoken ?? null;
 };
 
 export const login = async (
   loginData: LoginRequestDTO
 ): Promise<LoginResponseDTO> => {
   try {
-    console.log(
-      "[Auth.service] Attempting login to:",
-      `${AUTH_API_PREFIX}/login`
-    );
+    console.log("Auth.service: Attempting login to:", `${AUTHAPIPREFIX}/login`);
+    console.log("Auth.service: Payload:", loginData);
+
     const response = await Api.post<LoginResponseDTO>(
-      `${AUTH_API_PREFIX}/login`,
+      `${AUTHAPIPREFIX}/login`,
       loginData
     );
-
-    console.log("[Auth.service] Login response:", response.data);
+    console.log("Auth.service: Login response:", response.data);
 
     if (response.data) {
       setCurrentUser(response.data);
       return response.data;
     }
+
     throw new Error("Login failed: No data received");
   } catch (error) {
     console.error("Login error:", error);
-    if (error instanceof AxiosError && error.response) {
+
+    if (error instanceof AxiosError) {
       const message =
-        error.response.data?.detail ||
-        error.response.data?.message ||
-        error.message;
-      throw new Error(message || "Login failed due to a server error.");
-    } else if (error instanceof Error) {
-      throw new Error(
-        error.message || "Login failed due to an unexpected error."
-      );
+        error.response?.data?.detail ||
+        error.response?.data?.message ||
+        error.message ||
+        "Login failed due to a server error";
+      throw new Error(message);
     }
-    throw new Error("Login failed due to an unexpected error.");
+
+    throw new Error("Login failed due to an unexpected error");
   }
 };
 
+// FIXED: Empty POST body for logout
 export const logout = async (): Promise<void> => {
   try {
-    await Api.post(`${AUTH_API_PREFIX}/logout`);
+    console.log("Auth.service: Calling logout API:", `${AUTHAPIPREFIX}/logout`);
+    // Empty body - backend expects no payload
+    await Api.post(
+      `${AUTHAPIPREFIX}/logout`,
+      {},
+      {
+        headers: {
+          "Content-Type": "application/json",
+        },
+      }
+    );
+    console.log("Auth.service: Logout API success");
   } catch (error) {
-    console.error("Logout API call failed:", error);
+    console.error("Auth.service: Logout API failed:", error);
+    // Don't throw - cleanup anyway
   } finally {
+    // Always clear localStorage + redirect
     removeCurrentUser();
+    console.log("Auth.service: localStorage cleared");
   }
 };
 
 export const refreshTokens = async (): Promise<LoginResponseDTO | null> => {
   try {
     const currentRefreshToken = getRefreshToken();
-    if (!currentRefreshToken) {
-      return null;
-    }
+    if (!currentRefreshToken) return null;
 
-    // Your backend expects refresh_token as a query param based on the endpoint definition
     const response = await Api.post<LoginResponseDTO>(
-      `${AUTH_API_PREFIX}/refresh`,
-      null,
-      { params: { refresh_token: currentRefreshToken } }
+      `${AUTHAPIPREFIX}/refresh`,
+      {
+        refreshtoken: currentRefreshToken,
+      }
     );
 
     if (response.data) {
@@ -118,7 +122,7 @@ export const refreshTokens = async (): Promise<LoginResponseDTO | null> => {
     }
     return null;
   } catch (error) {
-    console.error("Token refresh failed:", error);
+    console.error("Token refresh failed", error);
     return null;
   }
 };

@@ -6,11 +6,11 @@ import axios, {
 } from "axios";
 import { toast } from "sonner"; // Your existing toast system
 import { getCurrentUser, setCurrentUser } from "./auth/Auth.service";
-import { VAULTAPIURL } from "../config";
+import { VAULT_API_URL } from "../config";
 import { LoginResponseDTO } from "../types/LoginResponseDTO";
 
 const Api: AxiosInstance = axios.create({
-  baseURL: VAULTAPIURL,
+  baseURL: VAULT_API_URL,
 });
 
 // Prevent multiple concurrent refresh attempts

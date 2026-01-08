@@ -1,151 +1,134 @@
-import React, { useCallback, useEffect, useState } from "react";
+// vault-ui/src/pages/login/LoginPage.tsx
+import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
+import { Lock, Mail } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { TextField } from "@/components/forms/text-field";
-import { Loader } from "@/components/feedback/loader";
-import { useAuthContext } from "@/hooks/useAuthContext";
-import { setCurrentUser } from "@/services/auth/Auth.service";
-import instance from "@/services/Instance";
+import { Input } from "@/components/ui/input";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { Label } from "@/components/ui/label";
+import { login } from "@/services/auth/Auth.service";
+import { LoginRequestDTO } from "@/types/LoginResponseDTO";
 
 const LoginPage: React.FC = () => {
-  const navigate = useNavigate();
-  const authContext = useAuthContext();
-
-  const [loading, setLoading] = useState(false);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [loading, setLoading] = useState(false);
+  const navigate = useNavigate();
 
-  const onLogin = useCallback(
-    async (emailParam: string, passwordParam: string) => {
-      setLoading(true);
-      try {
-        const response = await instance.post("/api/auth/login", {
-          email: emailParam,
-          password: passwordParam,
-        });
-
-        const accessToken =
-          response.data?.access_token ??
-          response.data?.accesstoken ??
-          response.data?.token;
-
-        const refreshToken =
-          response.data?.refresh_token ??
-          response.data?.refreshtoken ??
-          response.data?.refreshToken;
-
-        if (!accessToken) {
-          console.error("Login response data:", response.data);
-          toast.error("Login failed: missing access token.");
-          return;
-        }
-
-        setCurrentUser({
-          token: accessToken,
-          refreshToken: refreshToken ?? null,
-          user: response.data?.user ?? null,
-        });
-
-        await authContext?.login({
-          token: accessToken,
-          refreshToken: refreshToken ?? null,
-          user: response.data?.user ?? null,
-        });
-
-        toast.success("Login successful!");
-        navigate("/dashboard");
-      } catch (error) {
-        console.error("Login failed:", error);
-        toast.error("Login failed. Please check your credentials.");
-      } finally {
-        setLoading(false);
-      }
-    },
-    [authContext, navigate]
-  );
-
-  useEffect(() => {
-    const stored = localStorage.getItem("currentUser");
-    if (stored) navigate("/dashboard");
-  }, [navigate]);
-
-  useEffect(() => {
-    const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.key === "Enter") onLogin(email, password);
-    };
-    window.addEventListener("keydown", handleKeyDown);
-    return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [email, password, onLogin]);
-
-  if (!authContext) return <div>Loading...</div>;
-  if (loading) return <Loader />;
-
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    onLogin(email, password);
+
+    if (!email || !password) {
+      toast.error("Please enter both email and password");
+      return;
+    }
+
+    try {
+      setLoading(true);
+
+      // FIXED: Send CORRECT payload: {email, password}
+      const loginData: LoginRequestDTO = {
+        email: email.trim(),
+        password: password,
+      };
+
+      console.log("LoginPage: Sending payload:", loginData); // Debug
+
+      await login(loginData);
+
+      toast.success("Login successful!");
+      navigate("/dashboard", { replace: true });
+    } catch (error: any) {
+      console.error("LoginPage: Login error:", error);
+      const errorMessage =
+        error.message || "Login failed. Please check your credentials.";
+      toast.error(errorMessage);
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-background">
-      <div className="w-full max-w-md space-y-8 rounded-lg bg-card text-card-foreground p-8 shadow-lg border border-border">
-        <div className="text-center">
-          <h2 className="text-3xl font-bold text-foreground">Sign In</h2>
-          <p className="mt-2 text-muted-foreground">
-            Welcome back! Please sign in to continue.
-          </p>
-        </div>
-
-        <form onSubmit={handleSubmit} className="mt-8 space-y-6">
-          <div className="space-y-4">
-            <TextField
-              label="Email"
-              type="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              required
-              fullWidth
-            />
-            <TextField
-              label="Password"
-              type="password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              required
-              fullWidth
-            />
+    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-background to-muted/50 p-4">
+      <Card className="w-full max-w-md shadow-2xl border-0">
+        <CardHeader className="text-center space-y-2">
+          <div className="w-20 h-20 bg-primary/10 rounded-2xl flex items-center justify-center mx-auto mb-4">
+            <Lock className="w-10 h-10 text-primary" />
           </div>
+          <CardTitle className="text-2xl">Welcome Back</CardTitle>
+          <CardDescription>Sign in to your account</CardDescription>
+        </CardHeader>
 
-          <div className="flex items-center justify-between">
-            <div className="flex items-center">
-              <input
-                id="remember-me"
-                name="remember-me"
-                type="checkbox"
-                className="h-4 w-4 rounded border-border bg-input"
-              />
-              <label
-                htmlFor="remember-me"
-                className="ml-2 text-sm text-foreground"
-              >
-                Remember me
-              </label>
+        <CardContent>
+          <form onSubmit={handleSubmit} className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="email">Email</Label>
+              <div className="relative">
+                <Mail className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground w-4 h-4" />
+                <Input
+                  id="email"
+                  type="email"
+                  placeholder="Enter your email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  className="pl-10"
+                  disabled={loading}
+                  required
+                />
+              </div>
             </div>
 
-            <button
-              type="button"
-              className="cursor-pointer text-sm text-primary hover:text-primary/80"
-              onClick={() => navigate("/reset-password")}
-            >
-              Forgot password?
-            </button>
-          </div>
+            <div className="space-y-2">
+              <Label htmlFor="password">Password</Label>
+              <div className="relative">
+                <Lock className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground w-4 h-4" />
+                <Input
+                  id="password"
+                  type="password"
+                  placeholder="Enter your password"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  className="pl-10"
+                  disabled={loading}
+                  required
+                />
+              </div>
+            </div>
 
-          <Button type="submit" className="w-full" disabled={loading}>
-            Sign in
-          </Button>
-        </form>
-      </div>
+            <Button
+              type="submit"
+              className="w-full"
+              disabled={loading || !email || !password}
+            >
+              {loading ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Signing in...
+                </>
+              ) : (
+                "Sign In"
+              )}
+            </Button>
+          </form>
+
+          <div className="mt-6 text-center">
+            <Button
+              variant="link"
+              onClick={() => navigate("/password-reset")}
+              className="p-0 h-auto text-sm"
+            >
+              Forgot your password?
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
     </div>
   );
 };

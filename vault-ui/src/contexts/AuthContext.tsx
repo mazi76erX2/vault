@@ -158,9 +158,18 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const logout = async () => {
     try {
       dispatch({ type: "SET_LOADING", payload: true });
-      await apiLogout();
+      console.log("AuthContext: Starting logout...");
+
+      await apiLogout(); // Uses fixed Auth.service above
+
+      console.log("AuthContext: Logout complete");
+
+      // Hard redirect clears React state + router
+      if (typeof window !== "undefined") {
+        window.location.href = "/login";
+      }
     } catch (error) {
-      console.error("[AuthContext] Logout error:", error);
+      console.error("AuthContext: Logout error:", error);
     } finally {
       dispatch({ type: "LOGOUT" });
     }
