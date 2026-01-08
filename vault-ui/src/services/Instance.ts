@@ -4,16 +4,16 @@ import axios, {
   AxiosRequestConfig,
   InternalAxiosRequestConfig,
 } from "axios";
-import { toast } from "sonner"; // Your existing toast system
+import { toast } from "sonner";
 import { getCurrentUser, setCurrentUser } from "./auth/Auth.service";
 import { VAULT_API_URL } from "../config";
 import { LoginResponseDTO } from "../types/LoginResponseDTO";
 
 const Api: AxiosInstance = axios.create({
   baseURL: VAULT_API_URL,
+  timeout: 30000,
 });
 
-// Prevent multiple concurrent refresh attempts
 let isRefreshing = false;
 let failedQueue: Array<{
   resolve: (value?: any) => void;
@@ -34,53 +34,40 @@ const processQueue = (
   failedQueue = [];
 };
 
-// Silent logout - clears storage and redirects
-const silentLogout = async (): Promise<void> => {
+const manualLogout = async (): Promise<void> => {
   localStorage.removeItem("currentUser");
   if (typeof window !== "undefined") {
     window.location.href = "/login";
   }
 };
 
-// Detect JWT/auth errors
 const isJWTError = (error: AxiosError): boolean => {
-  const errorMessage = (error.response?.data as any)?.detail;
+  const status = error.response?.status;
+  const detail = (error.response?.data as any)?.detail || "";
   return (
-    error.response?.status === 401 ||
-    errorMessage?.includes("Invalid or missing token") ||
-    errorMessage?.includes("token") ||
-    errorMessage?.includes("JWT") ||
-    errorMessage?.includes("expired") ||
-    error.response?.status === 403
+    status === 401 ||
+    status === 403 ||
+    detail.includes("Invalid") ||
+    detail.includes("token") ||
+    detail.includes("JWT") ||
+    detail.includes("expired") ||
+    detail.includes("unauthorized")
   );
 };
 
-// REQUEST INTERCEPTOR - Add auth token to every request
 Api.interceptors.request.use(
   async (config: InternalAxiosRequestConfig) => {
-    const storage = localStorage.getItem("currentUser");
-    if (storage) {
-      try {
-        const currentUser: LoginResponseDTO = JSON.parse(storage);
-        if (currentUser?.accesstoken) {
-          config.headers = config.headers || {};
-          config.headers.Authorization = `Bearer ${currentUser.accesstoken}`;
-          console.log(
-            "Token attached:",
-            currentUser.accesstoken.substring(0, 20) + "..."
-          );
-        }
-      } catch (error) {
-        console.error("Error parsing user from localStorage", error);
-        localStorage.removeItem("currentUser");
-      }
+    const user = getCurrentUser();
+    if (user?.accesstoken) {
+      config.headers = config.headers || {};
+      config.headers.Authorization = `Bearer ${user.accesstoken}`;
+      console.log("Token attached:", user.accesstoken.substring(0, 20) + "...");
     }
     return config;
   },
   (requestError) => Promise.reject(requestError)
 );
 
-// RESPONSE INTERCEPTOR - Handle 401/403 token refresh
 Api.interceptors.response.use(
   (response) => response,
   async (error: AxiosError) => {
@@ -88,21 +75,26 @@ Api.interceptors.response.use(
       _retry?: boolean;
     };
 
-    if (
-      error.response?.status === 401 &&
-      originalRequest &&
-      !originalRequest._retry
-    ) {
+    if (isJWTError(error) && originalRequest && !originalRequest._retry) {
       originalRequest._retry = true;
 
+      const errorMsg =
+        error.response?.data?.detail ||
+        (error.response?.status === 403
+          ? "Insufficient permissions"
+          : "Session issue");
+      toast.error(errorMsg);
+
       if (isRefreshing) {
-        // Queue request until refresh completes
         return new Promise((resolve, reject) => {
           failedQueue.push({ resolve, reject });
         })
-          .then((token: string) => {
-            originalRequest.headers!.Authorization = `Bearer ${token}`;
-            return Api(originalRequest);
+          .then((token) => {
+            if (token && originalRequest.headers) {
+              originalRequest.headers.Authorization = `Bearer ${token}`;
+              return Api(originalRequest);
+            }
+            return Promise.reject(error);
           })
           .catch((err) => Promise.reject(err));
       }
@@ -111,14 +103,12 @@ Api.interceptors.response.use(
       try {
         const refreshToken = getCurrentUser()?.refreshtoken;
         if (!refreshToken) {
-          toast.error("Session expired. Please log in again.");
-          await silentLogout();
+          toast.warning("Token refresh unavailable");
           return Promise.reject(error);
         }
 
-        // Refresh token endpoint
-        const refreshResponse = await Api.post<LoginResponseDTO>(
-          "/apiv1authrefresh",
+        const refreshResponse = await axios.post(
+          `${VAULT_API_URL}/api/v1/auth/refresh`,
           {
             refreshtoken: refreshToken,
           }
@@ -127,18 +117,24 @@ Api.interceptors.response.use(
         if (refreshResponse.data?.accesstoken) {
           setCurrentUser(refreshResponse.data);
           processQueue(null, refreshResponse.data.accesstoken);
-
           originalRequest.headers!.Authorization = `Bearer ${refreshResponse.data.accesstoken}`;
           return Api(originalRequest);
         }
       } catch (refreshError) {
         console.error("Token refresh failed:", refreshError);
-        toast.error("Session expired. Redirecting to login...");
-        processQueue(refreshError as AxiosError, null);
-        await silentLogout();
+        toast.warning("Could not refresh token. Some features may be limited.");
       } finally {
         isRefreshing = false;
       }
+    }
+
+    if (error.response?.status >= 500) {
+      toast.error("Server error. Please try again later.");
+    } else if (error.code === "ECONNABORTED") {
+      toast.error("Request timeout. Please check your connection.");
+    } else if (error.response?.status >= 400 && error.response?.status < 500) {
+      const detail = (error.response.data as any)?.detail || "Request failed";
+      toast.error(detail);
     }
 
     return Promise.reject(error);

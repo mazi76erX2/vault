@@ -12,7 +12,6 @@ import {
 } from "@/components/ui/card";
 import { DataTable } from "@/components/data-display/data-table";
 import Api from "@/services/Instance";
-import { getCurrentUser } from "@/services/auth/Auth.service";
 
 interface Project {
   id: string;
@@ -45,24 +44,14 @@ const CollectorStartPage: React.FC = () => {
   ];
 
   const fetchProjects = async () => {
-    // FIXED: Direct localStorage check + Instance.ts handles token automatically
-    const user = getCurrentUser();
-    if (!user?.accesstoken) {
-      toast.error("Session expired. Redirecting to login...");
-      localStorage.removeItem("currentUser");
-      window.location.href = "/login";
-      return;
-    }
-
     try {
       setLoading(true);
       const response = await Api.get<FetchProjectsResponse>(
-        "/apiv1collectorfetchprojects"
+        "/api/v1/collector/fetchprojects"
       );
-      setRows(response.data.projects || []);
+      setRows(response.data.projects);
     } catch (err: unknown) {
       console.error("Error fetching projects:", err);
-      // Instance.ts interceptor handles 401/403 automatically
       if (
         err instanceof Error &&
         !err.message.includes("401") &&
@@ -85,7 +74,6 @@ const CollectorStartPage: React.FC = () => {
     });
   };
 
-  // Load projects on mount
   useEffect(() => {
     fetchProjects();
   }, []);
@@ -98,7 +86,6 @@ const CollectorStartPage: React.FC = () => {
 
   return (
     <div className="container mx-auto p-6 max-w-7xl space-y-8">
-      {/* Loading Overlay */}
       {loading && (
         <div className="fixed inset-0 bg-background/80 backdrop-blur-sm z-50 flex items-center justify-center">
           <div className="flex flex-col items-center gap-4 p-8 bg-card rounded-xl shadow-lg border">
@@ -109,7 +96,6 @@ const CollectorStartPage: React.FC = () => {
       )}
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-start">
-        {/* Left: Hero Section */}
         <Card className="h-fit shadow-lg border-0 bg-gradient-to-br from-primary/5 to-secondary/5">
           <CardHeader className="text-center pb-2">
             <CardTitle className="text-3xl font-bold bg-gradient-to-r from-primary to-secondary bg-clip-text text-transparent">
@@ -137,7 +123,6 @@ const CollectorStartPage: React.FC = () => {
           </CardContent>
         </Card>
 
-        {/* Right: Projects Table */}
         <Card className="shadow-lg">
           <CardHeader>
             <CardTitle>Active Projects ({rows.length})</CardTitle>
@@ -157,7 +142,6 @@ const CollectorStartPage: React.FC = () => {
         </Card>
       </div>
 
-      {/* Action Button */}
       <div className="flex justify-center pt-8">
         <Button
           size="lg"
@@ -191,7 +175,6 @@ const CollectorStartPage: React.FC = () => {
         </Button>
       </div>
 
-      {/* Previous Sessions Link */}
       <div className="text-center">
         <Button
           variant="link"
@@ -200,7 +183,7 @@ const CollectorStartPage: React.FC = () => {
           }
           className="text-muted-foreground hover:text-foreground p-0 h-auto"
         >
-          View previous sessions →
+          View previous sessions
         </Button>
       </div>
     </div>

@@ -2,7 +2,7 @@
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
-import { Lock, Mail } from "lucide-react";
+import { Lock, Mail, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -13,7 +13,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
-import { login } from "@/services/auth/Auth.service";
+import { useAuthContext } from "@/hooks/useAuthContext";
 import { LoginRequestDTO } from "@/types/LoginResponseDTO";
 
 const LoginPage: React.FC = () => {
@@ -21,6 +21,7 @@ const LoginPage: React.FC = () => {
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
+  const { login } = useAuthContext();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -32,21 +33,18 @@ const LoginPage: React.FC = () => {
 
     try {
       setLoading(true);
-
-      // FIXED: Send CORRECT payload: {email, password}
       const loginData: LoginRequestDTO = {
         email: email.trim(),
         password: password,
       };
 
-      console.log("LoginPage: Sending payload:", loginData); // Debug
-
       await login(loginData);
+
+      await new Promise((resolve) => setTimeout(resolve, 200));
 
       toast.success("Login successful!");
       navigate("/dashboard", { replace: true });
     } catch (error: any) {
-      console.error("LoginPage: Login error:", error);
       const errorMessage =
         error.message || "Login failed. Please check your credentials.";
       toast.error(errorMessage);
@@ -65,7 +63,6 @@ const LoginPage: React.FC = () => {
           <CardTitle className="text-2xl">Welcome Back</CardTitle>
           <CardDescription>Sign in to your account</CardDescription>
         </CardHeader>
-
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-4">
             <div className="space-y-2">

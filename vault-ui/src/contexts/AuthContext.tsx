@@ -39,28 +39,17 @@ type AuthAction =
   | { type: "SET_LOADING"; payload: boolean }
   | { type: "SET_ROLES"; payload: string[] };
 
-// Helper to extract roles from the login response
 const extractRolesFromResponse = (
   response: LoginResponseDTO | null
 ): string[] => {
   if (!response) return [];
-
-  // Your backend returns: response.user.roles (where user is CurrentUser)
   if (response.user && Array.isArray(response.user.roles)) {
-    console.log(
-      "[AuthContext] Extracted roles from response.user.roles:",
-      response.user.roles
-    );
     return response.user.roles;
   }
-
-  console.log("[AuthContext] No roles found in response");
   return [];
 };
 
 const authReducer = (state: AuthState, action: AuthAction): AuthState => {
-  console.log("[AuthContext] Reducer ACTION:", action.type);
-
   switch (action.type) {
     case "LOGIN_SUCCESS":
       return {
@@ -81,7 +70,10 @@ const authReducer = (state: AuthState, action: AuthAction): AuthState => {
         userRoles: [],
       };
     case "LOGOUT":
-      return { ...initialState, isLoadingUser: false };
+      return {
+        ...initialState,
+        isLoadingUser: false,
+      };
     case "SET_USER":
       return {
         ...state,
@@ -91,9 +83,15 @@ const authReducer = (state: AuthState, action: AuthAction): AuthState => {
         isLoadingUser: false,
       };
     case "SET_LOADING":
-      return { ...state, isLoadingUser: action.payload };
+      return {
+        ...state,
+        isLoadingUser: action.payload,
+      };
     case "SET_ROLES":
-      return { ...state, userRoles: action.payload };
+      return {
+        ...state,
+        userRoles: action.payload,
+      };
     default:
       return state;
   }
@@ -110,25 +108,12 @@ interface AuthProviderProps {
 export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const [state, dispatch] = useReducer(authReducer, initialState);
 
-  console.log(
-    "[AuthContext] Provider render - userRoles:",
-    state.userRoles,
-    "isLoading:",
-    state.isLoadingUser
-  );
-
-  // Load user from localStorage on mount
   useEffect(() => {
-    console.log("[AuthContext] Initial load from localStorage");
     const storedUser = getCurrentUser();
-
     if (storedUser) {
-      console.log("[AuthContext] Found stored user:", storedUser);
       const roles = extractRolesFromResponse(storedUser);
-      console.log("[AuthContext] Extracted roles:", roles);
       dispatch({ type: "SET_USER", payload: { user: storedUser, roles } });
     } else {
-      console.log("[AuthContext] No stored user found");
       dispatch({ type: "SET_LOADING", payload: false });
     }
   }, []);
@@ -136,20 +121,18 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const login = async (loginData: LoginRequestDTO) => {
     try {
       dispatch({ type: "SET_LOADING", payload: true });
-      console.log("[AuthContext] Login attempt for:", loginData.email);
-
       const userData = await apiLogin(loginData);
-      console.log("[AuthContext] Login success, response:", userData);
-
-      // Extract roles from the response
       const roles = extractRolesFromResponse(userData);
-      console.log("[AuthContext] Extracted roles:", roles);
 
-      dispatch({ type: "LOGIN_SUCCESS", payload: { user: userData, roles } });
+      dispatch({
+        type: "LOGIN_SUCCESS",
+        payload: { user: userData, roles },
+      });
+
+      await new Promise((resolve) => setTimeout(resolve, 100));
     } catch (err) {
       const errorMessage =
         err instanceof Error ? err.message : "An unknown error occurred";
-      console.error("[AuthContext] Login failed:", errorMessage);
       dispatch({ type: "LOGIN_FAILURE", payload: errorMessage });
       throw err;
     }
@@ -158,20 +141,14 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const logout = async () => {
     try {
       dispatch({ type: "SET_LOADING", payload: true });
-      console.log("AuthContext: Starting logout...");
-
-      await apiLogout(); // Uses fixed Auth.service above
-
-      console.log("AuthContext: Logout complete");
-
-      // Hard redirect clears React state + router
+      await apiLogout();
+    } catch (error) {
+      console.error("AuthContext Logout error:", error);
+    } finally {
+      dispatch({ type: "LOGOUT" });
       if (typeof window !== "undefined") {
         window.location.href = "/login";
       }
-    } catch (error) {
-      console.error("AuthContext: Logout error:", error);
-    } finally {
-      dispatch({ type: "LOGOUT" });
     }
   };
 
@@ -180,14 +157,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   };
 
   return (
-    <AuthContext.Provider
-      value={{
-        ...state,
-        login,
-        logout,
-        setUserRoles,
-      }}
-    >
+    <AuthContext.Provider value={{ ...state, login, logout, setUserRoles }}>
       {children}
     </AuthContext.Provider>
   );
