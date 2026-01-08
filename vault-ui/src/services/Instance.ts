@@ -58,10 +58,13 @@ const isJWTError = (error: AxiosError): boolean => {
 Api.interceptors.request.use(
   async (config: InternalAxiosRequestConfig) => {
     const user = getCurrentUser();
-    if (user?.accesstoken) {
+    if (user?.access_token) {
       config.headers = config.headers || {};
-      config.headers.Authorization = `Bearer ${user.accesstoken}`;
-      console.log("Token attached:", user.accesstoken.substring(0, 20) + "...");
+      config.headers.Authorization = `Bearer ${user.access_token}`;
+      console.log(
+        "Token attached:",
+        user.access_token.substring(0, 20) + "..."
+      );
     }
     return config;
   },

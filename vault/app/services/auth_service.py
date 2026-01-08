@@ -88,10 +88,12 @@ class AuthService:
         """Decode and verify a JWT token"""
         try:
             return jwt.decode(token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM])
-        except jwt.ExpiredSignatureError:
-            raise ValueError("Token has expired") from None
-        except jwt.JWTError as e:
-            raise ValueError(f"Invalid token: {str(e)}") from e
+        except jwt.DecodeError as e:
+            raise ValueError(f"Invalid token: {str(e)}")
+        except jwt.ExpiredSignatureError as e:
+            raise ValueError(f"Token has expired: {str(e)}")
+        except Exception as e:
+            raise ValueError(f"Invalid token: {str(e)}")
 
     @staticmethod
     async def create_user(

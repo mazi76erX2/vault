@@ -21,7 +21,7 @@ def async_db_url(url: str) -> str:
 ALL_APP_ROLES = ["Administrator", "Collector", "Helper", "Validator", "Expert"]
 
 
-async def create_admin_user(email: str, password: str, fullname: str, companyregno: str) -> bool:
+async def create_admin_user(email: str, password: str, fullname: str, company_reg_no: str) -> bool:
     dburl = getattr(settings, "DATABASEURL", None) or getattr(settings, "DATABASE_URL", None)
     if not dburl:
         raise RuntimeError("DATABASEURL / DATABASE_URL is not configured; check your .env")
@@ -39,12 +39,12 @@ async def create_admin_user(email: str, password: str, fullname: str, companyreg
             email=email,
             password=password,
             fullname=fullname,
-            company_reg_no=companyregno,
+            company_reg_no=company_reg_no,
             useraccess="admin",
             emailconfirmed=True,
         )
 
-        profile = await AuthService.create_user(db, user_data, companyregno)
+        profile = await AuthService.create_user(db, user_data, company_reg_no)
 
         roles_res = await db.execute(select(Role).where(Role.name.in_(ALL_APP_ROLES)))
         roles = roles_res.scalars().all()
@@ -59,14 +59,14 @@ async def create_admin_user(email: str, password: str, fullname: str, companyreg
                 UserRole(
                     user_id=profile.id,
                     role_id=role.id,
-                    company_reg_no=companyregno,
+                    company_reg_no=company_reg_no,
                 )
             )
 
         await db.commit()
         print(
             f"Admin created: email={email}, profile_id={profile.id}, "
-            f"companyregno={companyregno}, roles={sorted(found_role_names)}"
+            f"company_reg_no={company_reg_no}, roles={sorted(found_role_names)}"
         )
         return True
 
@@ -76,10 +76,10 @@ def main() -> None:
     parser.add_argument("email")
     parser.add_argument("password")
     parser.add_argument("fullname")
-    parser.add_argument("--company-reg-no", dest="companyregno", default="ADMIN001")
+    parser.add_argument("--company-reg-no", dest="company_reg_no", default="ADMIN001")
     args = parser.parse_args()
 
-    asyncio.run(create_admin_user(args.email, args.password, args.fullname, args.companyregno))
+    asyncio.run(create_admin_user(args.email, args.password, args.fullname, args.company_reg_no))
 
 
 if __name__ == "__main__":

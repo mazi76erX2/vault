@@ -911,7 +911,7 @@ async def create_project(
             description=project_data.description,
             manager_id=project_data.manager_id or user_id,
             company_id=project_data.company_id or company_id,
-            company_regno=company_regno,
+            company_reg_no=company_regno,
             status=project_data.status or "active",
         )
 

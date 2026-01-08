@@ -7,7 +7,6 @@ from sqlalchemy.orm import relationship
 
 from app.db.base_class import Base
 
-
 class Project(Base):
     """Project model for organizing knowledge collection sessions."""
 
@@ -28,7 +27,7 @@ class Project(Base):
     )
 
     # Relationships
-    manager = relationship("Profile", foreign_keys=[manager_id], backref="managed_projects")
+    # manager = relationship("Profile", foreign_keys=[manager_id], backref="managed_projects")
 
     def __repr__(self):
         return f"<Project(id={self.id}, name='{self.name}')>"

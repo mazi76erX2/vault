@@ -36,12 +36,12 @@ export const removeCurrentUser = (): void => {
 
 export const getAccessToken = (): string | null => {
   const user = getCurrentUser();
-  return user?.accesstoken ?? null;
+  return user?.access_token ?? null;
 };
 
 export const getRefreshToken = (): string | null => {
   const user = getCurrentUser();
-  return user?.refreshtoken ?? null;
+  return user?.refresh_token ?? null;
 };
 
 export const login = async (
