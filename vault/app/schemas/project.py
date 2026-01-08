@@ -1,40 +1,44 @@
 from datetime import datetime
-from typing import Optional
+
 from pydantic import BaseModel, Field
 
 
 class ProjectBase(BaseModel):
     """Base project schema."""
+
     name: str = Field(..., min_length=1, max_length=200)
-    description: Optional[str] = None
-    status: Optional[str] = "active"
+    description: str | None = None
+    status: str | None = "active"
 
 
 class ProjectCreate(ProjectBase):
     """Schema for creating a project."""
-    manager_id: Optional[str] = None
-    company_id: Optional[int] = None
+
+    manager_id: str | None = None
+    company_id: int | None = None
 
 
 class ProjectUpdate(BaseModel):
     """Schema for updating a project."""
-    name: Optional[str] = Field(None, min_length=1, max_length=200)
-    description: Optional[str] = None
-    status: Optional[str] = None
+
+    name: str | None = Field(None, min_length=1, max_length=200)
+    description: str | None = None
+    status: str | None = None
 
 
 class ProjectResponse(ProjectBase):
     """Schema for project response."""
+
     id: str
     manager_id: str
     company_id: int
-    company_regno: Optional[str] = None
+    company_regno: str | None = None
     created_at: datetime
     updated_at: datetime
-    
+
     class Config:
         from_attributes = True
-        
+
     @classmethod
     def from_orm(cls, obj):
         return cls(

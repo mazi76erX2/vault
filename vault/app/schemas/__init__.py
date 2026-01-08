@@ -24,6 +24,7 @@ from .ldap import (LDAPConnectorCreate, LDAPConnectorResponse,
                    LDAPConnectorUpdate)
 # Profile schemas
 from .profile import ProfileCreate, ProfileResponse, ProfileUpdate
+from .project import ProjectBase, ProjectCreate, ProjectResponse, ProjectUpdate
 # Role schemas
 from .role import RoleCreate, RoleResponse, UserRoleCreate, UserRoleResponse
 # Session schemas
@@ -34,8 +35,6 @@ from .user import (CompanyDetails, DeleteUserResponse, GetUserCompanyResponse,
                    OrganisationDetails, UpdateUserDetailsRequest,
                    UserCompanyRequest, UserInfo, UserProfileRequest,
                    UserProfileResponse)
-
-from .project import ProjectBase, ProjectCreate, ProjectResponse, ProjectUpdate
 
 __all__ = [
     # Auth schemas
@@ -98,6 +97,6 @@ __all__ = [
     # Project schemas
     "ProjectBase",
     "ProjectCreate",
-    "ProjectResponse", 
+    "ProjectResponse",
     "ProjectUpdate",
 ]

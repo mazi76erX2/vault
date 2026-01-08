@@ -3,18 +3,16 @@ import asyncio
 import uuid
 from datetime import date
 
-
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
 from sqlalchemy.orm import sessionmaker
 
-
 from app.config import settings
-from app.models.company import Company
-from app.models.user_type import UserType
-from app.models.role import Role
-from app.models.project import Project
 from app.models import Profile
+from app.models.company import Company
+from app.models.project import Project
+from app.models.role import Role
+from app.models.user_type import UserType
 
 
 def async_db_url(url: str) -> str:
@@ -29,13 +27,21 @@ DEFAULT_ROLES = [
         "Administrator",
         "Full access to the HVMC - User management, Themes, Applications and data sources",
     ),
-    ("6674adfb-c0d2-4e02-9b71-f569653d9782", "Collector", "Access to the collector option on the dashboard"),
+    (
+        "6674adfb-c0d2-4e02-9b71-f569653d9782",
+        "Collector",
+        "Access to the collector option on the dashboard",
+    ),
     (
         "640955e7-f8ff-4133-bbd5-41b5eab8cb5a",
         "Helper",
         "End user function of Vault - Allows access to the Helper chat function from the dashboard",
     ),
-    ("e49d4a8e-d1ad-4906-82ac-41b875ad0223", "Validator", "Access to the validator option on the dashboard"),
+    (
+        "e49d4a8e-d1ad-4906-82ac-41b875ad0223",
+        "Validator",
+        "Access to the validator option on the dashboard",
+    ),
     (
         "4abdeb04-f908-472a-92d0-8d8b1cb6208e",
         "Expert",
@@ -62,7 +68,9 @@ async def seed(company_reg_no: str) -> None:
 
     async with async_session_local() as db:
         # 1) Company (tenant)
-        company_res = await db.execute(select(Company).where(Company.company_reg_no == company_reg_no))
+        company_res = await db.execute(
+            select(Company).where(Company.company_reg_no == company_reg_no)
+        )
         company = company_res.scalar_one_or_none()
         if not company:
             company = Company(
@@ -105,33 +113,28 @@ async def seed(company_reg_no: str) -> None:
 
 async def seed_default_project(db: AsyncSession, company: Company) -> None:
     """Seed default project for the company."""
-    
+
     # Get first profile for this company to use as manager
-    profile_res = await db.execute(
-        select(Profile)
-        .where(Profile.company_id == company.id)
-        .limit(1)
-    )
+    profile_res = await db.execute(select(Profile).where(Profile.company_id == company.id).limit(1))
     profile = profile_res.scalar_one_or_none()
-    
+
     if not profile:
         print("⚠️  No profiles found for company. Skipping default project creation.")
         print("   Create a user account first, then run seed again to create the project.")
         return
-    
+
     # Check if default project already exists
     project_res = await db.execute(
         select(Project).where(
-            Project.name == "General Knowledge Base",
-            Project.company_id == company.id
+            Project.name == "General Knowledge Base", Project.company_id == company.id
         )
     )
     existing_project = project_res.scalar_one_or_none()
-    
+
     if existing_project:
         print(f"✅ Default project already exists: {existing_project.name}")
         return
-    
+
     # Create default project
     default_project = Project(
         id=uuid.UUID("a1b2c3d4-e5f6-4a5b-8c9d-0e1f2a3b4c5d"),
@@ -142,15 +145,17 @@ async def seed_default_project(db: AsyncSession, company: Company) -> None:
         company_regno=company.company_reg_no,
         status="active",
     )
-    
+
     db.add(default_project)
     await db.commit()
-    
+
     print(f"✅ Created default project: {default_project.name} (ID: {default_project.id})")
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser(description="Seed Vault reference data (companies, usertypes, roles, projects)")
+    parser = argparse.ArgumentParser(
+        description="Seed Vault reference data (companies, usertypes, roles, projects)"
+    )
     parser.add_argument("--company-reg-no", dest="company_reg_no", default="A001")
     args = parser.parse_args()
     asyncio.run(seed(args.company_reg_no))

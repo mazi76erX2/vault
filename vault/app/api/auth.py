@@ -28,9 +28,9 @@ from app.email_service import send_password_reset_email
 from app.models.profile import Profile
 from app.models.role import Role, UserRole
 from app.models.user import User
-from app.schemas.auth import (PasswordChange, PasswordReset,
+from app.schemas.auth import (LoginResponse, PasswordChange, PasswordReset,
                               PasswordResetRequest, TokenResponse, UserCreate,
-                              UserLogin, UserResponse, LoginResponse)
+                              UserLogin, UserResponse)
 
 # Shared DB dependency (matches usage elsewhere in your repo)
 try:
@@ -590,7 +590,6 @@ async def login(credentials: UserLogin, db: AsyncSession = Depends(get_async_db)
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Error during authentication",
         ) from e
-
 
 
 @router.post("/refresh", response_model=TokenResponse)

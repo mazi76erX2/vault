@@ -35,7 +35,6 @@ def include_name(name: str | None, type_: str, parent_names: dict) -> bool:
     return True
 
 
-
 def run_migrations_offline() -> None:
     url = config.get_main_option("sqlalchemy.url")
     context.configure(
