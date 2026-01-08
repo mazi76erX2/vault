@@ -323,18 +323,23 @@ async def get_questions(
     try:
         stmt = select(Question).where(Question.user_id == user_id)
         result = await db.execute(stmt)
-        question_row = result.scalar_one_or_none()
+        question_rows = result.scalars().all()
 
-        if not question_row:
+        if not question_rows:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
-                detail="No questions found. Click 'Generate' to create new questions or 'Upload Question' to import from a file.",
+                detail="No questions found. Click 'Generate' to create new questions.",
             )
 
+        # Build response from individual rows
+        questions = [q.question_text for q in question_rows]
+        statuses = [getattr(q, 'status', 'Not Started') for q in question_rows]
+        topics = [getattr(q, 'topic', 'N/A') for q in question_rows]
+
         return {
-            "questions": question_row.questions or [],
-            "status": question_row.status or [],
-            "topics": getattr(question_row, "topics", []),
+            "questions": questions,
+            "status": statuses,
+            "topics": topics,
         }
 
     except HTTPException:

@@ -1,10 +1,10 @@
-// vault-ui/src/pages/login/LoginPage.tsx
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import { Lock, Mail, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Checkbox } from "@/components/ui/checkbox"; // ADD THIS
 import {
   Card,
   CardContent,
@@ -19,6 +19,7 @@ import { LoginRequestDTO } from "@/types/LoginResponseDTO";
 const LoginPage: React.FC = () => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [rememberMe, setRememberMe] = useState(false); // ADD THIS
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
   const { login } = useAuthContext();
@@ -39,6 +40,13 @@ const LoginPage: React.FC = () => {
       };
 
       await login(loginData);
+
+      // Store remember me preference
+      if (rememberMe) {
+        localStorage.setItem("rememberMe", "true");
+      } else {
+        localStorage.removeItem("rememberMe");
+      }
 
       await new Promise((resolve) => setTimeout(resolve, 200));
 
@@ -97,6 +105,22 @@ const LoginPage: React.FC = () => {
                   required
                 />
               </div>
+            </div>
+
+            {/* ADD THIS REMEMBER ME SECTION */}
+            <div className="flex items-center space-x-2">
+              <Checkbox
+                id="rememberMe"
+                checked={rememberMe}
+                onCheckedChange={(checked) => setRememberMe(checked as boolean)}
+                disabled={loading}
+              />
+              <Label
+                htmlFor="rememberMe"
+                className="text-sm font-normal cursor-pointer"
+              >
+                Remember me for 7 days
+              </Label>
             </div>
 
             <Button

@@ -104,23 +104,23 @@ Api.interceptors.response.use(
 
       isRefreshing = true;
       try {
-        const refreshToken = getCurrentUser()?.refreshtoken;
+        const refreshToken = getCurrentUser()?.refresh_token;
         if (!refreshToken) {
           toast.warning("Token refresh unavailable");
           return Promise.reject(error);
         }
 
         const refreshResponse = await axios.post(
-          `${VAULT_API_URL}/api/v1/auth/refresh`,
+          `${VAULT_API_URL}/api/auth/refresh`,
           {
             refreshtoken: refreshToken,
           }
         );
 
-        if (refreshResponse.data?.accesstoken) {
+        if (refreshResponse.data?.access_token) {
           setCurrentUser(refreshResponse.data);
-          processQueue(null, refreshResponse.data.accesstoken);
-          originalRequest.headers!.Authorization = `Bearer ${refreshResponse.data.accesstoken}`;
+          processQueue(null, refreshResponse.data.access_token);
+          originalRequest.headers!.Authorization = `Bearer ${refreshResponse.data.access_token}`;
           return Api(originalRequest);
         }
       } catch (refreshError) {

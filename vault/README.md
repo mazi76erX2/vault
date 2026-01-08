@@ -82,7 +82,7 @@ HICO Vault is a modern knowledge management system designed for enterprise envir
 | **Backend** | REST/WebSocket API | FastAPI, Python 3.14 |
 | **Database** | Relational data | PostgreSQL 15 + pgvector |
 | **Vector Store** | Semantic search | Qdrant |
-| **LLM** | Embeddings & chat | Ollama (llama2, nomic-embed-text) |
+| **LLM** | Embeddings & chat | Ollama (llama3.2:1b, nomic-embed-text) |
 | **Auth** | User management | JWT + LDAP |
 | **Package Manager** | Dependency management | UV (10-100x faster than pip) |
 
@@ -114,7 +114,7 @@ curl -fsSL https://ollama.ai/install.sh | sh
 ollama serve
 
 # Pull required models (in another terminal)
-ollama pull llama2
+ollama pull llama3.2:1b
 ollama pull nomic-embed-text
 ```
 
@@ -132,7 +132,7 @@ nano .env
 ```env
 # Ollama (running on host)
 OLLAMA_HOST=http://host.docker.internal:11434
-OLLAMA_MODEL=llama2
+OLLAMA_MODEL=llama3.2:1b
 OLLAMA_EMBED_MODEL=nomic-embed-text
 
 # Qdrant (in Docker)
@@ -332,9 +332,9 @@ vault/
 #### **Ollama Configuration**
 ```env
 OLLAMA_HOST=http://localhost:11434    # Ollama server URL
-OLLAMA_MODEL=llama2                   # Chat model
+OLLAMA_MODEL=llama3.2:1b                   # Chat model
 OLLAMA_EMBED_MODEL=nomic-embed-text   # Embedding model
-OLLAMA_CHAT_MODEL=llama2              # Chat model (redundant)
+OLLAMA_CHAT_MODEL=llama3.2:1b              # Chat model (redundant)
 ```
 
 #### **Qdrant Configuration**

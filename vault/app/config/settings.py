@@ -28,8 +28,8 @@ class Settings(BaseSettings):
     # Ollama Configuration
     OLLAMA_HOST: str = "http://localhost:11434"
     OLLAMA_EMBED_MODEL: str = "nomic-embed-text"
-    OLLAMA_CHAT_MODEL: str = "llama3.2"
-    OLLAMA_MODEL: str = "llama2"
+    OLLAMA_CHAT_MODEL: str = "llama3.2:1b"
+    OLLAMA_MODEL: str = "llama3.2:1b"
 
     # Qdrant Configuration
     QDRANT_HOST: str = "localhost"

@@ -34,7 +34,15 @@ const CollectorStartPage: React.FC = () => {
     {
       accessorKey: "name",
       header: "Project Name",
-      cell: (info: any) => info.getValue(),
+      cell: (info: any) => (
+        <span
+          className={
+            info.row.original.id === selectedProject?.id ? "font-bold" : ""
+          }
+        >
+          {info.getValue()}
+        </span>
+      ),
     },
     {
       accessorKey: "description",
@@ -132,11 +140,11 @@ const CollectorStartPage: React.FC = () => {
               columns={columns}
               data={rows}
               pageSize={10}
-              onRowClick={(params) => setSelectedProject(params.row as Project)}
-              getRowClassName={getRowClassName}
+              onRowClick={(row) => setSelectedProject(row as Project)}
+              selectedRowId={selectedProject?.id}
+              getRowId={(row) => (row as Project).id}
               searchKey="name"
               searchPlaceholder="Search projects..."
-              emptyMessage="No projects found. Create one to get started."
             />
           </CardContent>
         </Card>

@@ -5,6 +5,7 @@ import { toast } from "sonner";
 import { AxiosError } from "axios";
 import { ArrowRight, Upload, Sparkles } from "lucide-react";
 import type { ColumnDef } from "@tanstack/react-table";
+import { useLocation } from "react-router-dom";
 import { useAuthContext } from "@/hooks/useAuthContext";
 import { DancingBot } from "@/components/media/dancing-bot";
 import { DataTable } from "@/components/data-display/data-table";
@@ -43,6 +44,8 @@ const CollectorInitQuestionsPage: React.FC = () => {
   const authContext = useAuthContext();
   const navigate = useNavigate();
   const fileInputRef = useRef<HTMLInputElement | null>(null);
+  const location = useLocation();
+  const { project } = (location.state as { project?: any }) || {};
 
   const columns: ColumnDef<QuestionRowData>[] = [
     {
@@ -59,10 +62,24 @@ const CollectorInitQuestionsPage: React.FC = () => {
     if (authContext && !authContext.isLoadingUser && authContext.isLoggedIn) {
       fetchQuestions();
     }
-  }, [authContext]);
+
+    if (!project) {
+      toast.error("No project selected. Redirecting...");
+      navigate("/applications/collector/CollectorStartPage");
+      return;
+    }
+
+    if (authContext && !authContext.isLoadingUser && authContext.isLoggedIn) {
+      fetchQuestions();
+    }
+
+    console.log("Auth Context:", authContext);
+    console.log("User:", authContext?.user);
+    console.log("Project:", project);
+  }, [authContext, project]);
 
   const fetchQuestions = async () => {
-    if (!authContext || !authContext.user?.user?.id) {
+    if (!authContext || !authContext.user?.user?.user?.id) {
       if (!authContext?.isLoadingUser) {
         toast.error("User not authenticated or session has expired.");
       }
@@ -74,7 +91,7 @@ const CollectorInitQuestionsPage: React.FC = () => {
       setLoading(true);
       const response = await Api.post<GetQuestionsResponse>(
         "/api/v1/collector/get-questions",
-        { user_id: authContext.user.user.id }
+        { user_id: authContext.user.user.user.id }
       );
 
       if (!response.data) {
@@ -129,7 +146,7 @@ const CollectorInitQuestionsPage: React.FC = () => {
   };
 
   const generateQuestions = async () => {
-    if (!authContext || !authContext.user?.user?.id) {
+    if (!authContext || !authContext.user?.user?.user?.id) {
       if (!authContext?.isLoadingUser) {
         toast.error("User not authenticated or session has expired.");
       }
@@ -140,7 +157,7 @@ const CollectorInitQuestionsPage: React.FC = () => {
       setLoading(true);
       const response = await Api.post<GenerateQuestionsResponse>(
         "/api/v1/collector/generate_questions",
-        { user_id: authContext.user.user.id }
+        { user_id: authContext.user.user.user.id }
       );
 
       if (!response.data.questions) {
@@ -176,7 +193,7 @@ const CollectorInitQuestionsPage: React.FC = () => {
   const handleFileChange = async (
     event: React.ChangeEvent<HTMLInputElement>
   ) => {
-    if (!authContext || !authContext.user?.user?.id) {
+    if (!authContext || !authContext.user?.user?.user?.id) {
       if (!authContext?.isLoadingUser) {
         toast.error("User not authenticated or session has expired.");
       }
@@ -215,14 +232,14 @@ const CollectorInitQuestionsPage: React.FC = () => {
             !authContext ||
             !authContext.user ||
             !authContext.user.user ||
-            !authContext.user.user.id
+            !authContext.user.user.user.id
           ) {
             toast.error("User not authenticated or user ID is missing.");
             return;
           }
 
           const response = await Api.post("/api/v1/collector/init_questions", {
-            user_id: authContext.user.user.id,
+            user_id: authContext.user.user.user.id,
             questions: questionStrings,
           });
 
@@ -337,12 +354,9 @@ const CollectorInitQuestionsPage: React.FC = () => {
               columns={columns}
               data={rows}
               pageSize={5}
-              onRowClick={(params) =>
-                setSelectedQuestion(params.row as QuestionRowData)
-              }
-              getRowClassName={(params) =>
-                params.row.id === selectedQuestion?.id ? "bg-primary/20" : ""
-              }
+              onRowClick={(row) => setSelectedQuestion(row as QuestionRowData)}
+              selectedRowId={selectedQuestion?.id.toString()}
+              getRowId={(row) => (row as QuestionRowData).id.toString()}
             />
 
             {selectedQuestion && (
