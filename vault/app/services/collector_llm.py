@@ -1,6 +1,6 @@
 """
 Collector LLM service - generates questions, follow-ups, summaries, and tags.
-Includes fallback mechanisms when Ollama is slow or unavailable.
+Uses cloud models for speed with local fallback.
 """
 
 from __future__ import annotations
@@ -12,261 +12,225 @@ from typing import Any
 
 from app.integrations.ollama_client import (
     chat,
+    chat_with_fallback,
     check_connection,
-    get_best_chat_model,
+    get_best_model,
     OllamaError,
-    OllamaTimeoutError,
-    OllamaConnectionError,
-    CHAT_MODEL,
 )
 
 logger = logging.getLogger(__name__)
 
-# Timeout for question generation (can be slow for first request)
-QUESTION_GENERATION_TIMEOUT = 180.0  # 3 minutes
-FOLLOW_UP_TIMEOUT = 60.0  # 1 minute
-SUMMARY_TIMEOUT = 90.0  # 1.5 minutes
 
+# =============================================================================
+# Helper Functions
+# =============================================================================
 
 def _clean_lines(items: list[str]) -> list[str]:
-    """Clean and filter list of strings."""
-    out: list[str] = []
+    """Clean question lines."""
+    out = []
     for x in items:
         x = re.sub(r"\s+", " ", x).strip()
-        # Remove numbering like "1.", "1)", "- ", etc.
-        x = re.sub(r"^[\d]+[.\)]\s*", "", x)
-        x = re.sub(r"^[-•*]\s*", "", x)
-        if x and len(x) > 10:  # Filter out very short lines
+        x = re.sub(r"^[\d]+[.\)]\s*", "", x)  # Remove "1." or "1)"
+        x = re.sub(r"^[-•*]\s*", "", x)       # Remove bullets
+        x = re.sub(r"^\*+\s*", "", x)         # Remove markdown
+        if x and len(x) > 15:
             out.append(x)
     return out
 
 
-def _get_fallback_questions(profile: dict[str, Any], n: int = 8) -> list[str]:
-    """Return fallback questions when LLM is unavailable or times out."""
-    field = profile.get("fieldofexpertise") or profile.get("field_of_expertise") or "your field"
-    department = profile.get("department") or "your department"
-    full_name = profile.get("full_name") or "you"
-    
-    fallback_questions = [
-        f"What are the most important lessons you've learned working in {field}?",
-        f"Can you describe a challenging project in {department} and how you approached it?",
-        "What knowledge or skills do you wish you had when you first started your role?",
-        "What processes or methods have you developed that improved your work efficiency?",
-        "Can you share an experience where you had to solve an unexpected problem creatively?",
-        "What advice would you give to someone new joining your team?",
-        "What are the most common mistakes you've seen in your field and how can they be avoided?",
-        "How has your approach to work evolved over your career?",
-        "What tools, techniques, or resources do you find most valuable in your daily work?",
-        "Can you describe a situation where you had to adapt your methods to achieve success?",
-        "What undocumented knowledge do you rely on that others might not know about?",
-        "What's a process that seems simple but has important nuances that took time to learn?",
+def _extract_simple_topic(question: str) -> str:
+    """Extract topic without LLM."""
+    text = question.lower()
+    starters = [
+        "what are", "what is", "what", "how do", "how did", "how",
+        "why do", "why did", "why", "when", "where", "who", "which",
+        "can you", "could you", "would you", "describe", "explain",
+        "tell me about", "share", "walk me through",
     ]
-    
-    return fallback_questions[:n]
+    for s in starters:
+        if text.startswith(s):
+            text = text[len(s):].strip()
+            break
+    text = text.replace("?", "").strip()
+    words = text.split()[:4]
+    return " ".join(words).title() if words else "General Topic"
 
+
+def _get_fallback_questions(profile: dict[str, Any], n: int = 8) -> list[str]:
+    """Fallback questions when LLM unavailable."""
+    field = profile.get("fieldofexpertise") or profile.get("field_of_expertise") or "your field"
+    dept = profile.get("department") or "your department"
+    
+    return [
+        f"What are the most important lessons you've learned in {field}?",
+        f"Can you describe a challenging project in {dept} and how you handled it?",
+        "What knowledge do you wish you had when you first started?",
+        "What processes have you developed that improved your efficiency?",
+        "Can you share an experience solving an unexpected problem?",
+        "What advice would you give someone new to your team?",
+        "What common mistakes have you seen and how to avoid them?",
+        "How has your approach evolved over your career?",
+        "What tools or techniques do you find most valuable?",
+        "What undocumented knowledge do you rely on daily?",
+        "What process seems simple but has important nuances?",
+        "Describe a situation where you had to adapt quickly.",
+    ][:n]
+
+
+def _get_fallback_followup(user_text: str) -> str:
+    """Fallback follow-up question."""
+    followups = [
+        "Can you walk me through the specific steps you took?",
+        "What challenges did you face during this?",
+        "What was the most critical decision point?",
+        "How did you learn to handle this?",
+        "Can you give a specific example?",
+        "What would you do differently next time?",
+        "How would you explain this to someone new?",
+        "What resources helped you develop this expertise?",
+    ]
+    return followups[len(user_text) % len(followups)]
+
+
+# =============================================================================
+# Topic Generation
+# =============================================================================
 
 def generate_topic_from_question(question: str) -> str:
-    """Generate a short topic label from a question."""
-    
-    # Quick fallback if Ollama is not available
+    """Generate topic label from question."""
     if not check_connection():
-        return _extract_topic_fallback(question)
-    
-    messages = [
-        {
-            "role": "system",
-            "content": (
-                "Generate a short topic label (2-6 words) that best describes the question. "
-                "Return ONLY the topic label, nothing else."
-            ),
-        },
-        {"role": "user", "content": question},
-    ]
+        return _extract_simple_topic(question)
     
     try:
-        topic = chat(messages, timeout=15.0, max_tokens=30)
-        topic = topic.strip()
-        # Remove quotes if present
-        topic = re.sub(r'^["\']|["\']$', "", topic).strip()
-        return topic[:80] if topic else _extract_topic_fallback(question)
+        response = chat(
+            messages=[
+                {"role": "system", "content": "Generate a 2-5 word topic. Return ONLY the topic."},
+                {"role": "user", "content": f"Topic for: {question}"},
+            ],
+            task="topic",
+            max_tokens=20,
+            temperature=0.3,
+        )
+        topic = response.strip()
+        topic = re.sub(r'^["\']|["\']$', "", topic)
+        topic = re.sub(r'^topic[:\s]*', "", topic, flags=re.IGNORECASE)
+        return topic[:60] if topic else _extract_simple_topic(question)
     except OllamaError as e:
-        logger.warning(f"Topic generation failed, using fallback: {e}")
-        return _extract_topic_fallback(question)
+        logger.warning(f"Topic generation failed: {e}")
+        return _extract_simple_topic(question)
 
 
-def _extract_topic_fallback(question: str) -> str:
-    """Extract topic from question without LLM."""
-    # Remove question words and punctuation
-    text = question.lower()
-    text = re.sub(r"^(what|how|why|when|where|who|can you|could you|would you|describe|explain|tell me about)\s+", "", text)
-    text = re.sub(r"\?$", "", text)
-    
-    words = text.split()[:5]
-    if words:
-        return " ".join(words).title()
-    return "General Topic"
-
+# =============================================================================
+# Question Generation
+# =============================================================================
 
 def generate_initial_questions(
     profile: dict[str, Any], n: int = 8
 ) -> tuple[list[str], list[dict[str, str]]]:
     """
-    Generate initial interview questions based on user profile.
+    Generate interview questions from profile.
+    Uses cloud models for speed.
     
     Returns:
-        Tuple of (questions list, conversation seed messages)
+        Tuple of (questions, conversation_seed)
     """
-    # Check connection first
     if not check_connection():
-        logger.warning("Ollama not available, using fallback questions")
-        questions = _get_fallback_questions(profile, n)
-        seed = [{"role": "system", "content": "Collector interview session initialized (fallback mode)."}]
-        return questions, seed
+        logger.warning("Ollama unavailable, using fallback")
+        return _get_fallback_questions(profile, n), [{"role": "system", "content": "Fallback"}]
     
-    # Build prompt from profile
-    full_name = profile.get("full_name") or "the employee"
-    dept = profile.get("department") or "Not specified"
-    field = profile.get("fieldofexpertise") or profile.get("field_of_expertise") or "Not specified"
-    yoe = profile.get("yearsofexperience") or profile.get("years_of_experience") or "Not specified"
-    cvtext = profile.get("CVtext") or profile.get("cv_text") or ""
+    # Build context
+    name = profile.get("full_name") or "the employee"
+    dept = profile.get("department") or ""
+    field = profile.get("fieldofexpertise") or profile.get("field_of_expertise") or ""
+    yoe = profile.get("yearsofexperience") or profile.get("years_of_experience") or ""
+    cv = (profile.get("CVtext") or profile.get("cv_text") or "")[:2000]
     
-    # Truncate CV text if too long
-    cv_snippet = cvtext[:4000] if cvtext else "Not provided"
-    
-    prompt = f"""Generate exactly {n} open-ended knowledge-transfer interview questions for an employee.
+    prompt = f"""Generate {n} interview questions for knowledge capture.
 
-Employee Profile:
-- Full name: {full_name}
-- Department: {dept}
-- Field of expertise: {field}
-- Years of experience: {yoe}
-- CV/Background: {cv_snippet}
+Employee: {name}
+Department: {dept}
+Expertise: {field}
+Experience: {yoe} years
+Background: {cv}
 
-Requirements:
-1. Questions must capture tacit knowledge, best practices, workflows, and real examples
-2. Questions should be specific to their expertise when possible
-3. Each question should encourage detailed, story-based responses
-4. Cover different aspects: challenges faced, lessons learned, processes developed, advice for others
-5. Output ONLY the questions, one per line
-6. Do NOT number the questions
-7. Do NOT add any explanatory text
+Rules:
+- Open-ended questions capturing tacit knowledge
+- Focus on processes, lessons, best practices, challenges
+- One question per line
+- No numbering, bullets, or extra text"""
 
-Generate {n} questions now:"""
-
-    messages = [
-        {
-            "role": "system", 
-            "content": "You are an expert interviewer. Generate only interview questions, no other text."
-        },
-        {"role": "user", "content": prompt},
-    ]
-    
     try:
-        # Use best available model for potentially slow operation
-        model = get_best_chat_model()
-        logger.info(f"Generating questions using model: {model}")
-        
-        raw = chat(
-            messages, 
-            model=model,
+        response, model = chat_with_fallback(
+            messages=[
+                {"role": "system", "content": "Generate interview questions. One per line, no numbering."},
+                {"role": "user", "content": prompt},
+            ],
             temperature=0.7,
-            max_tokens=2048,
-            timeout=QUESTION_GENERATION_TIMEOUT
+            max_tokens=1024,
+            task="questions",
         )
         
-        # Parse response
-        questions = _clean_lines(raw.splitlines())
+        logger.info(f"Generated questions using: {model}")
+        questions = _clean_lines(response.splitlines())
         
+        # Add fallback if needed
         if len(questions) < n // 2:
-            # If we got too few questions, supplement with fallback
-            logger.warning(f"Only got {len(questions)} questions, supplementing with fallback")
-            fallback = _get_fallback_questions(profile, n)
-            questions = questions + fallback
-            questions = questions[:n]
-        else:
-            questions = questions[:n]
+            logger.warning(f"Only {len(questions)} questions, adding fallback")
+            questions += _get_fallback_questions(profile, n - len(questions))
         
-        conversation_seed = [
-            {"role": "system", "content": "Collector interview session initialized."}
-        ]
-        
-        return questions, conversation_seed
-        
-    except OllamaTimeoutError:
-        logger.error("Question generation timed out, using fallback questions")
-        questions = _get_fallback_questions(profile, n)
-        seed = [{"role": "system", "content": "Collector interview session initialized (timeout fallback)."}]
-        return questions, seed
+        return questions[:n], [{"role": "system", "content": f"Model: {model}"}]
         
     except OllamaError as e:
-        logger.error(f"Question generation failed: {e}, using fallback")
-        questions = _get_fallback_questions(profile, n)
-        seed = [{"role": "system", "content": "Collector interview session initialized (error fallback)."}]
-        return questions, seed
+        logger.error(f"Question generation failed: {e}")
+        return _get_fallback_questions(profile, n), [{"role": "system", "content": "Fallback"}]
 
+
+# =============================================================================
+# Follow-up Generation
+# =============================================================================
 
 def generate_follow_up_question(
-    existing_messages: list[dict[str, str]], user_text: str
+    existing_messages: list[dict[str, str]],
+    user_text: str
 ) -> tuple[str, list[dict[str, str]]]:
     """
-    Generate a follow-up question based on user's response.
+    Generate follow-up question.
     
     Returns:
-        Tuple of (follow-up question, updated messages list)
+        Tuple of (follow_up, updated_messages)
     """
-    system_prompt = {
+    system = {
         "role": "system",
-        "content": (
-            "You are a dynamic and engaging chatbot designed to ask open-ended questions to collect "
-            "knowledge and experiences from employees. Your role is to guide employees through a structured "
-            "conversation by prompting for more details, insights, and best practices.\n\n"
-            "IMPORTANT RULES:\n"
-            "- Only output the next follow-up question\n"
-            "- Do NOT summarize what the user said\n"
-            "- Do NOT provide answers or opinions\n"
-            "- Keep the question on-topic and refer to specific details the user mentioned\n"
-            "- Ask for concrete examples, steps, or lessons learned\n"
-            "- Be conversational but professional"
-        ),
+        "content": """You collect knowledge through follow-up questions.
+- Ask ONE follow-up question
+- Reference specific details from the response
+- Ask for examples, steps, or deeper explanation
+- Do NOT summarize or provide answers"""
     }
     
-    # Build message history
-    msgs = [system_prompt]
-    if existing_messages:
-        # Filter out any existing system messages
-        for m in existing_messages:
-            if m.get("role") != "system":
-                msgs.append(m)
-    
-    # Add the new user message
+    # Build context (limit history)
+    msgs = [system]
+    for m in (existing_messages or [])[-6:]:
+        if m.get("role") != "system":
+            msgs.append(m)
     msgs.append({"role": "user", "content": user_text})
     
-    # Prepare fallback
-    fallback_question = _get_fallback_followup(user_text)
+    fallback = _get_fallback_followup(user_text)
     
     if not check_connection():
-        logger.warning("Ollama not available for follow-up, using fallback")
         updated = (existing_messages or []) + [
             {"role": "user", "content": user_text},
-            {"role": "assistant", "content": fallback_question},
+            {"role": "assistant", "content": fallback},
         ]
-        return fallback_question, updated
+        return fallback, updated
     
     try:
-        follow_up = chat(
-            msgs,
-            temperature=0.7,
-            max_tokens=256,
-            timeout=FOLLOW_UP_TIMEOUT
-        )
+        follow_up = chat(msgs, task="chat", temperature=0.7, max_tokens=150)
         follow_up = follow_up.strip()
+        follow_up = re.sub(r'^["\']|["\']$', "", follow_up)
         
-        # Clean up response
-        follow_up = re.sub(r'^["\']|["\']$', "", follow_up).strip()
-        
-        # Validate response is a question
         if not follow_up or len(follow_up) < 10:
-            follow_up = fallback_question
+            follow_up = fallback
         
         updated = (existing_messages or []) + [
             {"role": "user", "content": user_text},
@@ -275,198 +239,119 @@ def generate_follow_up_question(
         return follow_up, updated
         
     except OllamaError as e:
-        logger.warning(f"Follow-up generation failed: {e}, using fallback")
+        logger.warning(f"Follow-up failed: {e}")
         updated = (existing_messages or []) + [
             {"role": "user", "content": user_text},
-            {"role": "assistant", "content": fallback_question},
+            {"role": "assistant", "content": fallback},
         ]
-        return fallback_question, updated
+        return fallback, updated
 
 
-def _get_fallback_followup(user_text: str) -> str:
-    """Generate a simple follow-up question without LLM."""
-    followups = [
-        "That's really interesting. Can you walk me through the specific steps you took?",
-        "Thank you for sharing that. What challenges did you face during this process?",
-        "I'd love to hear more details. What was the most critical decision point?",
-        "That's valuable insight. How did you learn to handle situations like this?",
-        "Could you give me a specific example of when this approach worked well?",
-        "What would you do differently if you faced this situation again?",
-        "How would you explain this process to someone completely new to it?",
-    ]
-    
-    # Simple heuristic: choose based on length of response
-    idx = len(user_text) % len(followups)
-    return followups[idx]
-
+# =============================================================================
+# Summary Generation
+# =============================================================================
 
 def generate_summary(existing_messages: list[dict[str, str]]) -> str:
-    """
-    Generate a structured summary from chat conversation.
-    
-    Returns:
-        Summary text formatted as a knowledge article
-    """
+    """Generate summary from conversation."""
     if not existing_messages:
         return "No conversation to summarize."
     
-    # Filter to just user/assistant messages
     conversation = [m for m in existing_messages if m.get("role") in ("user", "assistant")]
-    
     if not conversation:
-        return "No conversation content to summarize."
+        return "No content to summarize."
     
-    # Format conversation for summarization
     conv_text = "\n".join([
-        f"{m['role'].upper()}: {m['content']}" 
-        for m in conversation
+        f"{m['role'].upper()}: {m['content']}"
+        for m in conversation[-10:]
     ])
     
-    prompt = f"""Summarize this knowledge-sharing conversation into a structured document.
+    prompt = f"""Summarize this conversation:
 
-Include:
-- Key insights and lessons learned
-- Step-by-step processes mentioned
-- Best practices and tips
-- Common pitfalls to avoid
-- Specific examples given
-
-Format with clear sections and bullet points where appropriate.
-Do NOT invent facts - only include what was actually discussed.
-
-CONVERSATION:
 {conv_text}
 
-SUMMARY:"""
+Include:
+- Key insights
+- Processes mentioned
+- Best practices
+- Pitfalls to avoid
 
-    messages = [
-        {
-            "role": "system",
-            "content": "You create structured knowledge-base articles from conversations. Be concise and factual."
-        },
-        {"role": "user", "content": prompt},
-    ]
-    
+Be concise and factual."""
+
     if not check_connection():
-        return _generate_fallback_summary(conversation)
+        user_msgs = [m["content"] for m in conversation if m["role"] == "user"]
+        return "## Key Points\n\n" + "\n\n".join([f"- {msg[:200]}" for msg in user_msgs[:5]])
     
     try:
-        summary = chat(
-            messages,
+        return chat(
+            messages=[
+                {"role": "system", "content": "Create concise knowledge summaries."},
+                {"role": "user", "content": prompt},
+            ],
+            task="summary",
             temperature=0.3,
-            max_tokens=1024,
-            timeout=SUMMARY_TIMEOUT
-        )
-        return summary.strip()
-        
+            max_tokens=600,
+        ).strip()
     except OllamaError as e:
-        logger.warning(f"Summary generation failed: {e}, using fallback")
-        return _generate_fallback_summary(conversation)
+        logger.warning(f"Summary failed: {e}")
+        user_msgs = [m["content"] for m in conversation if m["role"] == "user"]
+        return "## Key Points\n\n" + "\n\n".join([f"- {msg[:200]}" for msg in user_msgs[:5]])
 
 
-def _generate_fallback_summary(conversation: list[dict[str, str]]) -> str:
-    """Create a basic summary without LLM."""
-    user_responses = [m["content"] for m in conversation if m.get("role") == "user"]
-    
-    if not user_responses:
-        return "No user responses to summarize."
-    
-    summary_parts = ["## Knowledge Summary\n"]
-    
-    for i, response in enumerate(user_responses[:5], 1):
-        # Truncate long responses
-        text = response[:500] + "..." if len(response) > 500 else response
-        summary_parts.append(f"### Point {i}\n{text}\n")
-    
-    return "\n".join(summary_parts)
-
+# =============================================================================
+# Tag Generation
+# =============================================================================
 
 def generate_tags(summary_text: str, max_tags: int = 10) -> list[str]:
-    """
-    Generate relevant tags from summary text.
-    
-    Returns:
-        List of tag strings
-    """
+    """Generate tags from text."""
     if not summary_text or len(summary_text.strip()) < 20:
         return []
     
-    prompt = f"""Extract {max_tags} relevant tags/keywords from this text.
-Return ONLY a JSON array of strings, nothing else.
-Example: ["tag1", "tag2", "tag3"]
-
-TEXT:
-{summary_text[:2000]}
-
-JSON TAGS:"""
-
-    messages = [
-        {"role": "system", "content": "You extract tags as a JSON array only. No other text."},
-        {"role": "user", "content": prompt},
-    ]
-    
     if not check_connection():
-        return _extract_fallback_tags(summary_text, max_tags)
+        return _extract_tags_fallback(summary_text, max_tags)
     
     try:
         raw = chat(
-            messages,
+            messages=[
+                {"role": "system", "content": "Extract tags as JSON array only."},
+                {"role": "user", "content": f'Extract {max_tags} tags: ["tag1",...]\n\n{summary_text[:1500]}'},
+            ],
+            task="tags",
             temperature=0.2,
-            max_tokens=200,
-            timeout=30.0
-        )
-        raw = raw.strip()
+            max_tokens=150,
+        ).strip()
         
-        # Try to parse JSON
-        try:
-            # Find JSON array in response
-            match = re.search(r'', raw, re.DOTALL)
-            if match:
+        match = re.search(r'', raw, re.DOTALL)
+        if match:
+            try:
                 arr = json.loads(match.group())
                 if isinstance(arr, list):
-                    tags = [str(x).strip() for x in arr if str(x).strip()]
-                    return tags[:max_tags]
-        except json.JSONDecodeError:
-            pass
+                    return [str(x).strip() for x in arr if x][:max_tags]
+            except json.JSONDecodeError:
+                pass
         
-        # Fallback: try to extract from raw text
-        return _extract_fallback_tags(raw, max_tags)
+        return _extract_tags_fallback(raw, max_tags)
         
     except OllamaError as e:
-        logger.warning(f"Tag generation failed: {e}, using fallback")
-        return _extract_fallback_tags(summary_text, max_tags)
+        logger.warning(f"Tag generation failed: {e}")
+        return _extract_tags_fallback(summary_text, max_tags)
 
 
-def _extract_fallback_tags(text: str, max_tags: int = 10) -> list[str]:
-    """Extract tags from text without LLM."""
-    # Remove common words and extract potential keywords
+def _extract_tags_fallback(text: str, max_tags: int = 10) -> list[str]:
+    """Extract tags without LLM."""
     stopwords = {
-        "the", "a", "an", "is", "are", "was", "were", "be", "been", "being",
-        "have", "has", "had", "do", "does", "did", "will", "would", "could",
-        "should", "may", "might", "must", "shall", "can", "need", "dare",
-        "to", "of", "in", "for", "on", "with", "at", "by", "from", "as",
-        "into", "through", "during", "before", "after", "above", "below",
-        "between", "under", "again", "further", "then", "once", "here",
-        "there", "when", "where", "why", "how", "all", "each", "few",
-        "more", "most", "other", "some", "such", "no", "nor", "not",
-        "only", "own", "same", "so", "than", "too", "very", "just",
-        "and", "but", "if", "or", "because", "until", "while", "this",
-        "that", "these", "those", "what", "which", "who", "whom", "i",
-        "you", "he", "she", "it", "we", "they", "me", "him", "her", "us",
-        "them", "my", "your", "his", "its", "our", "their", "myself",
+        "the", "a", "an", "is", "are", "was", "were", "be", "been", "have",
+        "has", "had", "do", "does", "did", "will", "would", "could", "should",
+        "may", "might", "must", "can", "to", "of", "in", "for", "on", "with",
+        "at", "by", "from", "as", "into", "through", "and", "but", "or", "if",
+        "this", "that", "these", "those", "what", "which", "who", "i", "you",
+        "he", "she", "it", "we", "they", "my", "your", "about", "very", "just",
     }
     
-    # Extract words
     words = re.findall(r'\b[a-zA-Z]{4,}\b', text.lower())
+    counts: dict[str, int] = {}
+    for w in words:
+        if w not in stopwords:
+            counts[w] = counts.get(w, 0) + 1
     
-    # Count frequency
-    word_count: dict[str, int] = {}
-    for word in words:
-        if word not in stopwords:
-            word_count[word] = word_count.get(word, 0) + 1
-    
-    # Sort by frequency and return top tags
-    sorted_words = sorted(word_count.items(), key=lambda x: x[1], reverse=True)
-    tags = [word.title() for word, _ in sorted_words[:max_tags]]
-    
-    return tags
+    sorted_words = sorted(counts.items(), key=lambda x: x[1], reverse=True)
+    return [w.title() for w, _ in sorted_words[:max_tags]]

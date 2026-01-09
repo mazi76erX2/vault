@@ -11,7 +11,7 @@ from app.models.profile import Profile
 from app.models.project import Project
 from app.models.refresh_token import RefreshToken
 from app.models.role import Role, UserRole
-from app.models.session import Question, Session
+from app.models.session import Question, Session, SessionStatus
 from app.models.user import User
 from app.models.user_type import UserType
 
@@ -23,6 +23,7 @@ __all__ = [
     "Document",
     "DocumentAssignment",
     "Session",
+    "SessionStatus",
     "Question",
     "Role",
     "UserRole",

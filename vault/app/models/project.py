@@ -1,33 +1,34 @@
+"""
+Project model
+"""
+
 import uuid
 from datetime import datetime
 
-from sqlalchemy import BigInteger, Column, DateTime, ForeignKey, String, Text
+from sqlalchemy import Column, DateTime, String, Text, ForeignKey, func
 from sqlalchemy.dialects.postgresql import UUID
-from sqlalchemy.orm import relationship
 
-from app.db.base_class import Base
+from .base import Base
+
 
 class Project(Base):
-    """Project model for organizing knowledge collection sessions."""
+    """Project model for organizing knowledge collection."""
 
     __tablename__ = "projects"
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    name = Column(String, nullable=False)
+    name = Column(String(255), nullable=False)
     description = Column(Text, nullable=True)
     manager_id = Column(
-        UUID(as_uuid=True), ForeignKey("profiles.id", ondelete="CASCADE"), nullable=False
+        UUID(as_uuid=True), 
+        ForeignKey("profiles.id", ondelete="SET NULL"), 
+        nullable=True
     )
-    company_id = Column(BigInteger, ForeignKey("companies.id", ondelete="CASCADE"), nullable=False)
-    company_reg_no = Column(String, nullable=True)
-    status = Column(String, default="active")  # active, archived, completed
-    created_at = Column(DateTime(timezone=True), nullable=False, default=datetime.utcnow)
-    updated_at = Column(
-        DateTime(timezone=True), nullable=False, default=datetime.utcnow, onupdate=datetime.utcnow
-    )
-
-    # Relationships
-    # manager = relationship("Profile", foreign_keys=[manager_id], backref="managed_projects")
+    company_id = Column(String(255), nullable=True)
+    company_reg_no = Column(String(100), nullable=True, index=True)
+    status = Column(String(50), default="active", index=True)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
 
     def __repr__(self):
-        return f"<Project(id={self.id}, name='{self.name}')>"
+        return f"<Project {self.name}>"
