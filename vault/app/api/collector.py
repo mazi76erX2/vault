@@ -598,18 +598,18 @@ async def generate_question_response(
     db: AsyncSession = Depends(get_async_db),
 ) -> dict[str, Any]:
     """Generate a follow-up question based on user's response."""
-    chat_prompt_id = data.get("chatpromptid")
-    user_text = data.get("usertext")
+    chat_prompt_id = data.get("chat_prompt_id")
+    user_text = data.get("user_text")
 
     if not chat_prompt_id:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST, 
-            detail="Missing chatpromptid in request body"
+            detail="Missing chat_prompt_id in request body"
         )
     if not user_text:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST, 
-            detail="Missing usertext in request body"
+            detail="Missing user_text in request body"
         )
 
     try:
@@ -633,7 +633,7 @@ async def generate_question_response(
         await db.commit()
 
         logger.info(f"Generated follow-up for chat {chat_prompt_id}")
-        return {"followupQuestion": followup}
+        return {"follow_up_question": followup}
 
     except HTTPException:
         raise
@@ -658,12 +658,12 @@ async def generate_summary_endpoint(
     db: AsyncSession = Depends(get_async_db),
 ) -> dict[str, Any]:
     """Generate a summary from chat messages."""
-    chat_prompt_id = data.get("chatpromptid")
+    chat_prompt_id = data.get("chat_prompt_id")
 
     if not chat_prompt_id:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST, 
-            detail="Missing chatpromptid in request body"
+            detail="Missing chat_prompt_id in request body"
         )
 
     try:
@@ -677,7 +677,7 @@ async def generate_summary_endpoint(
         summary = generate_summary(messages)
         
         logger.info(f"Generated summary for chat {chat_prompt_id}")
-        return {"chatsummary": summary}
+        return {"chat_summary": summary}
 
     except Exception as e:
         logger.error(f"Error generating summary: {e}")

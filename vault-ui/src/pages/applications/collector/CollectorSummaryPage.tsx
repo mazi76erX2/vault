@@ -10,7 +10,9 @@ import { Card, CardContent } from "@/components/ui/card";
 import Api from "@/services/Instance";
 
 interface LocationState {
+  generatedSummary?: string;
   sessionId?: string;
+  isResume?: boolean;
 }
 
 interface SummaryData {
@@ -31,17 +33,14 @@ const CollectorSummaryPage: React.FC = () => {
   const authContext = useAuthContext();
   const navigate = useNavigate();
   const location = useLocation();
-  const { sessionId } = (location.state as LocationState) || {};
+
+  const { generatedSummary, sessionId, isResume } =
+    (location.state as LocationState) || {};
 
   const fetchSummary = async () => {
-    if (
-      !authContext ||
-      !authContext.user?.user?.id ||
-      !authContext.isLoggedIn
-    ) {
+    if (!authContext?.user?.user?.id || !authContext.isLoggedIn) {
       if (!authContext?.isLoadingUser) {
         toast.error("User not authenticated or session has expired.");
-        setLoading(false);
       }
       return;
     }
@@ -87,10 +86,37 @@ const CollectorSummaryPage: React.FC = () => {
   };
 
   useEffect(() => {
-    if (authContext && !authContext.isLoadingUser && authContext.isLoggedIn) {
-      fetchSummary();
+    // Wait for auth to be ready
+    if (!authContext || authContext.isLoadingUser) {
+      return;
     }
-  }, [authContext]);
+
+    // Check if user is authenticated
+    if (!authContext.user || !authContext.isLoggedIn) {
+      toast.error("Session expired. Please log in again.");
+      navigate("/login");
+      return;
+    }
+
+    // Check if we have required data
+    if (!sessionId) {
+      toast.error("Session data missing. Redirecting...");
+      navigate("/applications/collector/CollectorInitQuestionsPage");
+      return;
+    }
+
+    // Fetch the summary
+    fetchSummary();
+  }, [authContext?.isLoadingUser, authContext?.isLoggedIn]);
+
+  // Show loader while auth is loading
+  if (!authContext || authContext.isLoadingUser) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <Loader />
+      </div>
+    );
+  }
 
   return (
     <div className="relative">
@@ -115,7 +141,7 @@ const CollectorSummaryPage: React.FC = () => {
 
           <Card className="bg-card text-card-foreground shadow-md">
             <CardContent className="p-6 space-y-4">
-              {summary && (
+              {summary ? (
                 <>
                   <div>
                     <h3 className="text-sm font-semibold text-muted-foreground">
@@ -191,16 +217,29 @@ const CollectorSummaryPage: React.FC = () => {
                     </p>
                   </div>
                 </>
+              ) : (
+                <div className="text-center py-8 text-muted-foreground">
+                  Loading summary...
+                </div>
               )}
             </CardContent>
           </Card>
 
           <div className="mt-6 flex justify-end gap-4">
-            <Button variant="outline" onClick={() => navigate(-1)} size="lg">
+            <Button
+              variant="outline"
+              onClick={() => navigate(-1)}
+              size="lg"
+              disabled={loading}
+            >
               Back
             </Button>
-            <Button onClick={handleSubmit} disabled={loading} size="lg">
-              Submit Session
+            <Button
+              onClick={handleSubmit}
+              disabled={loading || !summary}
+              size="lg"
+            >
+              {loading ? "Submitting..." : "Submit Session"}
             </Button>
           </div>
         </div>

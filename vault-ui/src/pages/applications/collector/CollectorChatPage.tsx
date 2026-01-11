@@ -55,7 +55,7 @@ const CollectorChatPage: React.FC = () => {
   const {
     question,
     sessionId,
-    chat_msgId: chatMsgId,
+    chatMessageId: chatMsgId,
     isResume,
   } = (location.state as LocationState) || {};
 
@@ -81,10 +81,10 @@ const CollectorChatPage: React.FC = () => {
   useEffect(() => {
     async function loadThemeSettings() {
       try {
-        if (!authContext?.user?.user?.id) {
+        if (!authContext?.user?.user?.user?.id) {
           return;
         }
-        const userId = authContext.user.user.id;
+        const userId = authContext.user.user.user.id;
         const response = await Api.post(
           "/api/v1/companies/get_theme_settings",
           {
@@ -112,7 +112,7 @@ const CollectorChatPage: React.FC = () => {
         }
       }
     }
-    if (authContext?.user?.user?.id) loadThemeSettings();
+    if (authContext?.user?.user?.user?.id) loadThemeSettings();
   }, [authContext?.user]);
 
   useEffect(() => {

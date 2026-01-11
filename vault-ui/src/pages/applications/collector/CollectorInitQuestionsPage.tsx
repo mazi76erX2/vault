@@ -302,7 +302,7 @@ const CollectorInitQuestionsPage: React.FC = () => {
         state: {
           question: question.question,
           sessionId,
-          chatmsgId: chatMessageId, // IMPORTANT: CollectorChatPage reads `chatmsgId` [file:1]
+          chatMessageId: chatMessageId,
           isResume: resume,
         },
       });
