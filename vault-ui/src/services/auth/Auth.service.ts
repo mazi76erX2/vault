@@ -1,4 +1,3 @@
-// vault-ui/src/services/auth/Auth.service.ts
 import axios, { AxiosError } from "axios";
 import {
   LoginRequestDTO,

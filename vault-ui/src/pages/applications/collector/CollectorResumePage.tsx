@@ -10,16 +10,24 @@ import { Loader } from "@/components/feedback/loader";
 import { Button } from "@/components/ui/button";
 import Api from "@/services/Instance";
 
+interface SessionFromBackend {
+  id: string;
+  user_id: string;
+  status: string;
+  created_at: string;
+  topic: string;
+}
+
 interface Session {
   id: string;
-  projectName: string;
+  topic: string;
   createdAt: string;
   status: string;
   [key: string]: unknown;
 }
 
 interface FetchSessionsResponse {
-  sessions: Session[];
+  sessions: SessionFromBackend[];
 }
 
 const CollectorResumePage: React.FC = () => {
@@ -31,14 +39,16 @@ const CollectorResumePage: React.FC = () => {
 
   const columns: ColumnDef<Session>[] = [
     {
-      accessorKey: "projectName",
-      header: "Project Name",
+      accessorKey: "topic",
+      header: "Topic",
     },
     {
       accessorKey: "createdAt",
       header: "Created At",
       cell: ({ row }) => {
-        const date = new Date(row.getValue("createdAt"));
+        const dateValue = row.getValue("createdAt");
+        if (!dateValue) return "N/A";
+        const date = new Date(dateValue as string);
         return date.toLocaleDateString();
       },
     },
@@ -49,11 +59,10 @@ const CollectorResumePage: React.FC = () => {
   ];
 
   const fetchSessions = async () => {
-    if (
-      !authContext ||
-      !authContext.user?.user?.id ||
-      !authContext.isLoggedIn
-    ) {
+    const userId =
+      authContext?.user?.user?.user?.id || authContext?.user?.user?.id;
+
+    if (!authContext || !userId || !authContext.isLoggedIn) {
       if (!authContext?.isLoadingUser) {
         toast.error("User not authenticated or session has expired.");
         setLoading(false);
@@ -63,10 +72,22 @@ const CollectorResumePage: React.FC = () => {
 
     try {
       setLoading(true);
-      const response = await Api.get<FetchSessionsResponse>(
-        "/api/v1/collector/fetchsessions"
+      const response = await Api.post<FetchSessionsResponse>(
+        "/api/v1/collector/fetch_resume_sessions"
       );
-      setRows(response.data.sessions);
+
+      const sessions = response.data.sessions.map((s) => ({
+        id: s.id,
+        topic: s.topic || "Untitled Session",
+        createdAt: s.created_at,
+        status: s.status,
+      }));
+
+      setRows(sessions);
+
+      if (sessions.length === 0) {
+        toast.info("No sessions available to resume.");
+      }
     } catch (err: unknown) {
       console.error("Error fetching sessions:", err);
       if (!(err instanceof AxiosError && err.response?.status === 401)) {
@@ -79,22 +100,62 @@ const CollectorResumePage: React.FC = () => {
     }
   };
 
-  const handleResumeSession = () => {
+  const handleResumeSession = async () => {
     if (!selectedSession) {
       toast.error("Please select a session first.");
       return;
     }
 
-    navigate("/applications/collector/CollectorChatPage", {
-      state: { session: selectedSession },
-    });
+    try {
+      setLoading(true);
+
+      const response = await Api.post(
+        "/api/v1/collector/fetch_chat_conversation",
+        { sessionid: selectedSession.id }
+      );
+
+      const chatMessageId = response.data.chatmessagesid;
+
+      navigate("/applications/collector/CollectorChatPage", {
+        state: {
+          sessionId: selectedSession.id,
+          chatMessageId: chatMessageId,
+          isResume: true,
+          question: selectedSession.topic,
+        },
+      });
+    } catch (err: unknown) {
+      console.error("Error resuming session:", err);
+      if (!(err instanceof AxiosError && err.response?.status === 401)) {
+        toast.error(
+          err instanceof Error ? err.message : "Failed to resume session."
+        );
+      }
+    } finally {
+      setLoading(false);
+    }
   };
 
   useEffect(() => {
+    console.log("CollectorResumePage - authContext:", {
+      hasAuthContext: !!authContext,
+      isLoadingUser: authContext?.isLoadingUser,
+      isLoggedIn: authContext?.isLoggedIn,
+      userId: authContext?.user?.user?.user?.id || authContext?.user?.user?.id,
+    });
+
     if (authContext && !authContext.isLoadingUser && authContext.isLoggedIn) {
       fetchSessions();
     }
-  }, [authContext]);
+  }, [authContext?.isLoadingUser, authContext?.isLoggedIn]);
+
+  if (!authContext || authContext.isLoadingUser) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <Loader />
+      </div>
+    );
+  }
 
   return (
     <div className="relative">
@@ -118,21 +179,37 @@ const CollectorResumePage: React.FC = () => {
           </div>
 
           <div className="bg-card text-card-foreground p-6 rounded-lg shadow-md border border-border">
-            <DataTable
-              columns={columns}
-              data={rows}
-              pageSize={5}
-              onRowClick={(params) => setSelectedSession(params.row as Session)}
-              getRowClassName={(params) =>
-                params.row.id === selectedSession?.id ? "bg-primary/20" : ""
-              }
-            />
+            {rows.length > 0 ? (
+              <DataTable
+                columns={columns}
+                data={rows}
+                pageSize={5}
+                onRowClick={(row) => setSelectedSession(row as Session)}
+                selectedRowId={selectedSession?.id}
+                getRowId={(row) => (row as Session).id}
+              />
+            ) : (
+              <div className="text-center py-8 text-muted-foreground">
+                {loading
+                  ? "Loading sessions..."
+                  : "No sessions available to resume."}
+              </div>
+            )}
           </div>
 
-          <div className="mt-6 flex justify-end">
+          <div className="mt-6 flex justify-between">
+            <Button
+              variant="outline"
+              onClick={() =>
+                navigate("/applications/collector/CollectorMainPage")
+              }
+              size="lg"
+            >
+              Back
+            </Button>
             <Button
               onClick={handleResumeSession}
-              disabled={!selectedSession}
+              disabled={!selectedSession || loading}
               size="lg"
             >
               Resume Session

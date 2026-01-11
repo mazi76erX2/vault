@@ -44,6 +44,37 @@ UPLOAD_DIR = ".uploads"
 os.makedirs(UPLOAD_DIR, exist_ok=True)
 
 
+def get_user_id(current_user: dict) -> str:
+    """Extract user_id from current_user dict consistently."""
+    user_id = (
+        current_user.get("user_id")
+        or current_user.get("user", {}).get("id")
+        or current_user.get("profile", {}).get("id")
+    )
+    if not user_id:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Could not extract user ID from token",
+        )
+    return str(user_id)
+
+
+def get_company_reg_no(current_user: dict) -> str | None:
+    """Extract company_reg_no from current_user dict consistently."""
+    return (
+        current_user.get("company_reg_no")
+        or current_user.get("profile", {}).get("company_reg_no")
+    )
+
+
+def get_company_id(current_user: dict) -> str | None:
+    """Extract company_id from current_user dict consistently."""
+    return (
+        current_user.get("company_id")
+        or current_user.get("profile", {}).get("company_id")
+    )
+
+
 # =============================================================================
 # CV/Profile Endpoints
 # =============================================================================
@@ -56,25 +87,21 @@ async def update_cv_text(
     db: AsyncSession = Depends(get_async_db),
 ) -> dict[str, Any]:
     """Upload and extract CV text from file."""
-    user_id = current_user["user_id"]
+    user_id = get_user_id(current_user)
     
-    # Ensure filename is safe
     if not file.filename:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="No filename provided",
         )
     
-    # Create safe filename
     safe_filename = f"{user_id}_{file.filename}"
     filepath = os.path.join(UPLOAD_DIR, safe_filename)
 
     try:
-        # Save uploaded file
         with open(filepath, "wb") as buffer:
             shutil.copyfileobj(file.file, buffer)
 
-        # Extract text from file
         cv_text = extract_text(Path(filepath)).strip()
         if not cv_text:
             raise HTTPException(
@@ -82,7 +109,6 @@ async def update_cv_text(
                 detail="Could not extract CV text from file. Please ensure the file contains readable text.",
             )
 
-        # Update profile with CV text
         stmt = update(Profile).where(Profile.id == user_id).values(CV_text=cv_text)
         result = await db.execute(stmt)
         await db.commit()
@@ -106,7 +132,6 @@ async def update_cv_text(
             detail=f"Failed to process CV: {str(e)}"
         ) from e
     finally:
-        # Clean up uploaded file
         try:
             if os.path.exists(filepath):
                 os.remove(filepath)
@@ -120,7 +145,7 @@ async def fetch_user_profile(
     db: AsyncSession = Depends(get_async_db),
 ) -> dict[str, Any]:
     """Fetch user profile details."""
-    user_id = current_user["user_id"]
+    user_id = get_user_id(current_user)
 
     try:
         stmt = select(Profile).where(Profile.id == user_id)
@@ -164,7 +189,6 @@ async def update_profile(
         profile = result.scalar_one_or_none()
 
         if not profile:
-            # Create new profile if doesn't exist
             profile = Profile(
                 id=request.user_id,
                 full_name=request.full_name,
@@ -177,7 +201,6 @@ async def update_profile(
             db.add(profile)
             logger.info(f"Created new profile for user {request.user_id}")
         else:
-            # Update existing profile
             profile.full_name = request.full_name
             profile.department = request.department
             if hasattr(request, "yearsofexperience") and request.yearsofexperience is not None:
@@ -265,7 +288,6 @@ async def generate_questions_endpoint(
         )
 
     try:
-        # Get user profile for context
         stmt = select(Profile).where(Profile.id == user_id)
         result = await db.execute(stmt)
         prof = result.scalar_one_or_none()
@@ -276,7 +298,6 @@ async def generate_questions_endpoint(
                 detail="Profile not found. Please complete your profile first."
             )
 
-        # Build profile dict for LLM
         profile_dict = {
             "full_name": prof.full_name,
             "yearsofexperience": prof.years_of_experience,
@@ -285,15 +306,12 @@ async def generate_questions_endpoint(
             "CVtext": prof.CV_text,
         }
 
-        # Generate questions using LLM (cloud-first with local fallback)
         logger.info(f"Generating questions for user {user_id}")
         questions, _ = generate_initial_questions(profile_dict, n=8)
         
-        # Extract topics quickly (no LLM call)
         topics = [_extract_simple_topic(q) for q in questions]
         status_list = ["Not Started"] * len(questions)
 
-        # Upsert questions
         stmt = select(Question).where(Question.user_id == user_id)
         result = await db.execute(stmt)
         existing = result.scalar_one_or_none()
@@ -356,11 +374,9 @@ async def init_questions_from_upload(
         )
 
     try:
-        # Extract topics (fast, no LLM)
         topics = [_extract_simple_topic(q) for q in questions_list]
         status_list = ["Not Started"] * len(questions_list)
 
-        # Upsert questions
         stmt = select(Question).where(Question.user_id == user_id)
         result = await db.execute(stmt)
         existing = result.scalar_one_or_none()
@@ -410,7 +426,7 @@ async def fetch_resume_sessions(
     db: AsyncSession = Depends(get_async_db),
 ) -> dict[str, Any]:
     """Fetch sessions with 'Started' status that can be resumed."""
-    user_id = current_user["user_id"]
+    user_id = get_user_id(current_user)
 
     try:
         stmt = select(Session).where(
@@ -434,6 +450,8 @@ async def fetch_resume_sessions(
             ]
         }
 
+    except HTTPException:
+        raise
     except Exception as e:
         logger.error(f"Error fetching sessions for user {user_id}: {e}")
         raise HTTPException(
@@ -449,10 +467,9 @@ async def start_chat(
     db: AsyncSession = Depends(get_async_db),
 ) -> dict[str, Any]:
     """Start a new chat session for knowledge collection."""
-    user_id = current_user.get("user", {}).get("id") or current_user.get("profile", {}).get("id")
+    user_id = get_user_id(current_user)
 
     try:
-        # Get company_id from profile
         stmt = select(Profile.company_id).where(Profile.id == user_id)
         result = await db.execute(stmt)
         company_id = result.scalar_one_or_none()
@@ -463,7 +480,6 @@ async def start_chat(
                 detail="User does not have a company associated with their profile. Please update your profile.",
             )
 
-        # Create draft document
         doc = Document(
             author_id=user_id,
             title=f"Draft Document - {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}",
@@ -472,12 +488,10 @@ async def start_chat(
             company_id=company_id,
         )
         db.add(doc)
-        await db.flush()  # Get doc_id
+        await db.flush()
 
-        # Extract topic from question (fast, no LLM)
-        topic = _extract_simple_topic(request.question)
+        topic = request.topic if request.topic else _extract_simple_topic(request.question)
 
-        # Create session
         session = Session(
             user_id=user_id,
             doc_id=doc.doc_id,
@@ -485,9 +499,8 @@ async def start_chat(
             status="Started",
         )
         db.add(session)
-        await db.flush()  # Get session_id
+        await db.flush()
 
-        # Create initial chat messages
         initial_messages = [
             {
                 "role": "system",
@@ -504,14 +517,12 @@ async def start_chat(
             messages=initial_messages,
         )
         db.add(chat_msg)
-        await db.flush()  # Get chat_msg_id
+        await db.flush()
 
-        # Link chat messages to session
         session.chat_messages_id = chat_msg.id
 
         await db.commit()
 
-        # Update question status to "Started" (non-blocking)
         try:
             stmt = select(Question).where(Question.user_id == user_id)
             result = await db.execute(stmt)
@@ -552,8 +563,8 @@ async def fetch_chat_conversation(
     db: AsyncSession = Depends(get_async_db),
 ) -> dict[str, Any]:
     """Fetch chat conversation messages for a session."""
-    session_id = data.get("sessionid")
-    chat_messages_id = data.get("chatmessagesid")
+    session_id = data.get("sessionid") or data.get("sessionId")
+    chat_messages_id = data.get("chatmessagesid") or data.get("chatMessagesId")
 
     if not session_id:
         raise HTTPException(
@@ -562,7 +573,6 @@ async def fetch_chat_conversation(
         )
 
     try:
-        # Get chat_messages_id from session if not provided
         if not chat_messages_id:
             stmt = select(Session.chat_messages_id).where(Session.id == session_id)
             result = await db.execute(stmt)
@@ -571,7 +581,6 @@ async def fetch_chat_conversation(
             if not chat_messages_id:
                 return {"chatmessagesid": None, "messages": None}
 
-        # Get messages
         stmt = select(ChatMessageCollector.messages).where(
             ChatMessageCollector.id == chat_messages_id
         )
@@ -613,7 +622,6 @@ async def generate_question_response(
         )
 
     try:
-        # Get current chat messages
         stmt = select(ChatMessageCollector).where(ChatMessageCollector.id == chat_prompt_id)
         result = await db.execute(stmt)
         chat_row = result.scalar_one_or_none()
@@ -624,11 +632,9 @@ async def generate_question_response(
                 detail="Chat session not found"
             )
 
-        # Generate follow-up question using LLM
         messages = chat_row.messages or []
         followup, updated_messages = generate_follow_up_question(messages, user_text)
 
-        # Update messages in database
         chat_row.messages = updated_messages
         await db.commit()
 
@@ -673,7 +679,6 @@ async def generate_summary_endpoint(
         result = await db.execute(stmt)
         messages = result.scalar_one_or_none() or []
 
-        # Generate summary using LLM
         summary = generate_summary(messages)
         
         logger.info(f"Generated summary for chat {chat_prompt_id}")
@@ -703,7 +708,6 @@ async def generate_tags_endpoint(
         )
 
     try:
-        # Generate tags using LLM
         tags = generate_tags(text)
         
         logger.info(f"Generated {len(tags)} tags")
@@ -725,7 +729,6 @@ async def update_summary(
 ) -> dict[str, Any]:
     """Update document summary."""
     try:
-        # Get doc_id from session
         stmt = select(Session.doc_id).where(Session.id == request.session_id)
         result = await db.execute(stmt)
         doc_id = result.scalar_one_or_none()
@@ -736,7 +739,6 @@ async def update_summary(
                 detail="Session not found or missing doc_id",
             )
 
-        # Update document summary
         stmt = (
             update(Document)
             .where(Document.doc_id == doc_id)
@@ -787,11 +789,10 @@ async def fetch_documents_status(
     db: AsyncSession = Depends(get_async_db),
 ) -> dict[str, Any]:
     """Fetch documents for the collector (non-draft documents)."""
-    user_id = current_user["user_id"]
-    company_reg_no = current_user.get("company_reg_no")
+    user_id = get_user_id(current_user)
+    company_reg_no = get_company_reg_no(current_user)
 
     try:
-        # Get all profiles for user name mapping
         stmt = select(Profile.id, Profile.full_name).where(
             Profile.company_reg_no == company_reg_no
         )
@@ -799,7 +800,6 @@ async def fetch_documents_status(
         profiles = result.all()
         user_map = {str(p.id): p.full_name or "N/A" for p in profiles}
 
-        # Get non-draft documents authored by user
         stmt = select(Document).where(
             Document.author_id == user_id,
             Document.status != "Draft",
@@ -809,10 +809,7 @@ async def fetch_documents_status(
         documents = result.scalars().all()
 
         if not documents:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail="No completed documents found",
-            )
+            return {"documents": []}
 
         rows = [
             {
@@ -843,7 +840,7 @@ async def fetch_existing_doc(
     db: AsyncSession = Depends(get_async_db),
 ) -> dict[str, Any]:
     """Fetch existing document by session ID."""
-    session_id =  data.get("sessionId") or data.get("sessionid")
+    session_id = data.get("sessionId") or data.get("sessionid")
 
     if not session_id:
         raise HTTPException(
@@ -852,7 +849,6 @@ async def fetch_existing_doc(
         )
 
     try:
-        # Get doc_id from session
         stmt = select(Session.doc_id).where(Session.id == session_id)
         result = await db.execute(stmt)
         doc_id = result.scalar_one_or_none()
@@ -863,7 +859,6 @@ async def fetch_existing_doc(
                 detail="Session not found or missing doc_id",
             )
 
-        # Get document details
         stmt = select(Document).where(Document.doc_id == doc_id)
         result = await db.execute(stmt)
         doc = result.scalar_one_or_none()
@@ -879,12 +874,12 @@ async def fetch_existing_doc(
                 "doc_id": str(doc.doc_id),
                 "title": doc.title,
                 "summary": doc.summary,
-                "status": doc.status,
+                "status": doc.status.value if hasattr(doc.status, "value") else str(doc.status) if doc.status else None,
                 "tags": getattr(doc, "tags", []) or [],
                 "employee_contact": getattr(doc, "employee_contact", None),
                 "link": doc.link,
                 "responsible": str(doc.responsible) if doc.responsible else None,
-                "severity_levels": doc.severity_levels,
+                "severity_levels": doc.severity_levels.value if hasattr(doc.severity_levels, "value") else str(doc.severity_levels) if doc.severity_levels else None,
             }
         }
 
@@ -905,7 +900,7 @@ async def update_session_and_document(
     db: AsyncSession = Depends(get_async_db),
 ) -> dict[str, Any]:
     """Update session status and document metadata."""
-    session_id = data.get("sessionid")
+    session_id = data.get("sessionid") or data.get("sessionId")
 
     if not session_id:
         raise HTTPException(
@@ -913,7 +908,6 @@ async def update_session_and_document(
             detail="Missing sessionid in request body"
         )
 
-    # Extract optional fields
     tags = data.get("tags") or []
     contact = data.get("contact")
     source_link = data.get("sourcelink")
@@ -922,7 +916,6 @@ async def update_session_and_document(
     severity = data.get("severity")
 
     try:
-        # Get doc_id from session
         stmt = select(Session.doc_id).where(Session.id == session_id)
         result = await db.execute(stmt)
         doc_id = result.scalar_one_or_none()
@@ -933,7 +926,6 @@ async def update_session_and_document(
                 detail="Session not found or missing doc_id",
             )
 
-        # Build update dict for document
         update_values: dict[str, Any] = {"status": "Pending"}
         
         if tags:
@@ -949,11 +941,9 @@ async def update_session_and_document(
         if document_title:
             update_values["title"] = document_title
 
-        # Update document
         stmt = update(Document).where(Document.doc_id == doc_id).values(**update_values)
         await db.execute(stmt)
 
-        # Update session status to Completed
         stmt = update(Session).where(Session.id == session_id).values(status="Completed")
         await db.execute(stmt)
 
@@ -979,7 +969,7 @@ async def get_validators(
     db: AsyncSession = Depends(get_async_db),
 ) -> dict[str, Any]:
     """Get all validators (profiles) for the company."""
-    company_reg_no = current_user.get("company_reg_no")
+    company_reg_no = get_company_reg_no(current_user)
 
     try:
         stmt = select(Profile.id, Profile.full_name).where(
@@ -1015,42 +1005,24 @@ async def fetch_projects(
 ) -> dict[str, Any]:
     """Fetch all active projects accessible to the current user."""
     try:
-        # Debug: log the current_user structure
         logger.debug(f"current_user keys: {current_user.keys()}")
         
-        # Handle different possible structures of current_user
-        profile = current_user.get("profile")
-        
-        # If profile is nested or current_user IS the profile
-        if profile is None:
-            # Maybe profile data is directly in current_user
-            user_company_reg_no = current_user.get("company_reg_no")
-            user_company_id = current_user.get("company_id")
-        elif isinstance(profile, dict):
-            user_company_reg_no = profile.get("company_reg_no")
-            user_company_id = profile.get("company_id")
-        else:
-            # profile might be an ORM object
-            user_company_reg_no = getattr(profile, "company_reg_no", None)
-            user_company_id = getattr(profile, "company_id", None)
+        user_company_reg_no = get_company_reg_no(current_user)
+        user_company_id = get_company_id(current_user)
 
-        # If still no company info, try to get from user_id
         if not user_company_reg_no and not user_company_id:
-            user_id = current_user.get("user_id")
-            if user_id:
-                stmt = select(Profile.company_reg_no, Profile.company_id).where(Profile.id == user_id)
-                result = await db.execute(stmt)
-                row = result.first()
-                if row:
-                    user_company_reg_no = row.company_reg_no
-                    user_company_id = row.company_id
+            user_id = get_user_id(current_user)
+            stmt = select(Profile.company_reg_no, Profile.company_id).where(Profile.id == user_id)
+            result = await db.execute(stmt)
+            row = result.first()
+            if row:
+                user_company_reg_no = row.company_reg_no
+                user_company_id = row.company_id
 
         if not user_company_reg_no and not user_company_id:
             logger.warning(f"No company info found for user. current_user: {current_user}")
-            # Return empty list instead of error for better UX
             return {"projects": []}
 
-        # Build query
         if user_company_reg_no:
             query = select(Project).where(
                 and_(
@@ -1104,15 +1076,14 @@ async def create_project(
 ) -> ProjectResponse:
     """Create a new project."""
     try:
-        profile = current_user.get("profile", {})
-        user_id = profile.get("id")
-        company_id = profile.get("company_id")
-        company_regno = profile.get("company_reg_no")
+        user_id = get_user_id(current_user)
+        company_id = get_company_id(current_user)
+        company_reg_no = get_company_reg_no(current_user)
 
-        if not user_id or not company_id:
+        if not company_id:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST, 
-                detail="User profile incomplete. Missing user ID or company ID."
+                detail="User profile incomplete. Missing company ID."
             )
 
         new_project = Project(
@@ -1120,7 +1091,7 @@ async def create_project(
             description=project_data.description,
             manager_id=project_data.manager_id or user_id,
             company_id=project_data.company_id or company_id,
-            company_reg_no=company_regno,
+            company_reg_no=company_reg_no,
             status=project_data.status or "active",
         )
 
@@ -1189,7 +1160,6 @@ async def update_project(
                 detail=f"Project {project_id} not found"
             )
 
-        # Update fields
         update_data = project_data.dict(exclude_unset=True)
         for field, value in update_data.items():
             setattr(project, field, value)
@@ -1229,7 +1199,6 @@ async def delete_project(
                 detail=f"Project {project_id} not found"
             )
 
-        # Soft delete - archive the project
         project.status = "archived"
         project.updated_at = datetime.utcnow()
         await db.commit()
