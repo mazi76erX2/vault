@@ -63,7 +63,6 @@ class Document(Base):
 
     # Relationships
     assignments = relationship("DocumentAssignment", back_populates="document")
-    reviewer = Column(UUID(as_uuid=True), ForeignKey("profiles.id"), index=True)
     reviewer_profile = relationship(
         "Profile",
         back_populates="documents_reviewed",

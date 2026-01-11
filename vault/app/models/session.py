@@ -52,6 +52,11 @@ class Session(Base):
 
     # Relationships - use string references to avoid circular imports
     user = relationship("Profile", back_populates="sessions")
+    chat_messages_collector = relationship(
+        "ChatMessageCollector", 
+        back_populates="session",
+        uselist=False  # one-to-one: each session has at most one collector
+    )
 
 
 class Question(Base):
