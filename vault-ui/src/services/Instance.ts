@@ -4,16 +4,16 @@ import axios, {
   AxiosRequestConfig,
   InternalAxiosRequestConfig,
 } from "axios";
-import { error as _showError } from "generic-components";
-import { getCurrentUser, setCurrentUser, _logout } from "./auth/Auth.service";
+import { toast } from "sonner";
+import { getCurrentUser, setCurrentUser } from "./auth/Auth.service";
 import { VAULT_API_URL } from "../config";
 import { LoginResponseDTO } from "../types/LoginResponseDTO";
 
 const Api: AxiosInstance = axios.create({
   baseURL: VAULT_API_URL,
+  timeout: 30000,
 });
 
-// Variable to prevent multiple concurrent refresh attempts
 let isRefreshing = false;
 let failedQueue: Array<{
   resolve: (value?: any) => void;
@@ -22,7 +22,7 @@ let failedQueue: Array<{
 
 const processQueue = (
   error: AxiosError | null,
-  token: string | null = null,
+  token: string | null = null
 ) => {
   failedQueue.forEach((prom) => {
     if (error) {
@@ -34,139 +34,115 @@ const processQueue = (
   failedQueue = [];
 };
 
-// Silent logout function for automatic logout without toasts
-const silentLogout = async (): Promise<void> => {
-  try {
-    // Clear user data from localStorage
-    localStorage.removeItem("currentUser");
-
-    // Redirect to login page
-    if (typeof window !== "undefined") {
-      window.location.href = "/login";
-    }
-  } catch (error) {
-    console.error("Silent logout failed:", error);
+const manualLogout = async (): Promise<void> => {
+  localStorage.removeItem("currentUser");
+  if (typeof window !== "undefined") {
+    window.location.href = "/login";
   }
 };
 
-// Check if error is due to JWT token expiration/invalidity
 const isJWTError = (error: AxiosError): boolean => {
-  const errorMessage = (error.response?.data as any)?.detail || "";
+  const status = error.response?.status;
+  const detail = (error.response?.data as any)?.detail || "";
   return (
-    error.response?.status === 401 &&
-    (errorMessage.includes("Invalid or missing token") ||
-      errorMessage.includes("token") ||
-      errorMessage.includes("JWT") ||
-      errorMessage.includes("expired"))
+    status === 401 ||
+    status === 403 ||
+    detail.includes("Invalid") ||
+    detail.includes("token") ||
+    detail.includes("JWT") ||
+    detail.includes("expired") ||
+    detail.includes("unauthorized")
   );
 };
 
-// Implement Request Interception for Token Injection
 Api.interceptors.request.use(
   async (config: InternalAxiosRequestConfig) => {
-    const storage = localStorage.getItem("currentUser");
-    if (storage) {
-      const currentUser = JSON.parse(storage);
-      if (currentUser && currentUser.token) {
-        // Ensure headers object exists
-        config.headers = config.headers || {};
-        config.headers.Authorization = `Bearer ${currentUser.token}`;
-      }
+    const user = getCurrentUser();
+    if (user?.access_token) {
+      config.headers = config.headers || {};
+      config.headers.Authorization = `Bearer ${user.access_token}`;
+      console.log(
+        "Token attached:",
+        user.access_token.substring(0, 20) + "..."
+      );
     }
     return config;
   },
-  (requestError) => Promise.reject(requestError),
+  (requestError) => Promise.reject(requestError)
 );
 
-// Response Interceptor for Token Refresh
 Api.interceptors.response.use(
-  (response) => response, // Pass through successful responses
+  (response) => response,
   async (error: AxiosError) => {
     const originalRequest = error.config as InternalAxiosRequestConfig & {
       _retry?: boolean;
     };
 
-    // Check if the error is a 401 and the request hasn't been retried yet
-    if (
-      error.response?.status === 401 &&
-      originalRequest &&
-      !originalRequest._retry
-    ) {
-      originalRequest._retry = true; // Mark as retried
+    if (isJWTError(error) && originalRequest && !originalRequest._retry) {
+      originalRequest._retry = true;
 
-      // If this is a JWT-related error, perform silent logout without showing error
-      if (isJWTError(error)) {
-        if (!isRefreshing) {
-          isRefreshing = true;
-          processQueue(error, null);
-          await silentLogout();
-          isRefreshing = false;
-        }
-        return Promise.reject(error);
-      }
+      const errorMsg =
+        error.response?.data?.detail ||
+        (error.response?.status === 403
+          ? "Insufficient permissions"
+          : "Session issue");
+      toast.error(errorMsg);
 
-      // If another request is already refreshing the token, queue this one
       if (isRefreshing) {
         return new Promise((resolve, reject) => {
           failedQueue.push({ resolve, reject });
         })
           .then((token) => {
-            if (originalRequest.headers) {
+            if (token && originalRequest.headers) {
               originalRequest.headers.Authorization = `Bearer ${token}`;
+              return Api(originalRequest);
             }
-            return Api(originalRequest);
+            return Promise.reject(error);
           })
           .catch((err) => Promise.reject(err));
       }
 
-      isRefreshing = true; // Lock refreshing state
-
-      const currentUser = getCurrentUser();
-      if (currentUser && currentUser.refreshToken) {
-        try {
-          const refreshResponse = await Api.post<LoginResponseDTO>(
-            "/api/v1/auth/refresh",
-            {
-              refreshToken: currentUser.refreshToken,
-            },
-          );
-
-          if (refreshResponse.data && refreshResponse.data.token) {
-            setCurrentUser(refreshResponse.data); // Update stored tokens
-            if (originalRequest.headers) {
-              originalRequest.headers.Authorization = `Bearer ${refreshResponse.data.token}`;
-            }
-            processQueue(null, refreshResponse.data.token); // Process queued requests
-            isRefreshing = false; // Unlock refreshing state
-            return await Api(originalRequest); // Retry original request
-          }
-          // Refresh attempt failed (e.g., invalid refresh token in response)
-          processQueue(error, null);
-          await silentLogout(); // Silent logout instead of showing error
-          isRefreshing = false; // Unlock refreshing state
-          return await Promise.reject(error);
-        } catch (refreshError) {
-          // Catch errors from the refresh API call itself
-          processQueue(refreshError as AxiosError, null);
-          await silentLogout(); // Silent logout instead of showing error
-          isRefreshing = false; // Unlock refreshing state
-          return Promise.reject(refreshError);
+      isRefreshing = true;
+      try {
+        const refreshToken = getCurrentUser()?.refresh_token;
+        if (!refreshToken) {
+          toast.warning("Token refresh unavailable");
+          return Promise.reject(error);
         }
-      } else {
-        // No refresh token available, or no current user
-        await silentLogout(); // Silent logout instead of showing error
-        isRefreshing = false; // Unlock refreshing state
-        processQueue(error, null); // Ensure queue is processed with error if any requests were pending
-        return Promise.reject(error);
+
+        const refreshResponse = await axios.post(
+          `${VAULT_API_URL}/api/auth/refresh`,
+          {
+            refreshtoken: refreshToken,
+          }
+        );
+
+        if (refreshResponse.data?.access_token) {
+          setCurrentUser(refreshResponse.data);
+          processQueue(null, refreshResponse.data.access_token);
+          originalRequest.headers!.Authorization = `Bearer ${refreshResponse.data.access_token}`;
+          return Api(originalRequest);
+        }
+      } catch (refreshError) {
+        console.error("Token refresh failed:", refreshError);
+        toast.warning("Could not refresh token. Some features may be limited.");
+      } finally {
+        isRefreshing = false;
       }
     }
 
-    // For non-401 errors or if already retried, just pass them on
-    return Promise.reject(error);
-  },
-);
+    if (error.response?.status >= 500) {
+      toast.error("Server error. Please try again later.");
+    } else if (error.response?.status >= 400 && error.response?.status < 500) {
+      if (error.response.status === 401 || error.response.status === 403) {
+        return Promise.reject(error);
+      }
+      const detail = (error.response.data as any)?.detail || "Request failed";
+      toast.error(detail);
+    }
 
-// This function is not strictly needed here anymore as the interceptor handles it directly.
-// const authHeader = (user?: string) => { ... }; // Can be removed if not used elsewhere
+    return Promise.reject(error);
+  }
+);
 
 export default Api;

@@ -1,151 +1,155 @@
-import * as React from "react";
-import { useState, useEffect } from "react";
+import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
+import { Lock, Mail, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { TextField } from "@/components/forms/text-field";
-import { Loader } from "@/components/feedback/loader";
+import { Input } from "@/components/ui/input";
+import { Checkbox } from "@/components/ui/checkbox"; // ADD THIS
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { Label } from "@/components/ui/label";
 import { useAuthContext } from "@/hooks/useAuthContext";
-import instance from "@/services/Instance";
+import { LoginRequestDTO } from "@/types/LoginResponseDTO";
 
 const LoginPage: React.FC = () => {
-  const navigate = useNavigate();
-  const authContext = useAuthContext();
-  const [loading, setLoading] = useState(false);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [rememberMe, setRememberMe] = useState(false); // ADD THIS
+  const [loading, setLoading] = useState(false);
+  const navigate = useNavigate();
+  const { login } = useAuthContext();
 
-  const onLogin = async (emailParam: string, passwordParam: string) => {
-    setLoading(true);
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+
+    if (!email || !password) {
+      toast.error("Please enter both email and password");
+      return;
+    }
+
     try {
-      const response = await instance.post("/api/auth/login", {
-        email: emailParam,
-        password: passwordParam,
-      });
+      setLoading(true);
+      const loginData: LoginRequestDTO = {
+        email: email.trim(),
+        password: password,
+      };
 
-      if (response.data.access_token) {
-        console.log("Login successful:", response.data);
-        localStorage.setItem("token", response.data.access_token);
-        await authContext?.login(response.data);
-        toast.success("Login successful!");
-        navigate("/");
+      await login(loginData);
+
+      // Store remember me preference
+      if (rememberMe) {
+        localStorage.setItem("rememberMe", "true");
+      } else {
+        localStorage.removeItem("rememberMe");
       }
-    } catch (error) {
-      console.error("Login failed:", error);
-      toast.error("Login failed. Please check your credentials.");
+
+      await new Promise((resolve) => setTimeout(resolve, 200));
+
+      toast.success("Login successful!");
+      navigate("/dashboard", { replace: true });
+    } catch (error: any) {
+      const errorMessage =
+        error.message || "Login failed. Please check your credentials.";
+      toast.error(errorMessage);
     } finally {
       setLoading(false);
     }
   };
 
-  // ✅ Move BOTH useEffects BEFORE early return
-  useEffect(() => {
-    const token = localStorage.getItem("token");
-    if (token && authContext?.user) {
-      navigate("/");
-    }
-  }, [navigate, authContext?.user]);
-
-  useEffect(() => {
-    const handleKeyPress = (event: KeyboardEvent) => {
-      if (event.key === "Enter") {
-        onLogin(email, password);
-      }
-    };
-
-    window.addEventListener("keypress", handleKeyPress);
-    return () => {
-      window.removeEventListener("keypress", handleKeyPress);
-    };
-  }, [email, password, onLogin]);
-
-  // NOW the early return (after ALL hooks)
-  if (!authContext) {
-    return <div>Loading...</div>;
-  }
-
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    onLogin(email, password);
-  };
-
-  if (loading) {
-    return <Loader />;
-  }
-
   return (
-    <div className="flex min-h-screen items-center justify-center bg-gray-100">
-      <div className="w-full max-w-md space-y-8 rounded-lg bg-white p-8 shadow-lg">
-        <div className="text-center">
-          <h2 className="text-3xl font-bold">Sign In</h2>
-          <p className="mt-2 text-gray-600">
-            Welcome back! Please sign in to continue.
-          </p>
-        </div>
-
-        <form onSubmit={handleSubmit} className="mt-8 space-y-6">
-          <div className="space-y-4">
-            <TextField
-              label="Email"
-              type="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              required
-              fullWidth
-            />
-            <TextField
-              label="Password"
-              type="password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              required
-              fullWidth
-            />
+    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-background to-muted/50 p-4">
+      <Card className="w-full max-w-md shadow-2xl border-0">
+        <CardHeader className="text-center space-y-2">
+          <div className="w-20 h-20 bg-primary/10 rounded-2xl flex items-center justify-center mx-auto mb-4">
+            <Lock className="w-10 h-10 text-primary" />
           </div>
-
-          <div className="flex items-center justify-between">
-            <div className="flex items-center">
-              <input
-                id="remember-me"
-                name="remember-me"
-                type="checkbox"
-                className="h-4 w-4 rounded border-gray-300"
-              />
-              <label
-                htmlFor="remember-me"
-                className="ml-2 text-sm text-gray-900"
-              >
-                Remember me
-              </label>
+          <CardTitle className="text-2xl">Welcome Back</CardTitle>
+          <CardDescription>Sign in to your account</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <form onSubmit={handleSubmit} className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="email">Email</Label>
+              <div className="relative">
+                <Mail className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground w-4 h-4" />
+                <Input
+                  id="email"
+                  type="email"
+                  placeholder="Enter your email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  className="pl-10"
+                  disabled={loading}
+                  required
+                />
+              </div>
             </div>
 
-            <button
-              type="button"
-              className="cursor-pointer text-sm text-blue-600 hover:text-blue-500"
-              onClick={() => navigate("/reset-password")}
+            <div className="space-y-2">
+              <Label htmlFor="password">Password</Label>
+              <div className="relative">
+                <Lock className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground w-4 h-4" />
+                <Input
+                  id="password"
+                  type="password"
+                  placeholder="Enter your password"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  className="pl-10"
+                  disabled={loading}
+                  required
+                />
+              </div>
+            </div>
+
+            {/* ADD THIS REMEMBER ME SECTION */}
+            <div className="flex items-center space-x-2">
+              <Checkbox
+                id="rememberMe"
+                checked={rememberMe}
+                onCheckedChange={(checked) => setRememberMe(checked as boolean)}
+                disabled={loading}
+              />
+              <Label
+                htmlFor="rememberMe"
+                className="text-sm font-normal cursor-pointer"
+              >
+                Remember me for 7 days
+              </Label>
+            </div>
+
+            <Button
+              type="submit"
+              className="w-full"
+              disabled={loading || !email || !password}
             >
-              Forgot password?
-            </button>
+              {loading ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Signing in...
+                </>
+              ) : (
+                "Sign In"
+              )}
+            </Button>
+          </form>
+
+          <div className="mt-6 text-center">
+            <Button
+              variant="link"
+              onClick={() => navigate("/password-reset")}
+              className="p-0 h-auto text-sm"
+            >
+              Forgot your password?
+            </Button>
           </div>
-
-          <Button type="submit" className="w-full" disabled={loading}>
-            {loading ? "Signing in..." : "Sign in"}
-          </Button>
-        </form>
-
-        <div className="text-center">
-          <span className="text-sm text-gray-600">
-            Don&apos;t have an account?{" "}
-            <button
-              type="button"
-              className="cursor-pointer text-blue-600 hover:text-blue-500"
-              onClick={() => navigate("/signup")}
-            >
-              Sign up
-            </button>
-          </span>
-        </div>
-      </div>
+        </CardContent>
+      </Card>
     </div>
   );
 };

@@ -1,18 +1,34 @@
-/**
- * Represents the response returned by a successful login,
- * including user info and auth tokens.
- */
-import { UserDTO } from "./UserDTO";
-
-// Define and export LoginRequestDTO
+// vault-ui/src/types/LoginResponseDTO.ts
 export interface LoginRequestDTO {
   email: string;
   password: string;
 }
 
 export interface LoginResponseDTO {
-  user: UserDTO; // The logged-in user's data
-  token: string; // Access token (JWT, for example)
-  refreshToken?: string; // Optional if you have refresh logic
-  // Add any additional fields (e.g. "expiresIn") as needed
+  access_token: string;
+  refresh_token: string;
+  token_type: string;
+  expires_in: number;
+  user: {
+    user: {
+      id: string;
+      email: string;
+      email_confirmed: boolean;
+    };
+    profile: {
+      id: string;
+      full_name?: string | null;
+      email: string;
+      username?: string | null;
+      telephone?: string | null;
+      company_id?: number | null;
+      company_name?: string | null;
+      company_reg_no: string;
+      department?: string | null;
+      user_access?: number | null;
+      status: string;
+    };
+    roles: string[];
+    company_reg_no: string;
+  };
 }

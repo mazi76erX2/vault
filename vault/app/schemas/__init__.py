@@ -24,6 +24,7 @@ from .ldap import (LDAPConnectorCreate, LDAPConnectorResponse,
                    LDAPConnectorUpdate)
 # Profile schemas
 from .profile import ProfileCreate, ProfileResponse, ProfileUpdate
+from .project import ProjectBase, ProjectCreate, ProjectResponse, ProjectUpdate
 # Role schemas
 from .role import RoleCreate, RoleResponse, UserRoleCreate, UserRoleResponse
 # Session schemas
@@ -93,4 +94,9 @@ __all__ = [
     "UserInfo",
     "UserProfileRequest",
     "UserProfileResponse",
+    # Project schemas
+    "ProjectBase",
+    "ProjectCreate",
+    "ProjectResponse",
+    "ProjectUpdate",
 ]

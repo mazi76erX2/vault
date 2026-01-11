@@ -7,7 +7,7 @@ import { TextField } from "@/components/forms/text-field";
 import { ColorPicker } from "@/components/pickers/color-picker";
 import { Loader } from "@/components/feedback/loader";
 import { CheckBox } from "@/components/forms/checkbox";
-import { Card } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { useAuthContext } from "@/hooks/useAuthContext";
 import Api from "@/services/Instance";
 import assistantIcon from "@/assets/assistant_icon.png";
@@ -92,7 +92,7 @@ const BusinessThemePage: React.FC = () => {
           fontOptions.find((f) => f.value === settings.font) || {
             id: "tahoma",
             value: "Tahoma",
-          },
+          }
         );
         setLogoPreview(settings.logo || "");
         setBotProfilePicPreview(settings.botProfilePicture || assistantIcon);
@@ -160,7 +160,7 @@ const BusinessThemePage: React.FC = () => {
 
   const handleFileUpload = (
     e: React.ChangeEvent<HTMLInputElement>,
-    isLogo: boolean,
+    isLogo: boolean
   ) => {
     if (e.target.files && e.target.files[0]) {
       const file = e.target.files[0];
@@ -183,16 +183,18 @@ const BusinessThemePage: React.FC = () => {
   return (
     <div className="relative max-w-7xl mx-auto p-6">
       {loading && (
-        <div className="fixed top-0 left-0 w-full h-full bg-white/80 z-[1000] flex justify-center items-center">
+        <div className="fixed top-0 left-0 w-full h-full bg-background/80 z-[1000] flex justify-center items-center backdrop-blur-sm">
           <Loader />
         </div>
       )}
 
-      <h2 className="text-2xl font-bold mb-6">Business Theme Settings</h2>
+      <h2 className="text-2xl font-bold mb-6 text-foreground">
+        Business Theme Settings
+      </h2>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
         <div>
-          <label className="text-sm font-semibold mb-2 block">
+          <label className="text-sm font-semibold mb-2 block text-foreground">
             User Chat Bubble Colour
           </label>
           <ColorPicker
@@ -202,7 +204,7 @@ const BusinessThemePage: React.FC = () => {
         </div>
 
         <div>
-          <label className="text-sm font-semibold mb-2 block">
+          <label className="text-sm font-semibold mb-2 block text-foreground">
             Bot Chat Bubble Colour
           </label>
           <ColorPicker
@@ -212,7 +214,7 @@ const BusinessThemePage: React.FC = () => {
         </div>
 
         <div>
-          <label className="text-sm font-semibold mb-2 block">
+          <label className="text-sm font-semibold mb-2 block text-foreground">
             Send Button Color
           </label>
           <ColorPicker
@@ -222,7 +224,7 @@ const BusinessThemePage: React.FC = () => {
         </div>
 
         <div>
-          <label className="text-sm font-semibold mb-2 block">
+          <label className="text-sm font-semibold mb-2 block text-foreground">
             User Chat Font Colour
           </label>
           <ColorPicker
@@ -232,7 +234,7 @@ const BusinessThemePage: React.FC = () => {
         </div>
 
         <div>
-          <label className="text-sm font-semibold mb-2 block">
+          <label className="text-sm font-semibold mb-2 block text-foreground">
             Bot Chat Font Colour
           </label>
           <ColorPicker
@@ -242,7 +244,7 @@ const BusinessThemePage: React.FC = () => {
         </div>
 
         <div>
-          <label className="text-sm font-semibold mb-2 block">
+          <label className="text-sm font-semibold mb-2 block text-foreground">
             Font Family
           </label>
           <select
@@ -251,7 +253,7 @@ const BusinessThemePage: React.FC = () => {
               const font = fontOptions.find((f) => f.id === e.target.value);
               if (font) setSelectedFont(font);
             }}
-            className="w-full p-2 border rounded"
+            className="w-full p-2 border border-border rounded bg-input text-foreground"
           >
             {fontOptions.map((font) => (
               <option key={font.id} value={font.id}>
@@ -262,7 +264,9 @@ const BusinessThemePage: React.FC = () => {
         </div>
 
         <div>
-          <label className="text-sm font-semibold mb-2 block">Logo</label>
+          <label className="text-sm font-semibold mb-2 block text-foreground">
+            Logo
+          </label>
           <div className="flex gap-2">
             <TextField
               value={logoPreview ? "Image selected" : ""}
@@ -285,7 +289,7 @@ const BusinessThemePage: React.FC = () => {
             </Button>
           </div>
           {logoPreview && (
-            <div className="mt-2 border p-2 inline-block">
+            <div className="mt-2 border border-border p-2 inline-block rounded">
               <img
                 src={logoPreview}
                 alt="Logo Preview"
@@ -296,7 +300,7 @@ const BusinessThemePage: React.FC = () => {
         </div>
 
         <div>
-          <label className="text-sm font-semibold mb-2 block">
+          <label className="text-sm font-semibold mb-2 block text-foreground">
             Bot Profile Picture
           </label>
           <div className="flex gap-2">
@@ -335,7 +339,7 @@ const BusinessThemePage: React.FC = () => {
             className="mt-2"
           />
           {botProfilePicPreview && (
-            <div className="mt-2 border p-2 inline-block">
+            <div className="mt-2 border border-border p-2 inline-block rounded">
               <img
                 src={botProfilePicPreview}
                 alt="Bot Profile Preview"
@@ -347,64 +351,66 @@ const BusinessThemePage: React.FC = () => {
       </div>
 
       <div className="mb-8">
-        <h3 className="text-xl font-bold mb-4">Preview</h3>
-        <Card className="p-4 max-w-2xl">
-          <div className="space-y-4 mb-4">
-            {messages.map((message) =>
-              message.sender === "bot" ? (
-                <div key={message.id} className="flex justify-start">
-                  <div
-                    className="max-w-[70%] rounded-lg p-4 flex gap-2"
-                    style={{
-                      backgroundColor: botChatColor,
-                      color: botChatFontColor,
-                      fontFamily: selectedFont.value,
-                    }}
-                  >
-                    <img
-                      src={botProfilePicPreview}
-                      alt="Bot"
-                      className="w-8 h-8 rounded-full"
-                    />
-                    <span>{message.text}</span>
+        <h3 className="text-xl font-bold mb-4 text-foreground">Preview</h3>
+        <Card className="bg-card text-card-foreground max-w-2xl">
+          <CardContent className="p-4">
+            <div className="space-y-4 mb-4">
+              {messages.map((message) =>
+                message.sender === "bot" ? (
+                  <div key={message.id} className="flex justify-start">
+                    <div
+                      className="max-w-[70%] rounded-lg p-4 flex gap-2"
+                      style={{
+                        backgroundColor: botChatColor,
+                        color: botChatFontColor,
+                        fontFamily: selectedFont.value,
+                      }}
+                    >
+                      <img
+                        src={botProfilePicPreview}
+                        alt="Bot"
+                        className="w-8 h-8 rounded-full"
+                      />
+                      <span>{message.text}</span>
+                    </div>
                   </div>
-                </div>
-              ) : (
-                <div key={message.id} className="flex justify-end">
-                  <div
-                    className="max-w-[70%] rounded-lg p-4"
-                    style={{
-                      backgroundColor: userChatColor,
-                      color: userChatFontColor,
-                      fontFamily: selectedFont.value,
-                    }}
-                  >
-                    {message.text}
+                ) : (
+                  <div key={message.id} className="flex justify-end">
+                    <div
+                      className="max-w-[70%] rounded-lg p-4"
+                      style={{
+                        backgroundColor: userChatColor,
+                        color: userChatFontColor,
+                        fontFamily: selectedFont.value,
+                      }}
+                    >
+                      {message.text}
+                    </div>
                   </div>
-                </div>
-              ),
-            )}
-          </div>
+                )
+              )}
+            </div>
 
-          <div className="relative">
-            <textarea
-              value={previewMessage}
-              onChange={(e) => setPreviewMessage(e.target.value)}
-              placeholder="Type your message here..."
-              className="w-full p-3 pr-12 border rounded resize-none"
-              style={{
-                fontFamily: selectedFont.value,
-                color: userChatFontColor,
-              }}
-              rows={2}
-            />
-            <Button
-              className="absolute bottom-2 right-2 p-2"
-              style={{ backgroundColor: sendButtonColor }}
-            >
-              Send
-            </Button>
-          </div>
+            <div className="relative">
+              <textarea
+                value={previewMessage}
+                onChange={(e) => setPreviewMessage(e.target.value)}
+                placeholder="Type your message here..."
+                className="w-full p-3 pr-12 border border-border rounded resize-none bg-input text-foreground"
+                style={{
+                  fontFamily: selectedFont.value,
+                  color: userChatFontColor,
+                }}
+                rows={2}
+              />
+              <Button
+                className="absolute bottom-2 right-2 p-2"
+                style={{ backgroundColor: sendButtonColor }}
+              >
+                Send
+              </Button>
+            </div>
+          </CardContent>
         </Card>
       </div>
 
@@ -412,12 +418,7 @@ const BusinessThemePage: React.FC = () => {
         <Button variant="outline" size="lg">
           Cancel
         </Button>
-        <Button
-          onClick={handleSave}
-          disabled={loading}
-          className="bg-[#FF8234] hover:bg-[#e66334]"
-          size="lg"
-        >
+        <Button onClick={handleSave} disabled={loading} size="lg">
           {loading ? "Saving..." : "Save"}
         </Button>
       </div>

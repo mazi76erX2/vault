@@ -28,10 +28,12 @@ async def verify_token(
     """
     try:
         token = credentials.credentials
-
+        
         # Decode token
         payload = AuthService.decode_token(token)
         user_id = payload.get("sub")
+        
+        logger.info(f"Token decoded successfully. User ID: {user_id}")  # ADD THIS
 
         if not user_id:
             raise HTTPException(
@@ -42,6 +44,8 @@ async def verify_token(
 
         # Get user with roles
         user_data = await AuthService.get_user_with_roles(db, user_id)
+        
+        logger.info(f"User data retrieved: {user_data.keys() if user_data else 'None'}")  # ADD THIS
 
         if not user_data:
             raise HTTPException(
@@ -53,6 +57,7 @@ async def verify_token(
         return user_data
 
     except ValueError as e:
+        logger.error(f"ValueError in verify_token: {str(e)}")  # ADD THIS
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail=str(e),
@@ -60,6 +65,7 @@ async def verify_token(
         ) from e
     except Exception as e:
         logger.error(f"Error verifying token: {str(e)}")
+        logger.exception(e)  # ADD THIS to see full traceback
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Could not validate credentials",

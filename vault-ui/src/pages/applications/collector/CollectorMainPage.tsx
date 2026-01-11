@@ -1,58 +1,70 @@
 import React from "react";
 import { useNavigate } from "react-router-dom";
-import { DancingBot } from "@/components/media/dancing-bot";
+import { DancingBot } from "../../../components/media/dancing-bot";
+import { Button } from "../../../components/ui/button";
 
 const CollectorMainPage: React.FC = () => {
   const navigate = useNavigate();
 
-  return (
-    <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-center">
-      <DancingBot state="greeting" className="w-full max-w-[600px] mx-auto" />
+  const handleStartNewSession = () => {
+    navigate("/applications/collector/CollectorStartPage");
+  };
 
-      <div className="space-y-6">
-        <div className="mb-8">
-          <h1 className="text-3xl font-bold text-center">
-            Welcome to <br /> Vault Collector Chat.
-          </h1>
+  const handleResumeSession = () => {
+    navigate("/applications/collector/CollectorResumePage");
+  };
+
+  return (
+    <div className="min-h-screen bg-background">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-center py-12 px-6 lg:px-12">
+        <div className="flex justify-center lg:justify-end">
+          <DancingBot
+            state="greeting"
+            className="w-full max-w-500px lg:max-w-600px"
+          />
         </div>
 
-        <div className="flex flex-col gap-5">
-          <div
-            className="bg-[#d3d3d3] p-5 rounded-lg shadow-md text-center cursor-pointer transition-transform hover:scale-105 w-full max-w-[500px] mx-auto"
-            onClick={() =>
-              navigate("/applications/collector/CollectorResumePage")
-            }
-          >
-            <h3 className="text-lg font-semibold mb-2">
-              Continue <br /> an existing session
-            </h3>
-            <p className="text-sm">
-              Click here to select one of your unfinished interviews.
+        <div className="space-y-8 max-w-md">
+          <div className="space-y-4">
+            <h1 className="text-3xl lg:text-4xl font-bold text-foreground">
+              Collector Dashboard
+            </h1>
+            <p className="text-xl text-muted-foreground leading-relaxed">
+              Choose an option to get started with your knowledge collection
+              workflow.
             </p>
           </div>
 
-          <div
-            className="bg-[#d3d3d3] p-5 rounded-lg shadow-md text-center cursor-pointer transition-transform hover:scale-105 w-full max-w-[500px] mx-auto"
-            onClick={() =>
-              navigate("/applications/collector/CollectorStartPage")
-            }
-          >
-            <h3 className="text-lg font-semibold mb-2">
-              Start <br /> a new session
-            </h3>
-            <p className="text-sm">Click here to start a new interview.</p>
+          <div className="space-y-4">
+            <Button
+              onClick={handleStartNewSession}
+              size="lg"
+              className="w-full h-16 text-lg font-semibold shadow-lg hover:shadow-xl transition-all duration-200"
+            >
+              Start a New Session
+            </Button>
+
+            <Button
+              onClick={handleResumeSession}
+              variant="outline"
+              size="lg"
+              className="w-full h-16 text-lg font-semibold border-2 shadow-lg hover:shadow-xl transition-all duration-200"
+            >
+              Resume Existing Session
+            </Button>
           </div>
 
-          <div
-            className="bg-[#d3d3d3] p-5 rounded-lg shadow-md text-center cursor-pointer transition-transform hover:scale-105 w-full max-w-[500px] mx-auto"
-            onClick={() =>
-              navigate("/applications/collector/CollectorDocumentsStatusPage")
-            }
-          >
-            <h3 className="text-lg font-semibold mb-2">Previous sessions</h3>
-            <p className="text-sm">
-              Click here to view the status of previous sessions.
-            </p>
+          <div className="pt-8 border-t border-border">
+            <Button
+              variant="ghost"
+              className="w-full justify-start h-auto p-0 text-muted-foreground hover:text-foreground gap-2 text-sm"
+              onClick={() =>
+                navigate("/applications/collector/CollectorDocumentsStatusPage")
+              }
+            >
+              View Previous Sessions
+              <span className="ml-auto text-xs opacity-75">→</span>
+            </Button>
           </div>
         </div>
       </div>

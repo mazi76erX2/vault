@@ -71,7 +71,7 @@ const HelperChatPage: React.FC = () => {
       console.error("Error creating chat:", err);
       if (!(err instanceof AxiosError && err.response?.status === 401)) {
         toast.error(
-          err instanceof Error ? err.message : "Failed to create chat.",
+          err instanceof Error ? err.message : "Failed to create chat."
         );
       }
     } finally {
@@ -99,7 +99,7 @@ const HelperChatPage: React.FC = () => {
       console.error("Error fetching messages:", err);
       if (!(err instanceof AxiosError && err.response?.status === 401)) {
         toast.error(
-          err instanceof Error ? err.message : "Failed to fetch messages.",
+          err instanceof Error ? err.message : "Failed to fetch messages."
         );
       }
     } finally {
@@ -141,7 +141,7 @@ const HelperChatPage: React.FC = () => {
       console.error("Error sending message:", err);
       if (!(err instanceof AxiosError && err.response?.status === 401)) {
         toast.error(
-          err instanceof Error ? err.message : "Failed to send message.",
+          err instanceof Error ? err.message : "Failed to send message."
         );
       }
     } finally {
@@ -152,7 +152,7 @@ const HelperChatPage: React.FC = () => {
   return (
     <div className="relative h-[calc(100vh-100px)]">
       {loading && messages.length === 0 && (
-        <div className="fixed top-0 left-0 w-full h-full bg-white/80 z-[1000] flex justify-center items-center">
+        <div className="fixed top-0 left-0 w-full h-full bg-background/80 z-[1000] flex justify-center items-center backdrop-blur-sm">
           <Loader />
         </div>
       )}
@@ -162,10 +162,12 @@ const HelperChatPage: React.FC = () => {
           <DancingBot state="idling" className="w-full h-[400px]" />
         </div>
 
-        <div className="flex flex-col h-full bg-[#d3d3d3] rounded-lg shadow-md">
-          <div className="p-6 border-b border-gray-300">
+        <div className="flex flex-col h-full bg-card text-card-foreground rounded-lg shadow-md border border-border">
+          <div className="p-6 border-b border-border">
             <div className="flex justify-between items-center">
-              <h1 className="text-2xl font-bold">Helper Chat</h1>
+              <h1 className="text-2xl font-bold text-foreground">
+                Helper Chat
+              </h1>
               <Button
                 onClick={() => navigate("/applications/helper/HelperMainPage")}
                 variant="outline"
@@ -176,9 +178,9 @@ const HelperChatPage: React.FC = () => {
             </div>
           </div>
 
-          <div className="flex-1 overflow-y-auto p-6 space-y-4">
+          <div className="flex-1 overflow-y-auto p-6 space-y-4 scrollbar-thin">
             {messages.length === 0 && !loading && (
-              <div className="flex items-center justify-center h-full text-gray-500">
+              <div className="flex items-center justify-center h-full text-muted-foreground">
                 <p>Start a conversation by typing a message below.</p>
               </div>
             )}
@@ -193,8 +195,8 @@ const HelperChatPage: React.FC = () => {
                 <div
                   className={`max-w-[70%] rounded-lg p-4 ${
                     message.role === "user"
-                      ? "bg-[#e66334] text-white"
-                      : "bg-white text-gray-900"
+                      ? "bg-primary text-primary-foreground"
+                      : "bg-muted text-foreground"
                   }`}
                 >
                   <p className="whitespace-pre-wrap">{message.content}</p>
@@ -207,7 +209,7 @@ const HelperChatPage: React.FC = () => {
             <div ref={messagesEndRef} />
           </div>
 
-          <div className="p-6 border-t border-gray-300">
+          <div className="p-6 border-t border-border">
             <div className="flex gap-2">
               <TextField
                 value={inputMessage}
@@ -225,7 +227,7 @@ const HelperChatPage: React.FC = () => {
               <Button
                 onClick={handleSendMessage}
                 disabled={loading || !inputMessage.trim()}
-                className="bg-[#e66334] hover:bg-[#FF8234]"
+                size="icon"
               >
                 <Send className="w-4 h-4" />
               </Button>

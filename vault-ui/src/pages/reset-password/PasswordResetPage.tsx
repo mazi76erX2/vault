@@ -1,186 +1,161 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import {
-  ThemeProvider,
-  Box,
-  Typography,
-  useTheme,
-  useMediaQuery,
-} from "@mui/material";
-import {
-  HCButton,
-  HCTextField,
-  error,
-  success,
-  HCIcon,
-} from "generic-components";
+import { toast } from "sonner";
 import axios from "axios";
-import Map from "../../assets/truechart_map.png";
-import Logo from "../../assets/_VAULT_LOGO_ORANGE_NEW.svg";
-import { VAULT_API_URL } from "../../config";
+import { User, Lock } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { TextField } from "@/components/forms/text-field";
+import Logo from "@/assets/VAULT_LOGO_ORANGE_NEW.svg";
+import Map from "@/assets/truechart_map.png";
 
-function PasswordResetPage() {
-  const theme = useTheme();
-  const isMobile = useMediaQuery(theme.breakpoints.down("sm"));
+const PasswordResetPage: React.FC = () => {
   const navigate = useNavigate();
   const [email, setEmail] = useState("");
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [isSubmitted, setIsSubmitted] = useState(false);
+  const [password, setPassword] = useState("");
+  const [passwordConfirmation, setPasswordConfirmation] = useState("");
+  const [isOnResetRequest, setIsOnResetRequest] = useState(true);
+  const [buttonText, setButtonText] = useState("REQUEST PASSWORD RESET");
+  const [queryKey, setQueryKey] = useState("");
+  const [loading, setLoading] = useState(false);
 
   const handleResetRequest = async () => {
     if (!email) {
-      error({ message: "Email is required." });
+      toast.error("Email is required");
       return;
     }
 
-    setIsSubmitting(true);
+    setLoading(true);
     try {
-      // API call to request password reset
-      const { data } = await axios.post(
-        `${VAULT_API_URL}/api/auth/reset-password-request`,
-        { email },
-      );
-      if (data.status === "success") {
-        setIsSubmitted(true);
-        success({ message: data.message });
-      } else {
-        error({ message: data.message || "Failed to process password reset." });
-      }
-    } catch (err) {
-      error({ message: "An error occurred while processing your request." });
-      console.error("Password reset request error:", err);
+      await axios.post("/api/auth/password-reset-request", { email });
+      toast.success("Password reset link sent to your email");
+    } catch (error) {
+      toast.error("Failed to send password reset link");
     } finally {
-      setIsSubmitting(false);
+      setLoading(false);
     }
   };
 
+  const handlePasswordUpdate = async () => {
+    if (!email || !password || !passwordConfirmation) {
+      toast.error("All fields are required");
+      return;
+    }
+
+    if (password.length < 8) {
+      toast.error("Password must be at least 8 characters");
+      return;
+    }
+
+    if (password !== passwordConfirmation) {
+      toast.error("Passwords do not match");
+      return;
+    }
+
+    setLoading(true);
+    try {
+      await axios.post("/api/auth/password-reset", {
+        email,
+        key: queryKey,
+        password,
+        password_confirmation: passwordConfirmation,
+      });
+      toast.success("Password updated successfully");
+      navigate("/login");
+    } catch (error) {
+      toast.error("Failed to update password");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    const searchParams = new URLSearchParams(window.location.search);
+    const key = searchParams.get("key");
+    const emailValue = searchParams.get("email");
+
+    if (key && emailValue) {
+      setIsOnResetRequest(false);
+      setButtonText("UPDATE PASSWORD");
+      setQueryKey(key);
+      setEmail(emailValue);
+    } else {
+      setIsOnResetRequest(true);
+      setButtonText("REQUEST PASSWORD RESET");
+    }
+  }, []);
+
   return (
-    <ThemeProvider theme={theme}>
-      <Box
-        sx={{
-          display: "grid",
-          gridTemplateColumns: isMobile ? "100%" : "44% 56%",
-          height: "100vh",
-        }}
-      >
-        <Box
-          sx={{
-            background: "gray",
-            height: "100vh",
-            display: "flex",
-            flexDirection: "column",
-            justifyContent: "center",
-            p: 10,
-            [theme.breakpoints.down("md")]: { p: 2 },
-            [theme.breakpoints.down("lg")]: { p: 4 },
-          }}
-        >
-          <Box style={{ display: "flex", justifyContent: "center" }}>
-            <img style={{ width: 400 }} src={Logo} alt="" />
-          </Box>
-          <Typography
-            sx={{
-              color: "#fff",
-              fontSize: isMobile ? 24 : 25,
-              marginTop: "-16px",
-              textAlign: "center",
-              mb: "56.4px",
-              fontWeight: "bold",
-            }}
-          >
-            MANAGEMENT CONSOLE
-          </Typography>
-          <Typography
-            sx={{
-              color: "#fff",
-              fontSize: isMobile ? 24 : 25,
-              mb: "32px",
-              fontWeight: "bold",
-            }}
-          >
-            RESET PASSWORD
-          </Typography>
+    <div className="grid grid-cols-1 md:grid-cols-[44%_56%] h-screen">
+      <div className="bg-tertiary h-screen flex flex-col justify-center p-10 md:p-4 lg:p-10">
+        <div className="flex justify-center mb-8">
+          <img src={Logo} alt="Logo" className="w-[400px]" />
+        </div>
 
-          {!isSubmitted ? (
-            <>
-              <Typography sx={{ color: "#fff", mb: 2 }}>
-                Enter your email address to reset your password. You will
-                receive an email with instructions.
-              </Typography>
+        <h1 className="text-tertiary-foreground text-2xl md:text-[25px] text-center mb-14 font-bold -mt-4">
+          MANAGEMENT CONSOLE
+        </h1>
 
-              <HCTextField
-                id="email"
-                type="text"
-                label="EMAIL"
-                value={email}
-                textColor="#fff"
-                inputProps={{ startAdornment: <HCIcon icon="Profile" /> }}
-                formControlSx={{ mb: "24px" }}
-                onChange={(e) => setEmail(e.target.value)}
-              />
+        <h2 className="text-tertiary-foreground text-2xl md:text-[25px] mb-8 font-bold">
+          PASSWORD RESET
+        </h2>
 
-              <HCButton
-                sx={{
-                  mt: 2,
-                  background: "#e66334",
-                  ":hover": { background: "#FF8234" },
-                }}
-                text={isSubmitting ? "Sending..." : "Reset Password"}
-                hcVariant="primary"
-                size="small"
-                onClick={handleResetRequest}
-                disabled={isSubmitting}
-              />
-            </>
-          ) : (
-            <>
-              <Typography sx={{ color: "#fff", mb: 3 }}>
-                A password reset link has been sent to your email address if it
-                exists in our system. Please check your inbox and follow the
-                instructions.
-              </Typography>
+        <TextField
+          id="email"
+          type="text"
+          label="EMAIL"
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
+          className="mb-6"
+          startIcon={<User className="w-5 h-5" />}
+          disabled={!isOnResetRequest}
+        />
 
-              <HCButton
-                sx={{
-                  mt: 2,
-                  background: "#e66334",
-                  ":hover": { background: "#FF8234" },
-                }}
-                text="Back to Login"
-                hcVariant="primary"
-                size="small"
-                onClick={() => navigate("/login")}
-              />
-            </>
-          )}
-
-          <span
-            style={{
-              marginTop: "10px",
-              color: "#FFF",
-              cursor: "pointer",
-            }}
-            onClick={() => navigate("/login")}
-          >
-            Back to Login
-          </span>
-        </Box>
-        {!isMobile && (
-          <Box sx={{ height: "100vh" }}>
-            <img
-              style={{
-                width: "100%",
-                height: "100%",
-                objectFit: "cover",
-              }}
-              src={Map}
-              alt="Map"
+        {!isOnResetRequest && (
+          <>
+            <TextField
+              id="password"
+              type="password"
+              label="PASSWORD"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              className="mb-6"
+              startIcon={<Lock className="w-5 h-5" />}
             />
-          </Box>
+
+            <TextField
+              id="password-confirm"
+              type="password"
+              label="CONFIRM PASSWORD"
+              value={passwordConfirmation}
+              onChange={(e) => setPasswordConfirmation(e.target.value)}
+              className="mb-6"
+              startIcon={<Lock className="w-5 h-5" />}
+            />
+          </>
         )}
-      </Box>
-    </ThemeProvider>
+
+        <Button
+          className="mt-2"
+          onClick={isOnResetRequest ? handleResetRequest : handlePasswordUpdate}
+          disabled={loading}
+          size="sm"
+        >
+          {loading ? "Please wait..." : buttonText}
+        </Button>
+
+        <span
+          className="mt-2.5 text-tertiary-foreground cursor-pointer hover:underline"
+          onClick={() => navigate("/login")}
+        >
+          Back to Login
+        </span>
+      </div>
+
+      <div className="hidden md:block h-screen">
+        <img src={Map} alt="Map" className="w-full h-full object-cover" />
+      </div>
+    </div>
   );
-}
+};
 
 export default PasswordResetPage;

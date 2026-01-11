@@ -64,14 +64,14 @@ const CollectorResumePage: React.FC = () => {
     try {
       setLoading(true);
       const response = await Api.get<FetchSessionsResponse>(
-        "/api/v1/collector/fetchsessions",
+        "/api/v1/collector/fetchsessions"
       );
       setRows(response.data.sessions);
     } catch (err: unknown) {
       console.error("Error fetching sessions:", err);
       if (!(err instanceof AxiosError && err.response?.status === 401)) {
         toast.error(
-          err instanceof Error ? err.message : "Failed to fetch sessions.",
+          err instanceof Error ? err.message : "Failed to fetch sessions."
         );
       }
     } finally {
@@ -99,7 +99,7 @@ const CollectorResumePage: React.FC = () => {
   return (
     <div className="relative">
       {loading && (
-        <div className="fixed top-0 left-0 w-full h-full bg-white/80 z-[1000] flex justify-center items-center">
+        <div className="fixed top-0 left-0 w-full h-full bg-background/80 z-[1000] flex justify-center items-center backdrop-blur-sm">
           <Loader />
         </div>
       )}
@@ -109,20 +109,22 @@ const CollectorResumePage: React.FC = () => {
 
         <div>
           <div className="mb-6">
-            <h1 className="text-2xl font-bold">Resume a session</h1>
-            <p className="text-gray-600 mt-2">
+            <h1 className="text-2xl font-bold text-foreground">
+              Resume a session
+            </h1>
+            <p className="text-muted-foreground mt-2">
               Select an existing session to continue your interview.
             </p>
           </div>
 
-          <div className="bg-[#d3d3d3] p-6 rounded-lg shadow-md">
+          <div className="bg-card text-card-foreground p-6 rounded-lg shadow-md border border-border">
             <DataTable
               columns={columns}
               data={rows}
               pageSize={5}
               onRowClick={(params) => setSelectedSession(params.row as Session)}
               getRowClassName={(params) =>
-                params.row.id === selectedSession?.id ? "bg-blue-100" : ""
+                params.row.id === selectedSession?.id ? "bg-primary/20" : ""
               }
             />
           </div>
@@ -131,7 +133,6 @@ const CollectorResumePage: React.FC = () => {
             <Button
               onClick={handleResumeSession}
               disabled={!selectedSession}
-              className="bg-[#e66334] hover:bg-[#FF8234]"
               size="lg"
             >
               Resume Session

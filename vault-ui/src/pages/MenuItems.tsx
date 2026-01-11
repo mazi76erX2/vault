@@ -10,9 +10,11 @@ import {
   AppWindow,
   CheckCircle,
   Mail,
+  LogOut,
 } from "lucide-react";
-import { useAuthContext } from "@/hooks/useAuthContext";
+import { useAuthContext } from "../hooks/useAuthContext";
 import { cn } from "@/lib/utils";
+import { LogoutButton } from "@/components/LogoutButton";
 
 interface MenuItem {
   to: string;
@@ -29,16 +31,25 @@ interface MenuListItemsProps {
 
 export const MenuListItems: React.FC<MenuListItemsProps> = ({ open }) => {
   const authContext = useAuthContext();
-
   if (!authContext) return null;
 
-  const userRoles = authContext.user?.user?.roles || [];
-  const roles = Array.isArray(userRoles) ? userRoles : [];
+  const { userRoles: contextUserRoles } = authContext;
+  let userRoles: string[] = [];
 
-  const isAdmin = roles.includes("Administrator");
-  const isCollector = roles.includes("Collector");
-  const isHelper = isAdmin || roles.includes("Helper");
-  const isValidator = isAdmin || roles.includes("Validator");
+  if (Array.isArray(contextUserRoles) && contextUserRoles.length > 0) {
+    userRoles = contextUserRoles;
+  }
+
+  const hasRole = (roleName: string): boolean => {
+    return userRoles.some((role) =>
+      role.toLowerCase().includes(roleName.toLowerCase())
+    );
+  };
+
+  const isAdmin = hasRole("Administrator");
+  const isCollector = hasRole("Collector");
+  const isHelper = hasRole("Helper");
+  const isValidator = hasRole("Validator");
 
   const menuItems: MenuItem[] = [
     {
@@ -61,7 +72,6 @@ export const MenuListItems: React.FC<MenuListItemsProps> = ({ open }) => {
     {
       title: "Theme",
       to: "/theme/BusinessThemePage",
-      indexChild: "/theme/BusinessThemePage",
       icon: <Palette className="w-5 h-5" />,
       shouldHide: !isAdmin,
     },
@@ -98,19 +108,24 @@ export const MenuListItems: React.FC<MenuListItemsProps> = ({ open }) => {
       <ul className="space-y-0">
         {menuItems
           .filter((item) => {
-            if (typeof item.shouldHide !== "undefined") {
-              return !item.shouldHide;
-            }
+            if (typeof item.shouldHide !== "undefined") return !item.shouldHide;
             return true;
           })
           .map((item, index) => (
             <MenuListItem
-              activeIndex={item.indexChild}
-              item={item}
               key={index}
+              item={item}
               showText={open}
+              activeIndex={item.indexChild || item.to}
             />
           ))}
+
+        {/* LOGOUT - Always visible at bottom */}
+        {open && (
+          <li className="mt-auto p-2 border-t border-border">
+            <LogoutButton />
+          </li>
+        )}
       </ul>
     </nav>
   );
@@ -127,51 +142,33 @@ interface MenuListItemProps {
 
 const MenuListItem: React.FC<MenuListItemProps> = ({
   item,
-  subItem,
-  showText,
+  subItem = false,
+  showText = true,
   onActiveIndexChanged,
-  activeIndex: _initActiveIndex,
+  activeIndex,
   parent,
 }) => {
-  // ✅ ALL HOOKS MOVED TO TOP (before any conditions)
-  const { pathname } = useLocation();
-  const [activeIndex, setActiveIndex] = React.useState<string | undefined>(
-    pathname
-  );
-  const [isExpanded, setIsExpanded] = React.useState(false);
+  const location = useLocation();
   const navigate = useNavigate();
+  const [isExpanded, setIsExpanded] = React.useState(false);
 
-  const _isFirstInParent = React.useMemo(() => {
-    if (!parent) return true;
-    const index = parent.subMenu?.findIndex((i) => i.to === item.to);
-    return index === 0;
-  }, [parent, item]);
-
-  const isActive = React.useMemo(
-    () => pathname.includes(item.to),
-    [pathname, item.to]
-  );
+  const pathname = location.pathname;
+  const isActive = pathname.includes(item.to);
 
   React.useEffect(() => {
     if (activeIndex !== pathname) {
-      setActiveIndex(pathname);
+      // Handle active index changes
     }
     if (isActive && item.subMenu) {
       setIsExpanded(true);
     }
   }, [pathname, isActive, activeIndex, item.subMenu]);
 
-  // NOW the early return (after all hooks)
-  if (item.shouldHide) {
-    return null;
-  }
+  if (item.shouldHide) return null;
 
   const handleClick = () => {
     if (onActiveIndexChanged) {
       onActiveIndexChanged(item.indexChild ?? item.to);
-    }
-    if (item.indexChild) {
-      setActiveIndex(item.indexChild);
     }
 
     if (item.subMenu) {
@@ -188,24 +185,15 @@ const MenuListItem: React.FC<MenuListItemProps> = ({
         onClick={handleClick}
         className={cn(
           "w-full flex items-center gap-3 h-10 transition-all duration-200",
-          "hover:bg-gray-100 dark:hover:bg-gray-800",
-          showText ? "px-6" : subItem ? "px-8" : "px-6",
-          isActive &&
-            !subItem &&
-            "border-l-2 border-primary bg-gray-900 text-white",
-          isActive && subItem && "text-primary font-medium bg-gray-50",
-          !isActive && "border-l-2 border-transparent bg-white text-gray-900",
-          !isActive && "dark:bg-gray-900 dark:text-gray-100"
+          "hover:bg-muted/50 px-6",
+          subItem ? "px-8" : "px-6",
+          isActive && !subItem && "bg-primary text-primary-foreground",
+          isActive && subItem && "text-primary font-medium bg-muted",
+          !isActive && "text-foreground bg-transparent"
         )}
-        title={item.title}
       >
         {!subItem && item.icon && (
-          <span
-            className={cn(
-              "min-w-[20px] flex items-center justify-center",
-              isActive ? "text-white" : "text-gray-900 dark:text-gray-100"
-            )}
-          >
+          <span className="min-w-[20px] flex items-center justify-center">
             {item.icon}
           </span>
         )}
@@ -213,8 +201,8 @@ const MenuListItem: React.FC<MenuListItemProps> = ({
         {showText && (
           <span
             className={cn(
-              "flex-1 text-left text-base",
-              subItem && isActive && "font-bold"
+              "flex-1 text-left",
+              subItem && isActive ? "font-bold" : "text-base"
             )}
           >
             {item.title}
@@ -235,20 +223,20 @@ const MenuListItem: React.FC<MenuListItemProps> = ({
       {item.subMenu && (
         <div
           className={cn(
-            "overflow-hidden transition-all duration-300 ease-in-out",
+            "overflow-hidden transition-all duration-300 ease-in-out bg-muted/50",
             isExpanded ? "max-h-96 opacity-100" : "max-h-0 opacity-0"
           )}
         >
           <ul className="pl-0">
             {item.subMenu.map((subMenu, index) => (
               <MenuListItem
+                key={index}
+                item={subMenu}
                 parent={item}
-                onActiveIndexChanged={(active) => setActiveIndex(active)}
+                onActiveIndexChanged={onActiveIndexChanged}
                 activeIndex={activeIndex}
                 subItem
-                item={subMenu}
                 showText={showText}
-                key={index}
               />
             ))}
           </ul>
@@ -257,5 +245,7 @@ const MenuListItem: React.FC<MenuListItemProps> = ({
     </li>
   );
 };
+
+MenuListItem.displayName = "MenuListItem";
 
 export default MenuListItems;

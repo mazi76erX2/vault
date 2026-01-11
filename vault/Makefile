@@ -232,7 +232,7 @@ migrations-stamp: ## Stamp database with specific revision (usage: make migratio
 .PHONY: ollama-pull ollama-list ollama-serve ollama-stop
 ollama-pull: ## Pull required Ollama models
 	@echo "$(GREEN)Pulling Ollama models...$(RESET)"
-	ollama pull llama2
+	ollama pull llama3.2:1b
 	ollama pull nomic-embed-text
 
 ollama-list: ## List installed Ollama models
