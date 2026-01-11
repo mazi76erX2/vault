@@ -265,31 +265,30 @@ const CollectorInitQuestionsPage: React.FC = () => {
   };
 
   const handleStartChat = async (question: QuestionRowData) => {
-    if (!authContext || !authContext.user || !authContext.user.user?.id) {
-      if (!authContext?.isLoadingUser) {
-        toast.error("User not authenticated or session has expired.");
-      }
-      setLoading(false);
+    // Guard: auth must be loaded + user id must exist
+    if (!authContext || authContext.isLoadingUser) return;
+
+    const currentUserId =
+      authContext.user?.user?.user?.id ?? authContext.user?.user?.id;
+
+    if (!currentUserId) {
+      toast.error("User not authenticated or session has expired.");
       return;
     }
-
-    const currentUserId = authContext.user.user.id;
 
     try {
       setLoading(true);
 
       const payload = {
-        user_id: currentUserId,
+        userid: currentUserId,
         id: question.id,
         question: question.question,
-        topic: question.topic || "",
+        topic: question.topic,
       };
 
-      const response = await Api.post("/api/v1/collector/start-chat", payload);
+      const response = await Api.post("api/v1/collector/start-chat", payload);
 
-      if (!response.data) {
-        throw new Error("Invalid response from backend.");
-      }
+      if (!response.data) throw new Error("Invalid response from backend.");
 
       const { sessionId, chatMessageId, resume } = response.data;
 
@@ -299,13 +298,11 @@ const CollectorInitQuestionsPage: React.FC = () => {
         );
       }
 
-      const questionText = question.question;
-
       navigate("/applications/collector/CollectorChatPage", {
         state: {
-          question: questionText,
-          sessionId: sessionId,
-          chat_msgId: chatMessageId,
+          question: question.question,
+          sessionId,
+          chatmsgId: chatMessageId, // IMPORTANT: CollectorChatPage reads `chatmsgId` [file:1]
           isResume: resume,
         },
       });
@@ -314,7 +311,7 @@ const CollectorInitQuestionsPage: React.FC = () => {
 
       if (axios.isAxiosError(error)) {
         errorMessage =
-          error.response?.data?.detail ||
+          (error.response?.data as any)?.detail ||
           error.message ||
           "Unknown Axios error occurred";
       } else if (error instanceof Error) {
@@ -322,6 +319,7 @@ const CollectorInitQuestionsPage: React.FC = () => {
       }
 
       console.error(errorMessage);
+
       if (!(axios.isAxiosError(error) && error.response?.status === 401)) {
         toast.error(errorMessage);
       }
