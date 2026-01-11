@@ -44,6 +44,9 @@ class Document(Base):
     summary = Column(Text)
     link = Column(Text)
 
+    author_id = Column(UUID(as_uuid=True), ForeignKey("profiles.id"), index=True, nullable=False)
+    company_id = Column(ForeignKey("companies.id"), index=True, nullable=True)
+
     # Classification
     severity_levels = Column(SQLEnum(SecurityLevel, name="security_level", create_type=False))
     status = Column(SQLEnum(StatusEnum, name="status_enum", create_type=False))
@@ -59,8 +62,18 @@ class Document(Base):
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
 
     # Relationships
-    reviewer_profile = relationship("Profile", back_populates="documents_reviewed")
     assignments = relationship("DocumentAssignment", back_populates="document")
+    reviewer = Column(UUID(as_uuid=True), ForeignKey("profiles.id"), index=True)
+    reviewer_profile = relationship(
+        "Profile",
+        back_populates="documents_reviewed",
+        foreign_keys=[reviewer],
+    )
+    author_profile = relationship(
+        "Profile",
+        foreign_keys=[author_id],
+    )
+
 
 
 class DocumentAssignment(Base):

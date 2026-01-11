@@ -449,7 +449,7 @@ async def start_chat(
     db: AsyncSession = Depends(get_async_db),
 ) -> dict[str, Any]:
     """Start a new chat session for knowledge collection."""
-    user_id = current_user["user_id"]
+    user_id = current_user.get("user", {}).get("id") or current_user.get("profile", {}).get("id")
 
     try:
         # Get company_id from profile

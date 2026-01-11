@@ -24,7 +24,7 @@ EMBED_MODEL = os.getenv("OLLAMA_EMBED_MODEL", "nomic-embed-text")
 
 # Cloud models (FAST - run on remote servers)
 CLOUD_MODELS = [
-    "gemini-3-pro-preview:latest",  # Google's Gemini
+    "gemini-3-flash-preview:latest",  # Google's Gemini
     "minimax-m2.1:cloud",
     "minimax-m2:cloud",
     "qwen3-coder:480b-cloud",
@@ -40,7 +40,7 @@ LOCAL_MODELS = [
 ]
 
 # Primary model preference from env (can override)
-PRIMARY_MODEL = os.getenv("OLLAMA_CHAT_MODEL", "gemini-3-pro-preview:latest")
+PRIMARY_MODEL = os.getenv("OLLAMA_CHAT_MODEL", "gemini-3-flash-preview:latest")
 
 # Timeout settings
 OLLAMA_CONNECT_TIMEOUT = float(os.getenv("OLLAMA_CONNECT_TIMEOUT", "10"))

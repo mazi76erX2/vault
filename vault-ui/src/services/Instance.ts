@@ -134,12 +134,11 @@ Api.interceptors.response.use(
     if (error.response?.status >= 500) {
       toast.error("Server error. Please try again later.");
     } else if (error.response?.status >= 400 && error.response?.status < 500) {
-      // line 149
       if (error.response.status === 401 || error.response.status === 403) {
         return Promise.reject(error);
       }
       const detail = (error.response.data as any)?.detail || "Request failed";
-      toast.error(detail); // line 151
+      toast.error(detail);
     }
 
     return Promise.reject(error);

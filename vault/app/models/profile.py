@@ -68,3 +68,8 @@ class Profile(Base):
     questions = relationship("Question", back_populates="user", cascade="all, delete-orphan")
     documents_reviewed = relationship("Document", back_populates="reviewer_profile")
     user_type = relationship("UserType", back_populates="profiles")
+    documents_reviewed = relationship(
+        "Document",
+        back_populates="reviewer_profile",
+        foreign_keys="Document.reviewer",
+    )
