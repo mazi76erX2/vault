@@ -9,7 +9,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Loader } from "@/components/feedback/loader";
 import Api from "@/services/Instance";
 import assistantIcon from "@/assets/assistant-icon.png";
-import { formatColor, hexToRgba } from "@/utils/colorUtils";
+import { formatColor } from "@/utils/colorUtils";
 
 interface ChatThemeSettings {
   userChatBubbleColor: string;
@@ -42,7 +42,7 @@ interface ChatMessage {
 interface LocationState {
   question?: string;
   sessionId?: string;
-  chat_msgId?: number;
+  chatMessageId?: string;
   isResume?: boolean;
 }
 
@@ -52,12 +52,10 @@ const CollectorChatPage: React.FC = () => {
   const chatContainerRef = useRef<HTMLDivElement>(null);
   const authContext = useAuthContext();
 
-  const {
-    question,
-    sessionId,
-    chatMessageId: chatMsgId,
-    isResume,
-  } = (location.state as LocationState) || {};
+  console.log("CollectorChatPage - location.state:", location.state);
+
+  const { question, sessionId, chatMessageId, isResume } =
+    (location.state as LocationState) || {};
 
   const [loading, setLoading] = useState(false);
   const [messages, setMessages] = useState<ChatMessage[]>([
@@ -70,6 +68,21 @@ const CollectorChatPage: React.FC = () => {
   const [newMessage, setNewMessage] = useState("");
   const [themeSettings, setThemeSettings] =
     useState<ChatThemeSettings>(defaultThemeSettings);
+
+  useEffect(() => {
+    console.log("CollectorChatPage mounted with:", {
+      question,
+      sessionId,
+      chatMessageId,
+      isResume,
+    });
+
+    if (!sessionId || !chatMessageId) {
+      console.error("Missing required data:", { sessionId, chatMessageId });
+      toast.error("Session data missing. Please start a new session.");
+      navigate("/applications/collector/CollectorInitQuestionsPage");
+    }
+  }, [sessionId, chatMessageId, navigate]);
 
   useEffect(() => {
     if (chatContainerRef.current) {
@@ -128,7 +141,7 @@ const CollectorChatPage: React.FC = () => {
 
         const response = await Api.post(
           "/api/v1/collector/fetch_chat_conversation",
-          { session_id: sessionId }
+          { sessionid: sessionId }
         );
 
         const rawData = response.data;
@@ -171,7 +184,7 @@ const CollectorChatPage: React.FC = () => {
       const response = await Api.post(
         "/api/v1/collector/generate_question_response",
         {
-          chat_prompt_id: chatMsgId,
+          chat_prompt_id: chatMessageId,
           user_text: userAnswer,
         }
       );
@@ -226,8 +239,20 @@ const CollectorChatPage: React.FC = () => {
         return;
       }
 
+      if (!sessionId) {
+        toast.error("Session ID is missing. Cannot generate summary.");
+        setLoading(false);
+        return;
+      }
+
+      if (!chatMessageId) {
+        toast.error("Chat message ID is missing. Cannot generate summary.");
+        setLoading(false);
+        return;
+      }
+
       const response = await Api.post("/api/v1/collector/generate_summary", {
-        chat_prompt_id: chatMsgId,
+        chat_prompt_id: chatMessageId,
       });
 
       if (!response.data || !response.data.chat_summary) {
@@ -237,6 +262,13 @@ const CollectorChatPage: React.FC = () => {
       }
 
       const generatedSummary = response.data.chat_summary;
+
+      console.log("Navigating to summary with:", {
+        generatedSummary: generatedSummary ? "present" : "missing",
+        sessionId,
+        isResume,
+      });
+
       navigate("/applications/collector/CollectorSummaryPage", {
         state: { generatedSummary, sessionId, isResume },
       });

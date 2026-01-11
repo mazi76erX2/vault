@@ -6,7 +6,7 @@ import { useAuthContext } from "@/hooks/useAuthContext";
 import { DancingBot } from "@/components/media/dancing-bot";
 import { Button } from "@/components/ui/button";
 import { Loader } from "@/components/feedback/loader";
-import { Card, CardContent } from "@/components/ui/card";
+import { Card } from "@/components/ui/card";
 import Api from "@/services/Instance";
 
 interface LocationState {
@@ -16,14 +16,15 @@ interface LocationState {
 }
 
 interface SummaryData {
-  projectName: string;
-  documentTitle: string;
-  documentDescription: string;
-  author: string;
-  documentDate: string;
-  version: string;
-  conversationCount: number;
-  status: string;
+  doc_id?: string;
+  title?: string;
+  summary?: string;
+  status?: string;
+  tags?: string[];
+  employee_contact?: string;
+  link?: string;
+  responsible?: string;
+  severity_levels?: string;
   [key: string]: unknown;
 }
 
@@ -37,15 +38,16 @@ const CollectorSummaryPage: React.FC = () => {
   const { generatedSummary, sessionId, isResume } =
     (location.state as LocationState) || {};
 
+  console.log("CollectorSummaryPage - location.state:", location.state);
+
   const fetchSummary = async () => {
-    if (!authContext?.user?.user?.id || !authContext.isLoggedIn) {
-      if (!authContext?.isLoadingUser) {
-        toast.error("User not authenticated or session has expired.");
-      }
+    if (!authContext?.user || !authContext.isLoggedIn) {
+      console.warn("Auth not ready in fetchSummary");
       return;
     }
 
     if (!sessionId) {
+      console.error("No sessionId available for fetchSummary");
       toast.error("Session ID not found.");
       navigate("/applications/collector/CollectorMainPage");
       return;
@@ -53,8 +55,14 @@ const CollectorSummaryPage: React.FC = () => {
 
     try {
       setLoading(true);
-      const response = await Api.get(`/api/v1/collector/summary/${sessionId}`);
-      setSummary(response.data);
+      console.log("Fetching document with sessionId:", sessionId);
+
+      const response = await Api.post("/api/v1/collector/fetch_existing_doc", {
+        sessionId: sessionId,
+      });
+
+      console.log("Document fetched:", response.data);
+      setSummary(response.data.document);
     } catch (err: unknown) {
       console.error("Error fetching summary:", err);
       if (!(err instanceof AxiosError && err.response?.status === 401)) {
@@ -68,9 +76,16 @@ const CollectorSummaryPage: React.FC = () => {
   };
 
   const handleSubmit = async () => {
+    if (!sessionId) {
+      toast.error("Session ID is missing. Cannot submit.");
+      return;
+    }
+
     try {
       setLoading(true);
-      await Api.post("/api/v1/collector/submit", { sessionId });
+      await Api.post("/api/v1/collector/update_session_and_document", {
+        sessionid: sessionId,
+      });
       toast.success("Session submitted successfully!");
       navigate("/applications/collector/CollectorMainPage");
     } catch (err: unknown) {
@@ -86,31 +101,45 @@ const CollectorSummaryPage: React.FC = () => {
   };
 
   useEffect(() => {
-    // Wait for auth to be ready
+    console.log("CollectorSummaryPage useEffect", {
+      hasAuthContext: !!authContext,
+      isLoadingUser: authContext?.isLoadingUser,
+      isLoggedIn: authContext?.isLoggedIn,
+      hasUser: !!authContext?.user,
+      sessionId,
+      generatedSummary: !!generatedSummary,
+    });
+
     if (!authContext || authContext.isLoadingUser) {
+      console.log("Waiting for auth to load...");
       return;
     }
 
-    // Check if user is authenticated
     if (!authContext.user || !authContext.isLoggedIn) {
-      toast.error("Session expired. Please log in again.");
+      toast.error("User not authenticated or session has expired.");
       navigate("/login");
       return;
     }
 
-    // Check if we have required data
     if (!sessionId) {
+      console.error("No sessionId in location.state!");
       toast.error("Session data missing. Redirecting...");
       navigate("/applications/collector/CollectorInitQuestionsPage");
       return;
     }
 
-    // Fetch the summary
     fetchSummary();
-  }, [authContext?.isLoadingUser, authContext?.isLoggedIn]);
+  }, [authContext?.isLoadingUser, authContext?.isLoggedIn, sessionId]);
 
-  // Show loader while auth is loading
   if (!authContext || authContext.isLoadingUser) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <Loader />
+      </div>
+    );
+  }
+
+  if (!authContext.user || !authContext.isLoggedIn) {
     return (
       <div className="flex items-center justify-center min-h-screen">
         <Loader />
@@ -139,90 +168,99 @@ const CollectorSummaryPage: React.FC = () => {
             </p>
           </div>
 
-          <Card className="bg-card text-card-foreground shadow-md">
-            <CardContent className="p-6 space-y-4">
-              {summary ? (
-                <>
-                  <div>
-                    <h3 className="text-sm font-semibold text-muted-foreground">
-                      Project
-                    </h3>
-                    <p className="text-lg text-foreground">
-                      {summary.projectName}
-                    </p>
-                  </div>
-
-                  <div>
-                    <h3 className="text-sm font-semibold text-muted-foreground">
-                      Document Title
-                    </h3>
-                    <p className="text-lg text-foreground">
-                      {summary.documentTitle}
-                    </p>
-                  </div>
-
-                  <div>
-                    <h3 className="text-sm font-semibold text-muted-foreground">
-                      Description
-                    </h3>
-                    <p className="text-lg text-foreground">
-                      {summary.documentDescription}
-                    </p>
-                  </div>
-
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <h3 className="text-sm font-semibold text-muted-foreground">
-                        Author
-                      </h3>
-                      <p className="text-lg text-foreground">
-                        {summary.author}
-                      </p>
-                    </div>
-
-                    <div>
-                      <h3 className="text-sm font-semibold text-muted-foreground">
-                        Version
-                      </h3>
-                      <p className="text-lg text-foreground">
-                        {summary.version}
-                      </p>
-                    </div>
-                  </div>
-
-                  <div>
-                    <h3 className="text-sm font-semibold text-muted-foreground">
-                      Document Date
-                    </h3>
-                    <p className="text-lg text-foreground">
-                      {new Date(summary.documentDate).toLocaleDateString()}
-                    </p>
-                  </div>
-
-                  <div>
-                    <h3 className="text-sm font-semibold text-muted-foreground">
-                      Conversations
-                    </h3>
-                    <p className="text-lg text-foreground">
-                      {summary.conversationCount} messages
-                    </p>
-                  </div>
-
-                  <div>
-                    <h3 className="text-sm font-semibold text-muted-foreground">
-                      Status
-                    </h3>
-                    <p className="text-lg capitalize text-foreground">
-                      {summary.status}
-                    </p>
-                  </div>
-                </>
-              ) : (
-                <div className="text-center py-8 text-muted-foreground">
-                  Loading summary...
+          <Card className="bg-card text-card-foreground shadow-md p-6 space-y-4">
+            {summary ? (
+              <>
+                <div>
+                  <h3 className="text-sm font-semibold text-muted-foreground">
+                    Document Title
+                  </h3>
+                  <p className="text-lg text-foreground">
+                    {summary.title || "Untitled"}
+                  </p>
                 </div>
-              )}
-            </CardContent>
+
+                <div>
+                  <h3 className="text-sm font-semibold text-muted-foreground">
+                    Summary
+                  </h3>
+                  <p className="text-lg text-foreground">
+                    {summary.summary ||
+                      generatedSummary ||
+                      "No summary available"}
+                  </p>
+                </div>
+
+                <div>
+                  <h3 className="text-sm font-semibold text-muted-foreground">
+                    Status
+                  </h3>
+                  <p className="text-lg capitalize text-foreground">
+                    {summary.status || "Draft"}
+                  </p>
+                </div>
+
+                {summary.severity_levels && (
+                  <div>
+                    <h3 className="text-sm font-semibold text-muted-foreground">
+                      Severity Level
+                    </h3>
+                    <p className="text-lg text-foreground">
+                      {summary.severity_levels}
+                    </p>
+                  </div>
+                )}
+
+                {summary.tags && summary.tags.length > 0 && (
+                  <div>
+                    <h3 className="text-sm font-semibold text-muted-foreground">
+                      Tags
+                    </h3>
+                    <div className="flex flex-wrap gap-2 mt-1">
+                      {summary.tags.map((tag, index) => (
+                        <span
+                          key={index}
+                          className="px-2 py-1 bg-muted rounded text-sm"
+                        >
+                          {tag}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {summary.link && (
+                  <div>
+                    <h3 className="text-sm font-semibold text-muted-foreground">
+                      Source Link
+                    </h3>
+                    <a
+                      href={summary.link}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-lg text-blue-600 hover:underline"
+                    >
+                      {summary.link}
+                    </a>
+                  </div>
+                )}
+              </>
+            ) : (
+              <div className="text-center py-8 text-muted-foreground">
+                {generatedSummary ? (
+                  <div>
+                    <h3 className="text-sm font-semibold text-muted-foreground mb-2">
+                      Generated Summary
+                    </h3>
+                    <p className="text-lg text-foreground">
+                      {generatedSummary}
+                    </p>
+                  </div>
+                ) : (
+                  "Loading summary..."
+                )}
+              </div>
+            )}
           </Card>
 
           <div className="mt-6 flex justify-end gap-4">
@@ -236,8 +274,9 @@ const CollectorSummaryPage: React.FC = () => {
             </Button>
             <Button
               onClick={handleSubmit}
-              disabled={loading || !summary}
+              disabled={loading}
               size="lg"
+              className="bg-[#e66334] hover:bg-[#FF8234]"
             >
               {loading ? "Submitting..." : "Submit Session"}
             </Button>

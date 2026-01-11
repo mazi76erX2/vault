@@ -843,7 +843,7 @@ async def fetch_existing_doc(
     db: AsyncSession = Depends(get_async_db),
 ) -> dict[str, Any]:
     """Fetch existing document by session ID."""
-    session_id = data.get("sessionid")
+    session_id =  data.get("sessionId") or data.get("sessionid")
 
     if not session_id:
         raise HTTPException(

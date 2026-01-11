@@ -1,11 +1,10 @@
 import React, { useEffect, useRef, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import axios from "axios";
 import { toast } from "sonner";
 import { AxiosError } from "axios";
 import { ArrowRight, Upload, Sparkles } from "lucide-react";
 import type { ColumnDef } from "@tanstack/react-table";
-import { useLocation } from "react-router-dom";
 import { useAuthContext } from "@/hooks/useAuthContext";
 import { DancingBot } from "@/components/media/dancing-bot";
 import { DataTable } from "@/components/data-display/data-table";
@@ -34,6 +33,14 @@ interface GetQuestionsResponse {
 interface GenerateQuestionsResponse {
   questions: string[];
   status: string[];
+  topics?: string[];
+}
+
+interface StartChatResponse {
+  sessionId: string;
+  chatMessageId: string;
+  resume: boolean;
+  message?: string;
 }
 
 const CollectorInitQuestionsPage: React.FC = () => {
@@ -59,10 +66,6 @@ const CollectorInitQuestionsPage: React.FC = () => {
   ];
 
   useEffect(() => {
-    if (authContext && !authContext.isLoadingUser && authContext.isLoggedIn) {
-      fetchQuestions();
-    }
-
     if (!project) {
       toast.error("No project selected. Redirecting...");
       navigate("/applications/collector/CollectorStartPage");
@@ -110,7 +113,7 @@ const CollectorInitQuestionsPage: React.FC = () => {
       } else {
         const newRows = data.questions
           .map((q, idx) => {
-            let currentTopic = "N/A";
+            let currentTopic = "General";
             if (data.topics && data.topics[idx] !== undefined) {
               currentTopic = data.topics[idx];
             }
@@ -164,12 +167,13 @@ const CollectorInitQuestionsPage: React.FC = () => {
         throw new Error("Invalid response from the server.");
       }
 
-      const { questions, status: statusList } = response.data;
+      const { questions, status: statusList, topics } = response.data;
 
       const newRows = questions.map((q, idx) => ({
         id: idx + 1,
         question: q,
         status: statusList[idx],
+        topic: topics?.[idx] || "General",
       }));
 
       toast.success("Questions generated successfully.");
@@ -265,11 +269,10 @@ const CollectorInitQuestionsPage: React.FC = () => {
   };
 
   const handleStartChat = async (question: QuestionRowData) => {
-    // Guard: auth must be loaded + user id must exist
     if (!authContext || authContext.isLoadingUser) return;
 
     const currentUserId =
-      authContext.user?.user?.user?.id ?? authContext.user?.user?.id;
+      authContext.user?.user?.user?.id ?? authContext.user?.user?.user?.id;
 
     if (!currentUserId) {
       toast.error("User not authenticated or session has expired.");
@@ -280,29 +283,46 @@ const CollectorInitQuestionsPage: React.FC = () => {
       setLoading(true);
 
       const payload = {
-        userid: currentUserId,
         id: question.id,
         question: question.question,
-        topic: question.topic,
+        topic: question.topic || "General",
       };
 
-      const response = await Api.post("api/v1/collector/start-chat", payload);
+      console.log("Starting chat with payload:", payload);
+
+      const response = await Api.post<StartChatResponse>(
+        "/api/v1/collector/start-chat",
+        payload
+      );
+
+      console.log("start-chat response:", response.data);
 
       if (!response.data) throw new Error("Invalid response from backend.");
 
       const { sessionId, chatMessageId, resume } = response.data;
 
-      if (!sessionId || !chatMessageId) {
-        throw new Error(
-          "Invalid response from backend. Missing session or chat message ID."
-        );
+      if (!sessionId) {
+        console.error("No sessionId in response:", response.data);
+        throw new Error("Missing sessionId in backend response.");
       }
+
+      if (!chatMessageId) {
+        console.error("No chatMessageId in response:", response.data);
+        throw new Error("Missing chatMessageId in backend response.");
+      }
+
+      console.log("Navigating to chat with:", {
+        question: question.question,
+        sessionId,
+        chatMessageId,
+        isResume: resume,
+      });
 
       navigate("/applications/collector/CollectorChatPage", {
         state: {
           question: question.question,
           sessionId,
-          chatMessageId: chatMessageId,
+          chatMessageId,
           isResume: resume,
         },
       });
