@@ -5,7 +5,7 @@ Chat models
 import uuid
 
 from sqlalchemy import Column, DateTime, ForeignKey, Text, func
-from sqlalchemy.dialects.postgresql import UUID, JSON
+from sqlalchemy.dialects.postgresql import JSON, UUID
 from sqlalchemy.orm import relationship
 
 from .base import Base
@@ -32,10 +32,7 @@ class ChatMessageCollector(Base):
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     session_id = Column(
-        UUID(as_uuid=True), 
-        ForeignKey("sessions.id", ondelete="CASCADE"), 
-        index=True,
-        nullable=True
+        UUID(as_uuid=True), ForeignKey("sessions.id", ondelete="CASCADE"), index=True, nullable=True
     )
     user_id = Column(UUID(as_uuid=True), ForeignKey("profiles.id", ondelete="CASCADE"), index=True)
     messages = Column(JSON, nullable=False, default=list)

@@ -89,11 +89,11 @@ class AuthService:
         try:
             return jwt.decode(token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM])
         except jwt.DecodeError as e:
-            raise ValueError(f"Invalid token: {str(e)}")
+            raise ValueError(f"Invalid token: {str(e)}") from e
         except jwt.ExpiredSignatureError as e:
-            raise ValueError(f"Token has expired: {str(e)}")
+            raise ValueError(f"Token has expired: {str(e)}") from e
         except Exception as e:
-            raise ValueError(f"Invalid token: {str(e)}")
+            raise ValueError(f"Invalid token: {str(e)}") from e
 
     @staticmethod
     async def create_user(

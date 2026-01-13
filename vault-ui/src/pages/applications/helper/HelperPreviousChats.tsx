@@ -53,7 +53,7 @@ const HelperPreviousChatsPage: React.FC = () => {
   ];
 
   const adaptChatsToRows = async (
-    chatsData: ChatMessage[]
+    chatsData: ChatMessage[],
   ): Promise<ChatRow[]> => {
     const adaptedRows = await Promise.all(
       chatsData.map(async (chat) => {
@@ -87,7 +87,7 @@ const HelperPreviousChatsPage: React.FC = () => {
           createdAt: formattedDate,
           topic: firstAssistantMessage,
         };
-      })
+      }),
     );
 
     return adaptedRows;
@@ -113,14 +113,14 @@ const HelperPreviousChatsPage: React.FC = () => {
 
         const profiles = response.data.user_maps.data as Profile[];
         const userMap = new Map(
-          profiles.map((profile: Profile) => [profile.id, profile.fullName])
+          profiles.map((profile: Profile) => [profile.id, profile.fullName]),
         );
 
         const chatsResponse = await Api.post(
           "/api/v1/helper/get_previous_chats",
           {
             user_id: user.user.id,
-          }
+          },
         );
 
         if (!chatsResponse.data || !chatsResponse.data.get_previous_chats) {

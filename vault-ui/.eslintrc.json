@@ -30,26 +30,32 @@
     "react/function-component-definition": "off",
     "react/button-has-type": "warn",
     "react/jsx-no-useless-fragment": "warn",
-    
+
     "no-console": "warn",
     "no-alert": "warn",
     "no-param-reassign": "off",
     "no-underscore-dangle": "off",
     "prefer-regex-literals": "warn",
-    "max-len": ["warn", { 
-      "code": 150, 
-      "ignoreStrings": true, 
-      "ignoreTemplateLiterals": true,
-      "ignoreComments": true 
-    }],
-    
+    "max-len": [
+      "warn",
+      {
+        "code": 150,
+        "ignoreStrings": true,
+        "ignoreTemplateLiterals": true,
+        "ignoreComments": true
+      }
+    ],
+
     "@typescript-eslint/no-explicit-any": "warn",
-    "@typescript-eslint/no-unused-vars": ["warn", { 
-      "argsIgnorePattern": "^_",
-      "varsIgnorePattern": "^_"
-    }],
+    "@typescript-eslint/no-unused-vars": [
+      "warn",
+      {
+        "argsIgnorePattern": "^_",
+        "varsIgnorePattern": "^_"
+      }
+    ],
     "@typescript-eslint/no-use-before-define": "off",
-    
+
     "react-hooks/exhaustive-deps": "warn",
     "react-hooks/rules-of-hooks": "error"
   }

@@ -114,7 +114,7 @@ const CollectorMetaDataPage: React.FC = () => {
       console.error("Error saving metadata:", err);
       if (!(err instanceof AxiosError && err.response?.status === 401)) {
         toast.error(
-          err instanceof Error ? err.message : "Failed to save document."
+          err instanceof Error ? err.message : "Failed to save document.",
         );
       }
     } finally {

@@ -125,7 +125,7 @@ async def seed_default_project(db: AsyncSession, company: Company, company_reg_n
         # Try finding any profile if company_reg_no doesn't match
         profile_res = await db.execute(select(Profile).limit(1))
         profile = profile_res.scalar_one_or_none()
-        
+
     if not profile:
         print("⚠️  No profiles found. Skipping default project creation.")
         print("   Create a user account first, then run seed again to create the project.")
@@ -138,8 +138,7 @@ async def seed_default_project(db: AsyncSession, company: Company, company_reg_n
     # Check if default project already exists for this company_reg_no
     project_res = await db.execute(
         select(Project).where(
-            Project.name == "General Knowledge Base",
-            Project.company_reg_no == company_reg_no
+            Project.name == "General Knowledge Base", Project.company_reg_no == company_reg_no
         )
     )
     existing_project = project_res.scalar_one_or_none()

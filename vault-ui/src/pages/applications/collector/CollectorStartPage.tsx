@@ -55,7 +55,7 @@ const CollectorStartPage: React.FC = () => {
     try {
       setLoading(true);
       const response = await Api.get<FetchProjectsResponse>(
-        "/api/v1/collector/fetchprojects"
+        "/api/v1/collector/fetchprojects",
       );
       setRows(response.data.projects);
     } catch (err: unknown) {

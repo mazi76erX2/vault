@@ -50,14 +50,14 @@ export const RadioButtonGroup = React.forwardRef<
       error,
       helperText,
     },
-    ref
+    ref,
   ) => (
     <div className="space-y-3" ref={ref}>
       {label && (
         <Label
           className={cn(
             required &&
-              'after:content-["*"] after:ml-0.5 after:text-destructive'
+              'after:content-["*"] after:ml-0.5 after:text-destructive',
           )}
         >
           {label}
@@ -68,7 +68,7 @@ export const RadioButtonGroup = React.forwardRef<
         onValueChange={onChange}
         disabled={disabled}
         className={cn(
-          orientation === "horizontal" && "flex flex-row space-x-4"
+          orientation === "horizontal" && "flex flex-row space-x-4",
         )}
       >
         {options.map((option) => (
@@ -83,7 +83,8 @@ export const RadioButtonGroup = React.forwardRef<
               htmlFor={option.id}
               className={cn(
                 "cursor-pointer",
-                (option.disabled || disabled) && "cursor-not-allowed opacity-50"
+                (option.disabled || disabled) &&
+                  "cursor-not-allowed opacity-50",
               )}
             >
               {option.label}
@@ -95,14 +96,14 @@ export const RadioButtonGroup = React.forwardRef<
         <p
           className={cn(
             "text-sm",
-            error ? "text-destructive" : "text-muted-foreground"
+            error ? "text-destructive" : "text-muted-foreground",
           )}
         >
           {error || helperText}
         </p>
       )}
     </div>
-  )
+  ),
 );
 
 RadioButtonGroup.displayName = "RadioButtonGroup";

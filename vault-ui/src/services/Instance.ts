@@ -22,7 +22,7 @@ let failedQueue: Array<{
 
 const processQueue = (
   error: AxiosError | null,
-  token: string | null = null
+  token: string | null = null,
 ) => {
   failedQueue.forEach((prom) => {
     if (error) {
@@ -63,12 +63,12 @@ Api.interceptors.request.use(
       config.headers.Authorization = `Bearer ${user.access_token}`;
       console.log(
         "Token attached:",
-        user.access_token.substring(0, 20) + "..."
+        user.access_token.substring(0, 20) + "...",
       );
     }
     return config;
   },
-  (requestError) => Promise.reject(requestError)
+  (requestError) => Promise.reject(requestError),
 );
 
 Api.interceptors.response.use(
@@ -114,7 +114,7 @@ Api.interceptors.response.use(
           `${VAULT_API_URL}/api/auth/refresh`,
           {
             refreshtoken: refreshToken,
-          }
+          },
         );
 
         if (refreshResponse.data?.access_token) {
@@ -142,7 +142,7 @@ Api.interceptors.response.use(
     }
 
     return Promise.reject(error);
-  }
+  },
 );
 
 export default Api;

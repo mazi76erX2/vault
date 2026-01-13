@@ -41,11 +41,11 @@ const PasswordReset: React.FC = () => {
       if (response.ok) {
         setSubmitted(true);
         toast.success(
-          "If the email exists, a password reset link has been sent."
+          "If the email exists, a password reset link has been sent.",
         );
       } else {
         toast.error(
-          data.detail || "Failed to request password reset. Please try again."
+          data.detail || "Failed to request password reset. Please try again.",
         );
       }
     } catch (err) {

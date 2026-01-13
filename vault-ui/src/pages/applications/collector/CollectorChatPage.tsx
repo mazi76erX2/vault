@@ -102,7 +102,7 @@ const CollectorChatPage: React.FC = () => {
           "/api/v1/companies/get_theme_settings",
           {
             user_id: userId,
-          }
+          },
         );
         if (response.data?.status === "success") {
           const settings = response.data.theme_settings;
@@ -141,7 +141,7 @@ const CollectorChatPage: React.FC = () => {
 
         const response = await Api.post(
           "/api/v1/collector/fetch_chat_conversation",
-          { sessionid: sessionId }
+          { sessionid: sessionId },
         );
 
         const rawData = response.data;
@@ -186,7 +186,7 @@ const CollectorChatPage: React.FC = () => {
         {
           chat_prompt_id: chatMessageId,
           user_text: userAnswer,
-        }
+        },
       );
 
       if (!response.data || !response.data.follow_up_question) {
@@ -339,7 +339,7 @@ const CollectorChatPage: React.FC = () => {
             >
               <span className="whitespace-pre-wrap">{message.text}</span>
             </div>
-          )
+          ),
         )}
       </div>
 

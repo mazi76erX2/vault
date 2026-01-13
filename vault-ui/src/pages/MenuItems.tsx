@@ -42,7 +42,7 @@ export const MenuListItems: React.FC<MenuListItemsProps> = ({ open }) => {
 
   const hasRole = (roleName: string): boolean => {
     return userRoles.some((role) =>
-      role.toLowerCase().includes(roleName.toLowerCase())
+      role.toLowerCase().includes(roleName.toLowerCase()),
     );
   };
 
@@ -189,7 +189,7 @@ const MenuListItem: React.FC<MenuListItemProps> = ({
           subItem ? "px-8" : "px-6",
           isActive && !subItem && "bg-primary text-primary-foreground",
           isActive && subItem && "text-primary font-medium bg-muted",
-          !isActive && "text-foreground bg-transparent"
+          !isActive && "text-foreground bg-transparent",
         )}
       >
         {!subItem && item.icon && (
@@ -202,7 +202,7 @@ const MenuListItem: React.FC<MenuListItemProps> = ({
           <span
             className={cn(
               "flex-1 text-left",
-              subItem && isActive ? "font-bold" : "text-base"
+              subItem && isActive ? "font-bold" : "text-base",
             )}
           >
             {item.title}
@@ -224,7 +224,7 @@ const MenuListItem: React.FC<MenuListItemProps> = ({
         <div
           className={cn(
             "overflow-hidden transition-all duration-300 ease-in-out bg-muted/50",
-            isExpanded ? "max-h-96 opacity-100" : "max-h-0 opacity-0"
+            isExpanded ? "max-h-96 opacity-100" : "max-h-0 opacity-0",
           )}
         >
           <ul className="pl-0">

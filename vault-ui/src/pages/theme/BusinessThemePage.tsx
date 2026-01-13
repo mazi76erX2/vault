@@ -92,7 +92,7 @@ const BusinessThemePage: React.FC = () => {
           fontOptions.find((f) => f.value === settings.font) || {
             id: "tahoma",
             value: "Tahoma",
-          }
+          },
         );
         setLogoPreview(settings.logo || "");
         setBotProfilePicPreview(settings.botProfilePicture || assistantIcon);
@@ -160,7 +160,7 @@ const BusinessThemePage: React.FC = () => {
 
   const handleFileUpload = (
     e: React.ChangeEvent<HTMLInputElement>,
-    isLogo: boolean
+    isLogo: boolean,
   ) => {
     if (e.target.files && e.target.files[0]) {
       const file = e.target.files[0];
@@ -387,7 +387,7 @@ const BusinessThemePage: React.FC = () => {
                       {message.text}
                     </div>
                   </div>
-                )
+                ),
               )}
             </div>
 

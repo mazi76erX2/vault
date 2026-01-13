@@ -55,7 +55,9 @@ class Document(Base):
     embedding = Column(Vector(settings.VECTOR_DIMENSIONS))
 
     # Review
-    responsible = Column(UUID(as_uuid=True), ForeignKey("profiles.id"), nullable=True, index=True)  # Validator
+    responsible = Column(
+        UUID(as_uuid=True), ForeignKey("profiles.id"), nullable=True, index=True
+    )  # Validator
     reviewer = Column(UUID(as_uuid=True), ForeignKey("profiles.id"), index=True)
 
     # Timestamps
@@ -73,7 +75,6 @@ class Document(Base):
         "Profile",
         foreign_keys=[author_id],
     )
-
 
 
 class DocumentAssignment(Base):

@@ -44,7 +44,7 @@ export const getRefreshToken = (): string | null => {
 };
 
 export const login = async (
-  loginData: LoginRequestDTO
+  loginData: LoginRequestDTO,
 ): Promise<LoginResponseDTO> => {
   try {
     console.log("Auth.service: Attempting login to:", `${AUTHAPIPREFIX}/login`);
@@ -52,7 +52,7 @@ export const login = async (
 
     const response = await Api.post<LoginResponseDTO>(
       `${AUTHAPIPREFIX}/login`,
-      loginData
+      loginData,
     );
     console.log("Auth.service: Login response:", response.data);
 
@@ -90,7 +90,7 @@ export const logout = async (): Promise<void> => {
         headers: {
           "Content-Type": "application/json",
         },
-      }
+      },
     );
     console.log("Auth.service: Logout API success");
   } catch (error) {
@@ -112,7 +112,7 @@ export const refreshTokens = async (): Promise<LoginResponseDTO | null> => {
       `${AUTHAPIPREFIX}/refresh`,
       {
         refreshtoken: currentRefreshToken,
-      }
+      },
     );
 
     if (response.data) {

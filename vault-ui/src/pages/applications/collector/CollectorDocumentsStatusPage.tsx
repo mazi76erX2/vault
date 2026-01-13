@@ -55,14 +55,14 @@ const CollectorStartPage: React.FC = () => {
     try {
       setLoading(true);
       const response = await Api.get<FetchProjectsResponse>(
-        "/api/v1/collector/fetchprojects"
+        "/api/v1/collector/fetchprojects",
       );
       setRows(response.data.projects);
     } catch (err: unknown) {
       console.error("Error fetching projects:", err);
       if (!(err instanceof AxiosError && err.response?.status === 401)) {
         toast.error(
-          err instanceof Error ? err.message : "Failed to fetch projects."
+          err instanceof Error ? err.message : "Failed to fetch projects.",
         );
       }
     } finally {

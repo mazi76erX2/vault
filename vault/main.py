@@ -9,10 +9,20 @@ from contextlib import asynccontextmanager
 import uvicorn
 from fastapi import FastAPI
 
-from app.api import (admin_router, auth_router, collector_router,
-                     companies_router, expert_router, helper_router, kb_router,
-                     passwords_router, users_router, utils_router,
-                     validator_router, websocket_router)
+from app.api import (
+    admin_router,
+    auth_router,
+    collector_router,
+    companies_router,
+    expert_router,
+    helper_router,
+    kb_router,
+    passwords_router,
+    users_router,
+    utils_router,
+    validator_router,
+    websocket_router,
+)
 from app.config.middleware import setup_middleware
 from app.logger_config import setup_logging
 

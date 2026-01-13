@@ -46,7 +46,7 @@ const ChatPage: React.FC = () => {
   const createNewSession = async (question: string) => {
     try {
       const currentUser = JSON.parse(
-        localStorage.getItem("currentUser") || "{}"
+        localStorage.getItem("currentUser") || "{}",
       );
       const userId = currentUser?.user?.id;
 

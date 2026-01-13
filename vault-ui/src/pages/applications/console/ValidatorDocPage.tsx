@@ -76,7 +76,7 @@ const ValidatorDocPage: React.FC = () => {
         toast.error(
           err instanceof Error
             ? err.message
-            : "Failed to fetch document details."
+            : "Failed to fetch document details.",
         );
       }
     } finally {
@@ -106,7 +106,7 @@ const ValidatorDocPage: React.FC = () => {
       console.error("Error submitting review:", err);
       if (!(err instanceof AxiosError && err.response?.status === 401)) {
         toast.error(
-          err instanceof Error ? err.message : "Failed to submit review."
+          err instanceof Error ? err.message : "Failed to submit review.",
         );
       }
     } finally {

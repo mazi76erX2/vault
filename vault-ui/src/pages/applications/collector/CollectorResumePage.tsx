@@ -73,7 +73,7 @@ const CollectorResumePage: React.FC = () => {
     try {
       setLoading(true);
       const response = await Api.post<FetchSessionsResponse>(
-        "/api/v1/collector/fetch_resume_sessions"
+        "/api/v1/collector/fetch_resume_sessions",
       );
 
       const sessions = response.data.sessions.map((s) => ({
@@ -92,7 +92,7 @@ const CollectorResumePage: React.FC = () => {
       console.error("Error fetching sessions:", err);
       if (!(err instanceof AxiosError && err.response?.status === 401)) {
         toast.error(
-          err instanceof Error ? err.message : "Failed to fetch sessions."
+          err instanceof Error ? err.message : "Failed to fetch sessions.",
         );
       }
     } finally {
@@ -111,7 +111,7 @@ const CollectorResumePage: React.FC = () => {
 
       const response = await Api.post(
         "/api/v1/collector/fetch_chat_conversation",
-        { sessionid: selectedSession.id }
+        { sessionid: selectedSession.id },
       );
 
       const chatMessageId = response.data.chatmessagesid;
@@ -128,7 +128,7 @@ const CollectorResumePage: React.FC = () => {
       console.error("Error resuming session:", err);
       if (!(err instanceof AxiosError && err.response?.status === 401)) {
         toast.error(
-          err instanceof Error ? err.message : "Failed to resume session."
+          err instanceof Error ? err.message : "Failed to resume session.",
         );
       }
     } finally {

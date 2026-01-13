@@ -61,18 +61,14 @@ def get_user_id(current_user: dict) -> str:
 
 def get_company_reg_no(current_user: dict) -> str | None:
     """Extract company_reg_no from current_user dict consistently."""
-    return (
-        current_user.get("company_reg_no")
-        or current_user.get("profile", {}).get("company_reg_no")
+    return current_user.get("company_reg_no") or current_user.get("profile", {}).get(
+        "company_reg_no"
     )
 
 
 def get_company_id(current_user: dict) -> str | None:
     """Extract company_id from current_user dict consistently."""
-    return (
-        current_user.get("company_id")
-        or current_user.get("profile", {}).get("company_id")
-    )
+    return current_user.get("company_id") or current_user.get("profile", {}).get("company_id")
 
 
 # =============================================================================
@@ -88,13 +84,13 @@ async def update_cv_text(
 ) -> dict[str, Any]:
     """Upload and extract CV text from file."""
     user_id = get_user_id(current_user)
-    
+
     if not file.filename:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="No filename provided",
         )
-    
+
     safe_filename = f"{user_id}_{file.filename}"
     filepath = os.path.join(UPLOAD_DIR, safe_filename)
 
@@ -128,8 +124,8 @@ async def update_cv_text(
         await db.rollback()
         logger.error(f"Error updating CV text for user {user_id}: {e}")
         raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, 
-            detail=f"Failed to process CV: {str(e)}"
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to process CV: {str(e)}",
         ) from e
     finally:
         try:
@@ -170,10 +166,7 @@ async def fetch_user_profile(
         raise
     except Exception as e:
         logger.error(f"Error fetching profile for user {user_id}: {e}")
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, 
-            detail=str(e)
-        ) from e
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e)) from e
 
 
 @router.post("/update_profile")
@@ -213,18 +206,12 @@ async def update_profile(
         await db.commit()
         await db.refresh(profile)
 
-        return {
-            "message": "Profile updated successfully", 
-            "data": {"id": str(profile.id)}
-        }
+        return {"message": "Profile updated successfully", "data": {"id": str(profile.id)}}
 
     except Exception as e:
         await db.rollback()
         logger.error(f"Error updating profile: {e}")
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, 
-            detail=str(e)
-        ) from e
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e)) from e
 
 
 # =============================================================================
@@ -242,8 +229,7 @@ async def get_questions(
     user_id = request.get("user_id")
     if not user_id:
         raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST, 
-            detail="Missing user_id in request body"
+            status_code=status.HTTP_400_BAD_REQUEST, detail="Missing user_id in request body"
         )
 
     try:
@@ -283,8 +269,7 @@ async def generate_questions_endpoint(
     user_id = data.get("user_id")
     if not user_id:
         raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST, 
-            detail="Missing user_id in request body"
+            status_code=status.HTTP_400_BAD_REQUEST, detail="Missing user_id in request body"
         )
 
     try:
@@ -294,8 +279,8 @@ async def generate_questions_endpoint(
 
         if not prof:
             raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND, 
-                detail="Profile not found. Please complete your profile first."
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Profile not found. Please complete your profile first.",
             )
 
         profile_dict = {
@@ -308,7 +293,7 @@ async def generate_questions_endpoint(
 
         logger.info(f"Generating questions for user {user_id}")
         questions, _ = generate_initial_questions(profile_dict, n=8)
-        
+
         topics = [_extract_simple_topic(q) for q in questions]
         status_list = ["Not Started"] * len(questions)
 
@@ -334,21 +319,14 @@ async def generate_questions_endpoint(
 
         await db.commit()
 
-        return {
-            "questions": questions, 
-            "status": status_list, 
-            "topics": topics
-        }
+        return {"questions": questions, "status": status_list, "topics": topics}
 
     except HTTPException:
         raise
     except Exception as e:
         await db.rollback()
         logger.error(f"Error generating questions for user {user_id}: {e}")
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, 
-            detail=str(e)
-        ) from e
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e)) from e
 
 
 @router.post("/init_questions")
@@ -366,7 +344,7 @@ async def init_questions_from_upload(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Missing user_id in request body",
         )
-    
+
     if not questions_list or not isinstance(questions_list, list):
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
@@ -398,7 +376,7 @@ async def init_questions_from_upload(
         await db.commit()
 
         logger.info(f"Initialized {len(questions_list)} questions for user {user_id}")
-        
+
         return {
             "message": "Questions initialized successfully",
             "questions": questions_list,
@@ -409,10 +387,7 @@ async def init_questions_from_upload(
     except Exception as e:
         await db.rollback()
         logger.error(f"Error initializing questions for user {user_id}: {e}")
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, 
-            detail=str(e)
-        ) from e
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e)) from e
 
 
 # =============================================================================
@@ -429,11 +404,12 @@ async def fetch_resume_sessions(
     user_id = get_user_id(current_user)
 
     try:
-        stmt = select(Session).where(
-            Session.user_id == user_id, 
-            Session.status == "Started"
-        ).order_by(Session.created_at.desc())
-        
+        stmt = (
+            select(Session)
+            .where(Session.user_id == user_id, Session.status == "Started")
+            .order_by(Session.created_at.desc())
+        )
+
         result = await db.execute(stmt)
         sessions = result.scalars().all()
 
@@ -454,10 +430,7 @@ async def fetch_resume_sessions(
         raise
     except Exception as e:
         logger.error(f"Error fetching sessions for user {user_id}: {e}")
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, 
-            detail=str(e)
-        ) from e
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e)) from e
 
 
 @router.post("/start-chat")
@@ -527,7 +500,7 @@ async def start_chat(
             stmt = select(Question).where(Question.user_id == user_id)
             result = await db.execute(stmt)
             q_row = result.scalar_one_or_none()
-            
+
             if q_row and q_row.status:
                 question_idx = int(request.id) - 1
                 if q_row.update_question_status(question_idx, "Started"):
@@ -550,10 +523,7 @@ async def start_chat(
     except Exception as e:
         await db.rollback()
         logger.error(f"Error starting chat for user {user_id}: {e}")
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, 
-            detail=str(e)
-        ) from e
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e)) from e
 
 
 @router.post("/fetch_chat_conversation")
@@ -568,8 +538,7 @@ async def fetch_chat_conversation(
 
     if not session_id:
         raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST, 
-            detail="Missing sessionid in request body"
+            status_code=status.HTTP_400_BAD_REQUEST, detail="Missing sessionid in request body"
         )
 
     try:
@@ -587,10 +556,7 @@ async def fetch_chat_conversation(
         result = await db.execute(stmt)
         messages = result.scalar_one_or_none()
 
-        return {
-            "chatmessagesid": str(chat_messages_id), 
-            "messages": messages
-        }
+        return {"chatmessagesid": str(chat_messages_id), "messages": messages}
 
     except Exception as e:
         logger.error(f"Error fetching chat conversation: {e}")
@@ -612,13 +578,11 @@ async def generate_question_response(
 
     if not chat_prompt_id:
         raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST, 
-            detail="Missing chat_prompt_id in request body"
+            status_code=status.HTTP_400_BAD_REQUEST, detail="Missing chat_prompt_id in request body"
         )
     if not user_text:
         raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST, 
-            detail="Missing user_text in request body"
+            status_code=status.HTTP_400_BAD_REQUEST, detail="Missing user_text in request body"
         )
 
     try:
@@ -628,8 +592,7 @@ async def generate_question_response(
 
         if not chat_row:
             raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND, 
-                detail="Chat session not found"
+                status_code=status.HTTP_404_NOT_FOUND, detail="Chat session not found"
             )
 
         messages = chat_row.messages or []
@@ -646,10 +609,7 @@ async def generate_question_response(
     except Exception as e:
         await db.rollback()
         logger.error(f"Error generating follow-up: {e}")
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, 
-            detail=str(e)
-        ) from e
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e)) from e
 
 
 # =============================================================================
@@ -668,8 +628,7 @@ async def generate_summary_endpoint(
 
     if not chat_prompt_id:
         raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST, 
-            detail="Missing chat_prompt_id in request body"
+            status_code=status.HTTP_400_BAD_REQUEST, detail="Missing chat_prompt_id in request body"
         )
 
     try:
@@ -680,16 +639,13 @@ async def generate_summary_endpoint(
         messages = result.scalar_one_or_none() or []
 
         summary = generate_summary(messages)
-        
+
         logger.info(f"Generated summary for chat {chat_prompt_id}")
         return {"chat_summary": summary}
 
     except Exception as e:
         logger.error(f"Error generating summary: {e}")
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, 
-            detail=str(e)
-        ) from e
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e)) from e
 
 
 @router.post("/generate_tags")
@@ -703,22 +659,18 @@ async def generate_tags_endpoint(
 
     if not text.strip():
         raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST, 
-            detail="Missing or empty text in request body"
+            status_code=status.HTTP_400_BAD_REQUEST, detail="Missing or empty text in request body"
         )
 
     try:
         tags = generate_tags(text)
-        
+
         logger.info(f"Generated {len(tags)} tags")
         return {"tags": tags}
-        
+
     except Exception as e:
         logger.error(f"Error generating tags: {e}")
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, 
-            detail=str(e)
-        ) from e
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e)) from e
 
 
 @router.post("/update_summary")
@@ -740,9 +692,7 @@ async def update_summary(
             )
 
         stmt = (
-            update(Document)
-            .where(Document.doc_id == doc_id)
-            .values(summary=request.summary_text)
+            update(Document).where(Document.doc_id == doc_id).values(summary=request.summary_text)
         )
         await db.execute(stmt)
         await db.commit()
@@ -755,10 +705,7 @@ async def update_summary(
     except Exception as e:
         await db.rollback()
         logger.error(f"Error updating summary: {e}")
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, 
-            detail=str(e)
-        ) from e
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e)) from e
 
 
 @router.post("/continue_session", response_model=CollectorSummaryContinueResponse)
@@ -793,18 +740,20 @@ async def fetch_documents_status(
     company_reg_no = get_company_reg_no(current_user)
 
     try:
-        stmt = select(Profile.id, Profile.full_name).where(
-            Profile.company_reg_no == company_reg_no
-        )
+        stmt = select(Profile.id, Profile.full_name).where(Profile.company_reg_no == company_reg_no)
         result = await db.execute(stmt)
         profiles = result.all()
         user_map = {str(p.id): p.full_name or "N/A" for p in profiles}
 
-        stmt = select(Document).where(
-            Document.author_id == user_id,
-            Document.status != "Draft",
-        ).order_by(Document.created_at.desc())
-        
+        stmt = (
+            select(Document)
+            .where(
+                Document.author_id == user_id,
+                Document.status != "Draft",
+            )
+            .order_by(Document.created_at.desc())
+        )
+
         result = await db.execute(stmt)
         documents = result.scalars().all()
 
@@ -827,10 +776,7 @@ async def fetch_documents_status(
         raise
     except Exception as e:
         logger.error(f"Error fetching documents: {e}")
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, 
-            detail=str(e)
-        ) from e
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e)) from e
 
 
 @router.post("/fetch_existing_doc")
@@ -844,8 +790,7 @@ async def fetch_existing_doc(
 
     if not session_id:
         raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST, 
-            detail="Missing sessionId in request body"
+            status_code=status.HTTP_400_BAD_REQUEST, detail="Missing sessionId in request body"
         )
 
     try:
@@ -864,22 +809,27 @@ async def fetch_existing_doc(
         doc = result.scalar_one_or_none()
 
         if not doc:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND, 
-                detail="Document not found"
-            )
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Document not found")
 
         return {
             "document": {
                 "doc_id": str(doc.doc_id),
                 "title": doc.title,
                 "summary": doc.summary,
-                "status": doc.status.value if hasattr(doc.status, "value") else str(doc.status) if doc.status else None,
+                "status": (
+                    doc.status.value
+                    if hasattr(doc.status, "value")
+                    else str(doc.status) if doc.status else None
+                ),
                 "tags": getattr(doc, "tags", []) or [],
                 "employee_contact": getattr(doc, "employee_contact", None),
                 "link": doc.link,
                 "responsible": str(doc.responsible) if doc.responsible else None,
-                "severity_levels": doc.severity_levels.value if hasattr(doc.severity_levels, "value") else str(doc.severity_levels) if doc.severity_levels else None,
+                "severity_levels": (
+                    doc.severity_levels.value
+                    if hasattr(doc.severity_levels, "value")
+                    else str(doc.severity_levels) if doc.severity_levels else None
+                ),
             }
         }
 
@@ -887,10 +837,7 @@ async def fetch_existing_doc(
         raise
     except Exception as e:
         logger.error(f"Error fetching document: {e}")
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, 
-            detail=str(e)
-        ) from e
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e)) from e
 
 
 @router.post("/update_session_and_document")
@@ -904,8 +851,7 @@ async def update_session_and_document(
 
     if not session_id:
         raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST, 
-            detail="Missing sessionid in request body"
+            status_code=status.HTTP_400_BAD_REQUEST, detail="Missing sessionid in request body"
         )
 
     tags = data.get("tags") or []
@@ -927,7 +873,7 @@ async def update_session_and_document(
             )
 
         update_values: dict[str, Any] = {"status": "Pending"}
-        
+
         if tags:
             update_values["tags"] = tags
         if contact:
@@ -957,10 +903,7 @@ async def update_session_and_document(
     except Exception as e:
         await db.rollback()
         logger.error(f"Error updating document: {e}")
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, 
-            detail=str(e)
-        ) from e
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e)) from e
 
 
 @router.get("/get_validators")
@@ -972,25 +915,17 @@ async def get_validators(
     company_reg_no = get_company_reg_no(current_user)
 
     try:
-        stmt = select(Profile.id, Profile.full_name).where(
-            Profile.company_reg_no == company_reg_no
-        )
+        stmt = select(Profile.id, Profile.full_name).where(Profile.company_reg_no == company_reg_no)
         result = await db.execute(stmt)
         profiles = result.all()
 
-        validators = [
-            {"id": str(p.id), "fullName": p.full_name or "N/A"} 
-            for p in profiles
-        ]
+        validators = [{"id": str(p.id), "fullName": p.full_name or "N/A"} for p in profiles]
 
         return {"validators": validators}
 
     except Exception as e:
         logger.error(f"Error fetching validators: {e}")
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, 
-            detail=str(e)
-        ) from e
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(e)) from e
 
 
 # =============================================================================
@@ -1006,7 +941,7 @@ async def fetch_projects(
     """Fetch all active projects accessible to the current user."""
     try:
         logger.debug(f"current_user keys: {current_user.keys()}")
-        
+
         user_company_reg_no = get_company_reg_no(current_user)
         user_company_id = get_company_id(current_user)
 
@@ -1082,8 +1017,8 @@ async def create_project(
 
         if not company_id:
             raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST, 
-                detail="User profile incomplete. Missing company ID."
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="User profile incomplete. Missing company ID.",
             )
 
         new_project = Project(
@@ -1126,8 +1061,7 @@ async def get_project(
 
         if not project:
             raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND, 
-                detail=f"Project {project_id} not found"
+                status_code=status.HTTP_404_NOT_FOUND, detail=f"Project {project_id} not found"
             )
 
         return ProjectResponse.from_orm(project)
@@ -1156,8 +1090,7 @@ async def update_project(
 
         if not project:
             raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND, 
-                detail=f"Project {project_id} not found"
+                status_code=status.HTTP_404_NOT_FOUND, detail=f"Project {project_id} not found"
             )
 
         update_data = project_data.dict(exclude_unset=True)
@@ -1195,8 +1128,7 @@ async def delete_project(
 
         if not project:
             raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND, 
-                detail=f"Project {project_id} not found"
+                status_code=status.HTTP_404_NOT_FOUND, detail=f"Project {project_id} not found"
             )
 
         project.status = "archived"

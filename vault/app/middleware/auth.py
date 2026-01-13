@@ -28,11 +28,11 @@ async def verify_token(
     """
     try:
         token = credentials.credentials
-        
+
         # Decode token
         payload = AuthService.decode_token(token)
         user_id = payload.get("sub")
-        
+
         logger.info(f"Token decoded successfully. User ID: {user_id}")  # ADD THIS
 
         if not user_id:
@@ -44,7 +44,7 @@ async def verify_token(
 
         # Get user with roles
         user_data = await AuthService.get_user_with_roles(db, user_id)
-        
+
         logger.info(f"User data retrieved: {user_data.keys() if user_data else 'None'}")  # ADD THIS
 
         if not user_data:

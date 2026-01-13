@@ -67,7 +67,7 @@ const CollectorSummaryPage: React.FC = () => {
       console.error("Error fetching summary:", err);
       if (!(err instanceof AxiosError && err.response?.status === 401)) {
         toast.error(
-          err instanceof Error ? err.message : "Failed to fetch summary."
+          err instanceof Error ? err.message : "Failed to fetch summary.",
         );
       }
     } finally {
@@ -92,7 +92,7 @@ const CollectorSummaryPage: React.FC = () => {
       console.error("Error submitting session:", err);
       if (!(err instanceof AxiosError && err.response?.status === 401)) {
         toast.error(
-          err instanceof Error ? err.message : "Failed to submit session."
+          err instanceof Error ? err.message : "Failed to submit session.",
         );
       }
     } finally {
