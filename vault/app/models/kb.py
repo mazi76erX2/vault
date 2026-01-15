@@ -1,45 +1,48 @@
-import os
-from collections.abc import Generator
+"""
+Knowledge Base models for RAG (Retrieval Augmented Generation)
+"""
 
-from sqlalchemy import create_engine
-from sqlalchemy.orm import Session, sessionmaker
+import uuid
 
-from app.core.config import settings
-from app.db.baseclass import Base
+from pgvector.sqlalchemy import Vector
+from sqlalchemy import Column, DateTime, Integer, String, Text, func
+from sqlalchemy.dialects.postgresql import UUID
 
-try:
-    from supabase import Client, create_client  # type: ignore
-except Exception:  # pragma: no cover
-    Client = object  # type: ignore
-    create_client = None  # type: ignore
-
-DATABASE_URL = os.getenv("DATABASE_URL", settings.database_url)
-
-engine = create_engine(DATABASE_URL, pool_pre_ping=True)
-SessionLocal = sessionmaker(bind=engine, autocommit=False, autoflush=False)
-
-supabase: Client | None = None
-if (
-    create_client
-    and (settings.supabase_service_key or settings.supabase_key)
-    and settings.supabase_url
-):
-    supabase = create_client(
-        settings.supabase_url,
-        settings.supabase_service_key or settings.supabase_key,
-    )
+from app.config import settings
+from app.models.base import Base  # Use the MAIN Base!
 
 
-def get_db() -> Generator[Session]:
-    db = SessionLocal()
-    try:
-        yield db
-    finally:
-        db.close()
+class KBDocument(Base):
+    """Knowledge base document with vector embedding for RAG."""
 
+    __tablename__ = "kbdocuments"
 
-def init_db() -> None:
-    # Import models so metadata is registered
-    from app.models.kb import KBChunk  # noqa: F401
+    # Primary key
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
 
-    Base.metadata.create_all(bind=engine)
+    # Content
+    content = Column(Text, nullable=False)
+    embedding = Column(Vector(settings.VECTOR_DIMENSIONS), nullable=True)
+
+    # Metadata
+    sourcefile = Column(String(500), nullable=True)
+    title = Column(String(500), nullable=True)
+    accesslevel = Column(Integer, default=1, index=True)
+
+    # Multi-tenancy
+    companyid = Column(Integer, nullable=True, index=True)
+    companyregno = Column(String(50), nullable=True, index=True)
+    department = Column(String(100), nullable=True)
+
+    # Additional metadata
+    tags = Column(Text, nullable=True)  # Comma-separated tags
+    author = Column(String(255), nullable=True)
+    doctype = Column(String(50), nullable=True)
+
+    # Timestamps
+    createdat = Column(DateTime(timezone=True), server_default=func.now())
+    updatedat = Column(DateTime(timezone=True), onupdate=func.now())
+    lastmodifieddate = Column(DateTime(timezone=True))
+
+    def __repr__(self):
+        return f"<KBDocument(id={self.id}, title={self.title})>"

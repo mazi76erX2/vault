@@ -41,6 +41,9 @@ class Settings(BaseSettings):
     VECTOR_DIMENSIONS: int = 768
     RETRIEVAL_SIMILARITY_THRESHOLD: float = 0.5
     MAX_RETRIEVAL_DOCS: int = 5
+    KB_CHUNK_SIZE: int = 1000
+    KB_CHUNK_OVERLAP: int = 100
+    KB_TOP_K: int = 5
 
     # Cloudinary
     CLOUDINARY_CLOUD_NAME: str = ""
