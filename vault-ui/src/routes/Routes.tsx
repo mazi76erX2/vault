@@ -84,7 +84,7 @@ const RoleRoute: React.FC<{ roles: string[]; children: React.ReactNode }> = ({
   // It's crucial to handle the case where authContext itself might be undefined initially
   if (!authContext) {
     console.log(
-      "[RoleRoute] AuthContext is undefined, returning null (should be temporary)",
+      "[RoleRoute] AuthContext is undefined, returning null (should be temporary)"
     );
     return null; // Or a global loading spinner
   }
@@ -115,7 +115,7 @@ const RoleRoute: React.FC<{ roles: string[]; children: React.ReactNode }> = ({
     "[RoleRoute] authUser present. isLoadingUser false. Roles from context:",
     currentUserRoles,
     "Required roles:",
-    roles,
+    roles
   );
 
   // Check if the user has 'Administrator' role or any of the required roles for the route
@@ -127,7 +127,7 @@ const RoleRoute: React.FC<{ roles: string[]; children: React.ReactNode }> = ({
       "[RoleRoute] Access GRANTED for user roles:",
       currentUserRoles,
       "to route requiring:",
-      roles,
+      roles
     );
     return <>{children}</>;
   }
@@ -138,7 +138,7 @@ const RoleRoute: React.FC<{ roles: string[]; children: React.ReactNode }> = ({
     currentUserRoles,
     "to route requiring:",
     roles,
-    ". Redirecting to dashboard.",
+    ". Redirecting to dashboard."
   );
   return <Navigate to="/dashboard" replace />;
 };
@@ -295,7 +295,7 @@ const router = createBrowserRouter([
         id: "HelperMainPage",
       },
       {
-        path: "/applications/helper/chat",
+        path: "/applications/helper/HelperChatPage",
         element: (
           <RoleRoute roles={["Helper", "Administrator"]}>
             {renderPage(<HelperChatPage />)}

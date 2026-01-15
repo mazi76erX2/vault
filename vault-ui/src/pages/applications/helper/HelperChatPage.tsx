@@ -54,7 +54,7 @@ const HelperChatPage: React.FC = () => {
   const createNewChat = async () => {
     if (
       !authContext ||
-      !authContext.user?.user?.id ||
+      !authContext.user?.user?.user?.id ||
       !authContext.isLoggedIn
     ) {
       if (!authContext?.isLoadingUser) {
@@ -71,7 +71,7 @@ const HelperChatPage: React.FC = () => {
       console.error("Error creating chat:", err);
       if (!(err instanceof AxiosError && err.response?.status === 401)) {
         toast.error(
-          err instanceof Error ? err.message : "Failed to create chat.",
+          err instanceof Error ? err.message : "Failed to create chat."
         );
       }
     } finally {
@@ -82,7 +82,7 @@ const HelperChatPage: React.FC = () => {
   const fetchMessages = async (id: string) => {
     if (
       !authContext ||
-      !authContext.user?.user?.id ||
+      !authContext.user?.user?.user?.id ||
       !authContext.isLoggedIn
     ) {
       if (!authContext?.isLoadingUser) {
@@ -99,7 +99,7 @@ const HelperChatPage: React.FC = () => {
       console.error("Error fetching messages:", err);
       if (!(err instanceof AxiosError && err.response?.status === 401)) {
         toast.error(
-          err instanceof Error ? err.message : "Failed to fetch messages.",
+          err instanceof Error ? err.message : "Failed to fetch messages."
         );
       }
     } finally {
@@ -141,7 +141,7 @@ const HelperChatPage: React.FC = () => {
       console.error("Error sending message:", err);
       if (!(err instanceof AxiosError && err.response?.status === 401)) {
         toast.error(
-          err instanceof Error ? err.message : "Failed to send message.",
+          err instanceof Error ? err.message : "Failed to send message."
         );
       }
     } finally {
