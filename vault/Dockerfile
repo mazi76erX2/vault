@@ -9,12 +9,35 @@ COPY --from=ghcr.io/astral-sh/uv:latest /uv /usr/local/bin/uv
 
 WORKDIR /app
 
-# Build deps (only in builder)
+# Build dependencies (only in builder)
 RUN apt-get update && apt-get install -y --no-install-recommends \
-    curl git pkg-config \
+    curl \
+    git \
+    pkg-config \
+    gcc \
+    g++ \
+    build-essential \
+    # LDAP dependencies
+    libldap2-dev \
+    libsasl2-dev \
+    libssl-dev \
+    # Cairo dependencies
     libcairo2-dev \
-    gcc build-essential \
-    libldap2-dev libsasl2-dev libssl-dev \
+    # OCR dependencies
+    tesseract-ocr \
+    libtesseract-dev \
+    tesseract-ocr-eng \
+    # Audio processing dependencies
+    ffmpeg \
+    libavcodec-dev \
+    libavformat-dev \
+    libavutil-dev \
+    libswscale-dev \
+    libswresample-dev \
+    # Image processing
+    libjpeg-dev \
+    libpng-dev \
+    libtiff-dev \
     && rm -rf /var/lib/apt/lists/*
 
 # Copy dependency files
@@ -33,17 +56,29 @@ FROM python:3.14-slim AS runtime
 ENV PYTHONUNBUFFERED=1 \
     PYTHONDONTWRITEBYTECODE=1 \
     PYTHONPATH="/app" \
-    PATH="/app/.venv/bin:/usr/local/bin:$PATH"
+    PATH="/app/.venv/bin:/usr/local/bin:$PATH" \
+    TESSDATA_PREFIX="/usr/share/tesseract-ocr/5/tessdata"
 
 WORKDIR /app
 
-# Runtime libs only
+# Runtime libraries only (smaller footprint)
 RUN apt-get update && apt-get install -y --no-install-recommends \
     curl \
-    libcairo2 \
+    # LDAP runtime
     libldap-2.5-0 \
     libsasl2-2 \
     libssl3t64 \
+    # Cairo runtime
+    libcairo2 \
+    # OCR runtime
+    tesseract-ocr \
+    tesseract-ocr-eng \
+    # Audio runtime
+    ffmpeg \
+    # Image runtime
+    libjpeg62-turbo \
+    libpng16-16 \
+    libtiff6 \
     && rm -rf /var/lib/apt/lists/*
 
 # Copy the virtualenv from builder
@@ -51,6 +86,9 @@ COPY --from=builder /app/.venv /app/.venv
 
 # Copy application code
 COPY --from=builder /app /app
+
+# Create upload directories
+RUN mkdir -p /app/uploads/kb /app/uploads/audio /app/logs
 
 EXPOSE 7860
 

@@ -1,23 +1,8 @@
 services:
-  # Qdrant Vector Database
-  qdrant:
-    image: qdrant/qdrant:latest
-    container_name: vault-qdrant
-    ports:
-      - "6333:6333"
-      - "6334:6334" # gRPC port
-    volumes:
-      - ./qdrant_storage:/qdrant/storage
-    environment:
-      - QDRANT__SERVICE__GRPC_PORT=6334
-    restart: unless-stopped
-    networks:
-      - vault-network
-
   # PostgreSQL with pgvector extension
   postgres:
     image: ankane/pgvector:latest
-    container_name: vault-postgres
+    container_name: vault-postgres-dev
     environment:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: postgres
@@ -25,44 +10,71 @@ services:
     ports:
       - "5432:5432"
     volumes:
-      - ./postgres_data:/var/lib/postgresql/data
-      # Uncomment if you have init script:
-      # - ./init-db.sql:/docker-entrypoint-initdb.d/init.sql
+      - postgres_data_dev:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
     restart: unless-stopped
     networks:
       - vault-network
 
-  # FastAPI Backend
+  # FastAPI Backend (Development)
   backend:
     build:
       context: .
       dockerfile: Dockerfile
-    container_name: vault-backend
+    container_name: vault-backend-prod
     ports:
-      - "7860:7860" # Match Dockerfile EXPOSE port
+      - "7860:7860"
     environment:
+      # Database
+      - DATABASE_URL=postgresql+asyncpg://postgres:postgres@postgres:5432/vault
+
+      # Ollama (running on host)
       - OLLAMA_HOST=http://host.docker.internal:11434
-      - QDRANT_HOST=qdrant
-      - QDRANT_PORT=6333
-      - DATABASE_URL=postgresql://postgres:postgres@postgres:5432/vault_db
+      - OLLAMA_EMBED_MODEL=nomic-embed-text
+      - EMBEDDING_DIMENSION=768
+
+      # Application
+      - DEBUG=True
       - LOG_LEVEL=INFO
+      - SECRET_KEY=your-secret-key-change-in-production
+      - ACCESS_TOKEN_EXPIRE_MINUTES=60
+
+      # OCR
+      - TESSDATA_PREFIX=/usr/share/tesseract-ocr/5/tessdata
+
+      # Audio
+      - WHISPER_MODEL=base
     depends_on:
-      - qdrant
-      - postgres
+      postgres:
+        condition: service_healthy
     volumes:
+      # Hot reload - mount source code
+      - .:/app
+      # Persist uploads and logs
       - ./uploads:/app/uploads
       - ./logs:/app/logs
+      # Don't mount .venv (use container's)
+      - /app/.venv
     restart: unless-stopped
     networks:
       - vault-network
-    # Note: Ollama should run on host, not in Docker
     extra_hosts:
+      # Allow container to access host services (Ollama)
       - "host.docker.internal:host-gateway"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:7860/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
 
 networks:
   vault-network:
     driver: bridge
 
 volumes:
-  qdrant_storage:
-  postgres_data:
+  postgres_data_dev:

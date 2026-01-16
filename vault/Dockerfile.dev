@@ -3,14 +3,15 @@ FROM python:3.14-slim
 ENV PYTHONUNBUFFERED=1 \
     PYTHONDONTWRITEBYTECODE=1 \
     PYTHONPATH=/app \
-    PATH="/app/.venv/bin:$PATH"
+    PATH="/app/.venv/bin:$PATH" \
+    TESSDATA_PREFIX="/usr/share/tesseract-ocr/5/tessdata"
 
 # Install UV
 COPY --from=ghcr.io/astral-sh/uv:latest /uv /usr/local/bin/uv
 
 WORKDIR /app
 
-# Install system dependencies for python-ldap and other packages
+# Install system dependencies
 RUN apt-get update && apt-get install -y --no-install-recommends \
     curl \
     git \
@@ -18,29 +19,61 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     g++ \
     build-essential \
     pkg-config \
-    # LDAP dependencies (CRITICAL for python-ldap)
+    # LDAP dependencies
     libldap2-dev \
     libsasl2-dev \
     libssl-dev \
     # Cairo dependencies
     libcairo2-dev \
+    # OCR dependencies
+    tesseract-ocr \
+    libtesseract-dev \
+    tesseract-ocr-eng \
+    # Add more language packs if needed:
+    # tesseract-ocr-spa \  # Spanish
+    # tesseract-ocr-fra \  # French
+    # tesseract-ocr-deu \  # German
+    # Audio processing dependencies
+    ffmpeg \
+    libavcodec-dev \
+    libavformat-dev \
+    libavutil-dev \
+    libswscale-dev \
+    libswresample-dev \
+    # Image processing
+    libjpeg-dev \
+    libpng-dev \
+    libtiff-dev \
+    # Development tools
+    vim \
+    nano \
+    htop \
     # Clean up
     && rm -rf /var/lib/apt/lists/*
 
 # Copy dependency files
 COPY pyproject.toml uv.lock README.md ./
 
-# Create venv and sync dependencies with UV
+# Create venv and sync all dependencies (including dev)
 RUN uv venv /app/.venv && uv sync --all-extras
 
 # Verify critical packages are installed
-RUN /app/.venv/bin/python -c "import ldap; print('✅ python-ldap installed successfully')" || \
+RUN /app/.venv/bin/python -c "import ldap; print('✅ python-ldap installed')" || \
     echo "❌ python-ldap installation failed"
+
+RUN /app/.venv/bin/python -c "import pytesseract; print('✅ pytesseract installed')" || \
+    echo "❌ pytesseract installation failed"
+
+RUN /app/.venv/bin/python -c "import whisper; print('✅ whisper installed')" || \
+    echo "❌ whisper installation failed"
 
 # Copy application code (will be overridden by volume mounts in dev)
 COPY . .
 
+# Create upload directories
+RUN mkdir -p /app/uploads/kb /app/uploads/audio /app/logs
+
 EXPOSE 7860
 
-# Use full path to uvicorn from .venv
+# Use full path to uvicorn from .venv with hot reload
 CMD ["/app/.venv/bin/uvicorn", "main:app", "--host", "0.0.0.0", "--port", "7860", "--reload"]

@@ -11,8 +11,9 @@ import shutil
 from datetime import datetime
 from pathlib import Path
 from typing import Any
+import uuid
 
-from fastapi import APIRouter, Depends, File, HTTPException, UploadFile, status
+from fastapi import APIRouter, Depends, File, HTTPException, UploadFile, status, Form
 from sqlalchemy import and_, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -1147,3 +1148,46 @@ async def delete_project(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Error deleting project: {str(e)}",
         ) from e
+
+
+@router.post("/upload_voice")
+async def upload_voice_collector(
+    audio: UploadFile = File(...),
+    session_id: str = Form(...),
+    current_user: dict = Depends(verify_token_with_tenant),
+    db: AsyncSession = Depends(get_async_db),
+) -> dict[str, Any]:
+    """Upload voice for collector chat."""
+    try:
+        from app.services.file_processor import extract_from_audio
+        
+        audio_dir = Path("./uploads/audio")
+        audio_dir.mkdir(parents=True, exist_ok=True)
+        
+        audio_path = audio_dir / f"{uuid.uuid4()}{Path(audio.filename).suffix}"
+        
+        with open(audio_path, "wb") as buffer:
+            shutil.copyfileobj(audio.file, buffer)
+        
+        try:
+            transcription = extract_from_audio(audio_path)
+            
+            if not transcription.strip():
+                raise ValueError("No speech detected")
+            
+            return {
+                "status": "success",
+                "transcription": transcription,
+                "session_id": session_id,
+            }
+            
+        finally:
+            if audio_path.exists():
+                audio_path.unlink()
+                
+    except Exception as e:
+        logger.error(f"Error processing voice: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Error processing voice: {str(e)}",
+        )

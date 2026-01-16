@@ -37,6 +37,8 @@ import UserDirectoryPage from "../pages/users/UserDirectoryPage";
 import OrganisationPage from "../pages/users/OrganisationPage";
 import OrganisationListPage from "../pages/users/OrganisationListPage";
 import BusinessThemePage from "../pages/theme/BusinessThemePage";
+import KBUploadPage from "../pages/KB/KBUploadPage";
+import KBDocumentsPage from "../pages/KB/KBDocumentsPage";
 
 interface ChildrenProps {
   children: ReactNode;
@@ -446,6 +448,24 @@ const router = createBrowserRouter([
           </RoleRoute>
         ),
         id: "ThemeSettings",
+      },
+      {
+        path: "/knowledge-base/Upload",
+        element: (
+          <RoleRoute roles={["Administrator"]}>
+            {renderPage(<KBUploadPage />)}
+          </RoleRoute>
+        ),
+        id: "KBUpload",
+      },
+      {
+        path: "/knowledge-base/Documents",
+        element: (
+          <RoleRoute roles={["Administrator"]}>
+            {renderPage(<KBDocumentsPage />)}
+          </RoleRoute>
+        ),
+        id: "KBDocuments",
       },
       { path: "*", element: <NotFoundPage /> },
     ],

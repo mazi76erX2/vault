@@ -52,7 +52,7 @@ app.include_router(auth_router, prefix="/api/auth", tags=["Authentication"])
 app.include_router(users_router, prefix="/api/users", tags=["Users"])
 app.include_router(admin_router, prefix="/api/admin", tags=["Admin"])
 app.include_router(companies_router, prefix="/api/companies", tags=["Companies"])
-app.include_router(kb_router, prefix="/api/kb", tags=["Knowledge Base"])
+app.include_router(kb_router, tags=["Knowledge Base"])
 app.include_router(passwords_router, prefix="/api/auth", tags=["Passwords"])
 app.include_router(websocket_router, tags=["WebSocket"])
 app.include_router(utils_router, prefix="/api/utils", tags=["Utilities"])
@@ -74,8 +74,55 @@ async def root():
 
 @app.get("/health")
 async def health_check():
-    """Health check endpoint."""
-    return {"status": "healthy", "service": "vault-api"}
+    """Health check with dependency verification."""
+    checks = {
+        "status": "healthy",
+        "dependencies": {}
+    }
+    
+    # Check Tesseract
+    try:
+        import pytesseract
+        version = pytesseract.get_tesseract_version()
+        checks["dependencies"]["tesseract"] = {
+            "installed": True,
+            "version": str(version)
+        }
+    except Exception as e:
+        checks["dependencies"]["tesseract"] = {
+            "installed": False,
+            "error": str(e)
+        }
+    
+    # Check Whisper
+    try:
+        import whisper
+        checks["dependencies"]["whisper"] = {"installed": True}
+    except Exception as e:
+        checks["dependencies"]["whisper"] = {
+            "installed": False,
+            "error": str(e)
+        }
+    
+    # Check FFmpeg
+    try:
+        import subprocess
+        result = subprocess.run(
+            ["ffmpeg", "-version"],
+            capture_output=True,
+            text=True
+        )
+        checks["dependencies"]["ffmpeg"] = {
+            "installed": result.returncode == 0
+        }
+    except Exception as e:
+        checks["dependencies"]["ffmpeg"] = {
+            "installed": False,
+            "error": str(e)
+        }
+    
+    return checks
+
 
 
 if __name__ == "__main__":

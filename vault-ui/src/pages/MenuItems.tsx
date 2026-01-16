@@ -11,6 +11,9 @@ import {
   CheckCircle,
   Mail,
   LogOut,
+  Database,
+  Upload,
+  Search,
 } from "lucide-react";
 import { useAuthContext } from "../hooks/useAuthContext";
 import { cn } from "@/lib/utils";
@@ -42,7 +45,7 @@ export const MenuListItems: React.FC<MenuListItemsProps> = ({ open }) => {
 
   const hasRole = (roleName: string): boolean => {
     return userRoles.some((role) =>
-      role.toLowerCase().includes(roleName.toLowerCase()),
+      role.toLowerCase().includes(roleName.toLowerCase())
     );
   };
 
@@ -74,6 +77,24 @@ export const MenuListItems: React.FC<MenuListItemsProps> = ({ open }) => {
       to: "/theme/BusinessThemePage",
       icon: <Palette className="w-5 h-5" />,
       shouldHide: !isAdmin,
+    },
+    {
+      title: "Knowledge Base",
+      to: "/knowledge-base",
+      icon: <Database className="w-5 h-5" />,
+      shouldHide: !isAdmin,
+      subMenu: [
+        {
+          title: "Upload Documents",
+          to: "/knowledge-base/Upload",
+          icon: <Upload className="w-5 h-5" />,
+        },
+        {
+          title: "Browse Documents",
+          to: "/knowledge-base/Documents",
+          icon: <Search className="w-5 h-5" />,
+        },
+      ],
     },
     {
       title: "Applications",
@@ -189,7 +210,7 @@ const MenuListItem: React.FC<MenuListItemProps> = ({
           subItem ? "px-8" : "px-6",
           isActive && !subItem && "bg-primary text-primary-foreground",
           isActive && subItem && "text-primary font-medium bg-muted",
-          !isActive && "text-foreground bg-transparent",
+          !isActive && "text-foreground bg-transparent"
         )}
       >
         {!subItem && item.icon && (
@@ -202,7 +223,7 @@ const MenuListItem: React.FC<MenuListItemProps> = ({
           <span
             className={cn(
               "flex-1 text-left",
-              subItem && isActive ? "font-bold" : "text-base",
+              subItem && isActive ? "font-bold" : "text-base"
             )}
           >
             {item.title}
@@ -224,7 +245,7 @@ const MenuListItem: React.FC<MenuListItemProps> = ({
         <div
           className={cn(
             "overflow-hidden transition-all duration-300 ease-in-out bg-muted/50",
-            isExpanded ? "max-h-96 opacity-100" : "max-h-0 opacity-0",
+            isExpanded ? "max-h-96 opacity-100" : "max-h-0 opacity-0"
           )}
         >
           <ul className="pl-0">
