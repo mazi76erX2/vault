@@ -9,6 +9,7 @@ import { Loader } from "@/components/feedback/loader";
 import { CheckBox } from "@/components/forms/checkbox";
 import { Card, CardContent } from "@/components/ui/card";
 import { useAuthContext } from "@/hooks/useAuthContext";
+import { getContrastColor, isColorReadable } from "@/utils/colorUtils";
 import Api from "@/services/Instance";
 import assistantIcon from "@/assets/assistant_icon.png";
 
@@ -66,11 +67,41 @@ const BusinessThemePage: React.FC = () => {
     return color.startsWith("#") ? color : `#${color}`;
   };
 
+  const [intendedUserChatFontColor, setIntendedUserChatFontColor] =
+    useState("#000000");
+  const [intendedBotChatFontColor, setIntendedBotChatFontColor] =
+    useState("#000000");
+
+  const [effectiveUserChatFontColor, setEffectiveUserChatFontColor] =
+    useState("#000000");
+  const [effectiveBotChatFontColor, setEffectiveBotChatFontColor] =
+    useState("#000000");
+
   useEffect(() => {
     if (authContext?.user?.user?.id) {
       fetchThemeSettings();
     }
   }, [authContext?.user?.user?.id]);
+
+  useEffect(() => {
+    const effectiveColor = isColorReadable(
+      userChatColor,
+      intendedUserChatFontColor
+    )
+      ? intendedUserChatFontColor
+      : getContrastColor(userChatColor);
+    setEffectiveUserChatFontColor(effectiveColor);
+  }, [userChatColor, intendedUserChatFontColor]);
+
+  useEffect(() => {
+    const effectiveColor = isColorReadable(
+      botChatColor,
+      intendedBotChatFontColor
+    )
+      ? intendedBotChatFontColor
+      : getContrastColor(botChatColor);
+    setEffectiveBotChatFontColor(effectiveColor);
+  }, [botChatColor, intendedBotChatFontColor]);
 
   const fetchThemeSettings = async () => {
     try {
@@ -92,11 +123,18 @@ const BusinessThemePage: React.FC = () => {
           fontOptions.find((f) => f.value === settings.font) || {
             id: "tahoma",
             value: "Tahoma",
-          },
+          }
         );
         setLogoPreview(settings.logo || "");
         setBotProfilePicPreview(settings.botProfilePicture || assistantIcon);
         toast.success("Theme settings loaded.");
+
+        setIntendedUserChatFontColor(
+          addHashIfMissing(settings.userChatFontColor)
+        );
+        setIntendedBotChatFontColor(
+          addHashIfMissing(settings.botChatFontColor)
+        );
       }
     } catch (err) {
       console.error("Error fetching theme settings:", err);
@@ -128,8 +166,8 @@ const BusinessThemePage: React.FC = () => {
         botchatbubblecolour: botChatColor,
         sendbuttonandbox: sendButtonColor,
         font: selectedFont.value,
-        userchatfontcolour: userChatFontColor,
-        botchatfontcolour: botChatFontColor,
+        userchatfontcolour: intendedUserChatFontColor,
+        botchatfontcolour: intendedBotChatFontColor,
         logo: logoToSend,
         botprofilepicture: botPicToSend,
       };
@@ -160,7 +198,7 @@ const BusinessThemePage: React.FC = () => {
 
   const handleFileUpload = (
     e: React.ChangeEvent<HTMLInputElement>,
-    isLogo: boolean,
+    isLogo: boolean
   ) => {
     if (e.target.files && e.target.files[0]) {
       const file = e.target.files[0];
@@ -198,8 +236,8 @@ const BusinessThemePage: React.FC = () => {
             User Chat Bubble Colour
           </label>
           <ColorPicker
-            color={userChatColor}
-            onChange={(color) => setUserChatColor(color.hex)}
+            value={userChatColor}
+            onChange={(color) => setUserChatColor(color)}
           />
         </div>
 
@@ -208,8 +246,8 @@ const BusinessThemePage: React.FC = () => {
             Bot Chat Bubble Colour
           </label>
           <ColorPicker
-            color={botChatColor}
-            onChange={(color) => setBotChatColor(color.hex)}
+            value={botChatColor}
+            onChange={(color) => setBotChatColor(color)}
           />
         </div>
 
@@ -218,8 +256,8 @@ const BusinessThemePage: React.FC = () => {
             Send Button Color
           </label>
           <ColorPicker
-            color={sendButtonColor}
-            onChange={(color) => setSendButtonColor(color.hex)}
+            value={sendButtonColor}
+            onChange={(color) => setSendButtonColor(color)}
           />
         </div>
 
@@ -228,8 +266,8 @@ const BusinessThemePage: React.FC = () => {
             User Chat Font Colour
           </label>
           <ColorPicker
-            color={userChatFontColor}
-            onChange={(color) => setUserChatFontColor(color.hex)}
+            value={effectiveUserChatFontColor}
+            onChange={(color) => setIntendedUserChatFontColor(color)}
           />
         </div>
 
@@ -238,8 +276,8 @@ const BusinessThemePage: React.FC = () => {
             Bot Chat Font Colour
           </label>
           <ColorPicker
-            color={botChatFontColor}
-            onChange={(color) => setBotChatFontColor(color.hex)}
+            value={effectiveBotChatFontColor}
+            onChange={(color) => setIntendedBotChatFontColor(color)}
           />
         </div>
 
@@ -362,7 +400,7 @@ const BusinessThemePage: React.FC = () => {
                       className="max-w-[70%] rounded-lg p-4 flex gap-2"
                       style={{
                         backgroundColor: botChatColor,
-                        color: botChatFontColor,
+                        color: effectiveBotChatFontColor,
                         fontFamily: selectedFont.value,
                       }}
                     >
@@ -380,14 +418,14 @@ const BusinessThemePage: React.FC = () => {
                       className="max-w-[70%] rounded-lg p-4"
                       style={{
                         backgroundColor: userChatColor,
-                        color: userChatFontColor,
+                        color: effectiveUserChatFontColor,
                         fontFamily: selectedFont.value,
                       }}
                     >
                       {message.text}
                     </div>
                   </div>
-                ),
+                )
               )}
             </div>
 
@@ -399,7 +437,7 @@ const BusinessThemePage: React.FC = () => {
                 className="w-full p-3 pr-12 border border-border rounded resize-none bg-input text-foreground"
                 style={{
                   fontFamily: selectedFont.value,
-                  color: userChatFontColor,
+                  color: effectiveUserChatFontColor,
                 }}
                 rows={2}
               />
