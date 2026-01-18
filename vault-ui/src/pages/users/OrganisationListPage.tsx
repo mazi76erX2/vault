@@ -71,7 +71,13 @@ const OrganisationListPage: React.FC = () => {
   const fetchUsers = async () => {
     try {
       setLoading(true);
-      const companyId = (authContext?.user?.user as any)?.companyid;
+      const companyId = authContext?.user?.profile?.company_id;
+
+      if (!companyId) {
+        toast.error("No company ID found");
+        return;
+      }
+
       const response = await Api.get(`/api/users/company/${companyId}`);
       setUsers(response.data || []);
     } catch (err) {
@@ -85,7 +91,7 @@ const OrganisationListPage: React.FC = () => {
   const fetchDirectoryUsers = async () => {
     try {
       setLoading(true);
-      const companyId = (authContext?.user?.user as any)?.companyid;
+      const companyId = authContext?.user?.profile?.company_id;
       const response = await Api.get(`/api/ldap/directory/users/${companyId}`);
       setDirectoryUsers(response.data || []);
       setShowDirectoryBrowser(true);
@@ -126,7 +132,7 @@ const OrganisationListPage: React.FC = () => {
   const handleSaveUser = async () => {
     try {
       setLoading(true);
-      const companyId = (authContext?.user?.user as any)?.companyid;
+      const companyId = authContext?.user?.profile?.company_id;
 
       if (selectedUser) {
         // Update existing user
@@ -175,7 +181,7 @@ const OrganisationListPage: React.FC = () => {
   const handleImportDirectoryUsers = async () => {
     try {
       setLoading(true);
-      const companyId = (authContext?.user?.user as any)?.companyid;
+      const companyId = authContext?.user?.profile?.company_id;
 
       await Api.post("/api/users/import-directory", {
         companyId,
@@ -207,7 +213,7 @@ const OrganisationListPage: React.FC = () => {
     setSelectedDirectoryUsers((prev) =>
       prev.includes(userId)
         ? prev.filter((id) => id !== userId)
-        : [...prev, userId],
+        : [...prev, userId]
     );
   };
 
@@ -426,7 +432,7 @@ const OrganisationListPage: React.FC = () => {
                             }
                             onCheckedChange={(checked) => {
                               setSelectedDirectoryUsers(
-                                checked ? directoryUsers.map((u) => u.id) : [],
+                                checked ? directoryUsers.map((u) => u.id) : []
                               );
                             }}
                           />

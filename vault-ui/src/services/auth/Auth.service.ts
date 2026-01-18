@@ -6,13 +6,15 @@ import {
 import Api from "../Instance";
 
 const USERKEY = "currentUser";
-const AUTHAPIPREFIX = "/api/auth"; // Matches backend router prefix
+const ACCESSTOKENKEY = "access_token";
+const REFRESHTOKENKEY = "refresh_token";
+const AUTHAPIPREFIX = "/api/auth";
 
-export const getCurrentUser = (): LoginResponseDTO | null => {
+export const getCurrentUser = (): LoginResponseDTO["user"] | null => {
   const userStr = localStorage.getItem(USERKEY);
   if (userStr) {
     try {
-      return JSON.parse(userStr) as LoginResponseDTO;
+      return JSON.parse(userStr) as LoginResponseDTO["user"];
     } catch (error) {
       console.error("Error parsing user data from localStorage", error);
       localStorage.removeItem(USERKEY);
@@ -21,7 +23,7 @@ export const getCurrentUser = (): LoginResponseDTO | null => {
   return null;
 };
 
-export const setCurrentUser = (user: LoginResponseDTO): void => {
+export const setCurrentUser = (user: LoginResponseDTO["user"]): void => {
   try {
     localStorage.setItem(USERKEY, JSON.stringify(user));
   } catch (error) {
@@ -31,20 +33,25 @@ export const setCurrentUser = (user: LoginResponseDTO): void => {
 
 export const removeCurrentUser = (): void => {
   localStorage.removeItem(USERKEY);
+  localStorage.removeItem(ACCESSTOKENKEY);
+  localStorage.removeItem(REFRESHTOKENKEY);
 };
 
 export const getAccessToken = (): string | null => {
-  const user = getCurrentUser();
-  return user?.access_token ?? null;
+  return localStorage.getItem(ACCESSTOKENKEY);
 };
 
 export const getRefreshToken = (): string | null => {
-  const user = getCurrentUser();
-  return user?.refresh_token ?? null;
+  return localStorage.getItem(REFRESHTOKENKEY);
+};
+
+export const setTokens = (accessToken: string, refreshToken: string): void => {
+  localStorage.setItem(ACCESSTOKENKEY, accessToken);
+  localStorage.setItem(REFRESHTOKENKEY, refreshToken);
 };
 
 export const login = async (
-  loginData: LoginRequestDTO,
+  loginData: LoginRequestDTO
 ): Promise<LoginResponseDTO> => {
   try {
     console.log("Auth.service: Attempting login to:", `${AUTHAPIPREFIX}/login`);
@@ -52,12 +59,13 @@ export const login = async (
 
     const response = await Api.post<LoginResponseDTO>(
       `${AUTHAPIPREFIX}/login`,
-      loginData,
+      loginData
     );
     console.log("Auth.service: Login response:", response.data);
 
     if (response.data) {
-      setCurrentUser(response.data);
+      setTokens(response.data.access_token, response.data.refresh_token);
+      setCurrentUser(response.data.user);
       return response.data;
     }
 
@@ -78,11 +86,9 @@ export const login = async (
   }
 };
 
-// FIXED: Empty POST body for logout
 export const logout = async (): Promise<void> => {
   try {
     console.log("Auth.service: Calling logout API:", `${AUTHAPIPREFIX}/logout`);
-    // Empty body - backend expects no payload
     await Api.post(
       `${AUTHAPIPREFIX}/logout`,
       {},
@@ -90,14 +96,12 @@ export const logout = async (): Promise<void> => {
         headers: {
           "Content-Type": "application/json",
         },
-      },
+      }
     );
     console.log("Auth.service: Logout API success");
   } catch (error) {
     console.error("Auth.service: Logout API failed:", error);
-    // Don't throw - cleanup anyway
   } finally {
-    // Always clear localStorage + redirect
     removeCurrentUser();
     console.log("Auth.service: localStorage cleared");
   }
@@ -111,12 +115,13 @@ export const refreshTokens = async (): Promise<LoginResponseDTO | null> => {
     const response = await Api.post<LoginResponseDTO>(
       `${AUTHAPIPREFIX}/refresh`,
       {
-        refreshtoken: currentRefreshToken,
-      },
+        refresh_token: currentRefreshToken,
+      }
     );
 
     if (response.data) {
-      setCurrentUser(response.data);
+      setTokens(response.data.access_token, response.data.refresh_token);
+      setCurrentUser(response.data.user);
       return response.data;
     }
     return null;

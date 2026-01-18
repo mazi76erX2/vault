@@ -40,7 +40,7 @@ type AuthAction =
   | { type: "SET_ROLES"; payload: string[] };
 
 const extractRolesFromResponse = (
-  response: LoginResponseDTO | null,
+  response: LoginResponseDTO | null
 ): string[] => {
   if (!response) return [];
   if (response.user && Array.isArray(response.user.roles)) {
@@ -98,7 +98,7 @@ const authReducer = (state: AuthState, action: AuthAction): AuthState => {
 };
 
 export const AuthContext = createContext<AuthContextType | undefined>(
-  undefined,
+  undefined
 );
 
 interface AuthProviderProps {
