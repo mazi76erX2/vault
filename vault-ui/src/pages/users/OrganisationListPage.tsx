@@ -52,6 +52,14 @@ const OrganisationListPage: React.FC = () => {
     string[]
   >([]);
 
+  if (authContext.isLoadingUser) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <Loader />
+      </div>
+    );
+  }
+
   // Form state for adding/editing user
   const [formData, setFormData] = useState({
     username: "",
@@ -65,13 +73,23 @@ const OrganisationListPage: React.FC = () => {
   const availableRoles = ["Administrator", "Collector", "Helper", "Validator"];
 
   useEffect(() => {
-    fetchUsers();
-  }, []);
+    if (!authContext.isLoadingUser && authContext.isLoggedIn) {
+      fetchUsers();
+    }
+  }, [authContext.isLoadingUser, authContext.isLoggedIn]);
 
   const fetchUsers = async () => {
     try {
       setLoading(true);
-      const companyId = authContext?.user?.profile?.company_id;
+
+      if (authContext.isLoadingUser) {
+        console.log("Auth still loading...");
+        return;
+      }
+
+      const companyId = authContext?.user?.user?.profile?.company_id;
+
+      console.log("Company ID:", companyId);
 
       if (!companyId) {
         toast.error("No company ID found");
@@ -91,7 +109,7 @@ const OrganisationListPage: React.FC = () => {
   const fetchDirectoryUsers = async () => {
     try {
       setLoading(true);
-      const companyId = authContext?.user?.profile?.company_id;
+      const companyId = authContext?.user?.user?.profile?.company_id;
       const response = await Api.get(`/api/ldap/directory/users/${companyId}`);
       setDirectoryUsers(response.data || []);
       setShowDirectoryBrowser(true);

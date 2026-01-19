@@ -5,7 +5,12 @@ import axios, {
   InternalAxiosRequestConfig,
 } from "axios";
 import { toast } from "sonner";
-import { getCurrentUser, setCurrentUser } from "./auth/Auth.service";
+import {
+  getCurrentUser,
+  setCurrentUser,
+  getAccessToken,
+  getRefreshToken,
+} from "./auth/Auth.service";
 import { VAULT_API_URL } from "../config";
 import { LoginResponseDTO } from "../types/LoginResponseDTO";
 
@@ -22,7 +27,7 @@ let failedQueue: Array<{
 
 const processQueue = (
   error: AxiosError | null,
-  token: string | null = null,
+  token: string | null = null
 ) => {
   failedQueue.forEach((prom) => {
     if (error) {
@@ -36,6 +41,8 @@ const processQueue = (
 
 const manualLogout = async (): Promise<void> => {
   localStorage.removeItem("currentUser");
+  localStorage.removeItem("access_token");
+  localStorage.removeItem("refresh_token");
   if (typeof window !== "undefined") {
     window.location.href = "/login";
   }
@@ -57,18 +64,17 @@ const isJWTError = (error: AxiosError): boolean => {
 
 Api.interceptors.request.use(
   async (config: InternalAxiosRequestConfig) => {
-    const user = getCurrentUser();
-    if (user?.access_token) {
+    const token = getAccessToken();
+    if (token) {
       config.headers = config.headers || {};
-      config.headers.Authorization = `Bearer ${user.access_token}`;
-      console.log(
-        "Token attached:",
-        user.access_token.substring(0, 20) + "...",
-      );
+      config.headers.Authorization = `Bearer ${token}`;
+      console.log("Token attached:", token.substring(0, 20) + "...");
+    } else {
+      console.log("No token found in localStorage");
     }
     return config;
   },
-  (requestError) => Promise.reject(requestError),
+  (requestError) => Promise.reject(requestError)
 );
 
 Api.interceptors.response.use(
@@ -104,28 +110,41 @@ Api.interceptors.response.use(
 
       isRefreshing = true;
       try {
-        const refreshToken = getCurrentUser()?.refresh_token;
+        const refreshToken = getRefreshToken();
         if (!refreshToken) {
           toast.warning("Token refresh unavailable");
+          await manualLogout();
           return Promise.reject(error);
         }
 
         const refreshResponse = await axios.post(
           `${VAULT_API_URL}/api/auth/refresh`,
           {
-            refreshtoken: refreshToken,
-          },
+            refresh_token: refreshToken,
+          }
         );
 
         if (refreshResponse.data?.access_token) {
-          setCurrentUser(refreshResponse.data);
+          localStorage.setItem(
+            "access_token",
+            refreshResponse.data.access_token
+          );
+          localStorage.setItem(
+            "refresh_token",
+            refreshResponse.data.refresh_token
+          );
+          if (refreshResponse.data.user) {
+            setCurrentUser(refreshResponse.data.user);
+          }
           processQueue(null, refreshResponse.data.access_token);
           originalRequest.headers!.Authorization = `Bearer ${refreshResponse.data.access_token}`;
           return Api(originalRequest);
         }
       } catch (refreshError) {
         console.error("Token refresh failed:", refreshError);
-        toast.warning("Could not refresh token. Some features may be limited.");
+        toast.warning("Session expired. Please login again.");
+        await manualLogout();
+        processQueue(refreshError as AxiosError, null);
       } finally {
         isRefreshing = false;
       }
@@ -142,7 +161,7 @@ Api.interceptors.response.use(
     }
 
     return Promise.reject(error);
-  },
+  }
 );
 
 export default Api;
