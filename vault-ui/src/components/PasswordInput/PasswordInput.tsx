@@ -40,7 +40,7 @@ export function PasswordInput({
         <Label
           className={cn(
             required &&
-              "after:content-['*'] after:ml-0.5 after:text-destructive"
+              "after:content-['*'] after:ml-0.5 after:text-destructive",
           )}
         >
           {label}
@@ -54,7 +54,7 @@ export function PasswordInput({
           placeholder={placeholder}
           disabled={disabled}
           className={cn(
-            error && "border-destructive focus-visible:ring-destructive"
+            error && "border-destructive focus-visible:ring-destructive",
           )}
         />
         <button
@@ -74,7 +74,7 @@ export function PasswordInput({
         <p
           className={cn(
             "text-sm",
-            error ? "text-destructive" : "text-muted-foreground"
+            error ? "text-destructive" : "text-muted-foreground",
           )}
         >
           {error || helperText}

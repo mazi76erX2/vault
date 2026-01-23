@@ -37,6 +37,8 @@ import UserDirectoryPage from "../pages/users/UserDirectoryPage";
 import OrganisationPage from "../pages/users/OrganisationPage";
 import OrganisationListPage from "../pages/users/OrganisationListPage";
 import BusinessThemePage from "../pages/theme/BusinessThemePage";
+import KBUploadPage from "../pages/KB/KBUploadPage";
+import KBDocumentsPage from "../pages/KB/KBDocumentsPage";
 
 interface ChildrenProps {
   children: ReactNode;
@@ -84,7 +86,7 @@ const RoleRoute: React.FC<{ roles: string[]; children: React.ReactNode }> = ({
   // It's crucial to handle the case where authContext itself might be undefined initially
   if (!authContext) {
     console.log(
-      "[RoleRoute] AuthContext is undefined, returning null (should be temporary)",
+      "[RoleRoute] AuthContext is undefined, returning null (should be temporary)"
     );
     return null; // Or a global loading spinner
   }
@@ -115,7 +117,7 @@ const RoleRoute: React.FC<{ roles: string[]; children: React.ReactNode }> = ({
     "[RoleRoute] authUser present. isLoadingUser false. Roles from context:",
     currentUserRoles,
     "Required roles:",
-    roles,
+    roles
   );
 
   // Check if the user has 'Administrator' role or any of the required roles for the route
@@ -127,7 +129,7 @@ const RoleRoute: React.FC<{ roles: string[]; children: React.ReactNode }> = ({
       "[RoleRoute] Access GRANTED for user roles:",
       currentUserRoles,
       "to route requiring:",
-      roles,
+      roles
     );
     return <>{children}</>;
   }
@@ -138,7 +140,7 @@ const RoleRoute: React.FC<{ roles: string[]; children: React.ReactNode }> = ({
     currentUserRoles,
     "to route requiring:",
     roles,
-    ". Redirecting to dashboard.",
+    ". Redirecting to dashboard."
   );
   return <Navigate to="/dashboard" replace />;
 };
@@ -295,7 +297,7 @@ const router = createBrowserRouter([
         id: "HelperMainPage",
       },
       {
-        path: "/applications/helper/chat",
+        path: "/applications/helper/HelperChatPage",
         element: (
           <RoleRoute roles={["Helper", "Administrator"]}>
             {renderPage(<HelperChatPage />)}
@@ -446,6 +448,24 @@ const router = createBrowserRouter([
           </RoleRoute>
         ),
         id: "ThemeSettings",
+      },
+      {
+        path: "/knowledge-base/Upload",
+        element: (
+          <RoleRoute roles={["Administrator"]}>
+            {renderPage(<KBUploadPage />)}
+          </RoleRoute>
+        ),
+        id: "KBUpload",
+      },
+      {
+        path: "/knowledge-base/Documents",
+        element: (
+          <RoleRoute roles={["Administrator"]}>
+            {renderPage(<KBDocumentsPage />)}
+          </RoleRoute>
+        ),
+        id: "KBDocuments",
       },
       { path: "*", element: <NotFoundPage /> },
     ],

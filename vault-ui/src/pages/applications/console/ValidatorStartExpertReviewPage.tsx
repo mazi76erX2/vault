@@ -37,7 +37,7 @@ interface DocumentDetails {
 const ValidatorStartExpertReviewPage: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [documentData, setDocumentData] = useState<DocumentDetails | null>(
-    null
+    null,
   );
   const authContext = useAuthContext();
   const navigate = useNavigate();
@@ -75,7 +75,7 @@ const ValidatorStartExpertReviewPage: React.FC = () => {
         toast.error(
           err instanceof Error
             ? err.message
-            : "Failed to fetch document details."
+            : "Failed to fetch document details.",
         );
       }
     } finally {
@@ -240,7 +240,7 @@ const ValidatorStartExpertReviewPage: React.FC = () => {
                             </h3>
                             <p className="text-lg text-foreground">
                               {new Date(
-                                documentData.expertReviewedAt
+                                documentData.expertReviewedAt,
                               ).toLocaleString()}
                             </p>
                           </div>

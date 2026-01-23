@@ -1,0 +1,97 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "Install Dependencies",
+      "type": "shell",
+      "command": "npm install",
+      "options": {
+        "cwd": "${workspaceFolder}/vault-ui"
+      },
+      "problemMatcher": []
+    },
+    {
+      "label": "Backend: Start Local Server",
+      "type": "shell",
+      "command": "uvicorn main:app --host 0.0.0.0 --port 7860 --reload",
+      "options": {
+        "cwd": "${workspaceFolder}",
+        "env": {
+          "DEBUG": "True",
+          "LOG_LEVEL": "DEBUG"
+        }
+      },
+      "problemMatcher": [],
+      "isBackground": true,
+      "presentation": {
+        "reveal": "always",
+        "panel": "new"
+      }
+    },
+    {
+      "label": "Backend: Docker Up (Dev)",
+      "type": "shell",
+      "command": "docker compose -f docker-compose.dev.yml up postgres backend",
+      "options": {
+        "cwd": "${workspaceFolder}"
+      },
+      "problemMatcher": [],
+      "isBackground": true,
+      "presentation": {
+        "reveal": "always",
+        "panel": "new"
+      }
+    },
+    {
+      "label": "Backend: Docker Down",
+      "type": "shell",
+      "command": "docker compose -f docker-compose.dev.yml down",
+      "options": {
+        "cwd": "${workspaceFolder}"
+      },
+      "problemMatcher": []
+    },
+    {
+      "label": "Frontend: Start Vite Dev Server",
+      "type": "shell",
+      "command": "npm run start",
+      "options": {
+        "cwd": "${workspaceFolder}/vault-ui"
+      },
+      "problemMatcher": [],
+      "isBackground": true,
+      "presentation": {
+        "reveal": "always",
+        "panel": "new"
+      }
+    },
+    {
+      "label": "Frontend: Docker Up",
+      "type": "shell",
+      "command": "docker compose up vaultui",
+      "options": {
+        "cwd": "${workspaceFolder}/vault-ui"
+      },
+      "problemMatcher": [],
+      "isBackground": true,
+      "presentation": {
+        "reveal": "always",
+        "panel": "new"
+      }
+    },
+    {
+      "label": "Full Stack: Start All Services (Docker)",
+      "type": "shell",
+      "command": "docker compose -f docker-compose.dev.yml up",
+      "options": {
+        "cwd": "${workspaceFolder}"
+      },
+      "problemMatcher": [],
+      "isBackground": true,
+      "presentation": {
+        "reveal": "always",
+        "panel": "new"
+      }
+    }
+  ]
+}

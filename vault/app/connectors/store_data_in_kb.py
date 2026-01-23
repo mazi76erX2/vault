@@ -10,77 +10,21 @@ import uuid
 from datetime import datetime
 
 import requests
-from pgvector.sqlalchemy import Vector
-from sqlalchemy import (Column, DateTime, Integer, String, Text, create_engine,
-                        text)
-from sqlalchemy.dialects.postgresql import UUID
-from sqlalchemy.orm import declarative_base, sessionmaker
+from sqlalchemy import text
 
-from app.config import settings
+from app.database import SessionLocal  # ← Use main session
+from app.models.kb import KBDocument  # ← Import from models
 
 logger = logging.getLogger(__name__)
 
 # Configuration
 OLLAMA_HOST = os.environ.get("OLLAMA_HOST", "http://localhost:11434")
 OLLAMA_EMBED_MODEL = os.environ.get("OLLAMA_EMBED_MODEL", "nomic-embed-text")
-EMBEDDING_DIMENSION = int(os.environ.get("EMBEDDING_DIMENSION", "768"))
-
-# Database setup
-DATABASE_URL = settings.DATABASE_URL
-engine = create_engine(DATABASE_URL, echo=False)
-SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
-
-Base = declarative_base()
 
 
 # ============================================================================
-# SQLAlchemy Model for Knowledge Base Documents
+# Database Session
 # ============================================================================
-
-
-class KnowledgeBaseDocument(Base):
-    """Knowledge base document with vector embedding"""
-
-    __tablename__ = "kb_documents"
-
-    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    content = Column(Text, nullable=False)
-    embedding = Column(Vector(EMBEDDING_DIMENSION), nullable=True)
-
-    # Document metadata
-    sourcefile = Column(String(500), nullable=True)
-    title = Column(String(500), nullable=True)
-    access_level = Column(Integer, default=1, index=True)
-
-    # Additional metadata
-    company_id = Column(Integer, nullable=True, index=True)
-    company_reg_no = Column(String(50), nullable=True, index=True)
-    department = Column(String(100), nullable=True)
-    tags = Column(Text, nullable=True)  # Comma-separated tags
-    author = Column(String(255), nullable=True)
-    doc_type = Column(String(50), nullable=True)
-
-    # Timestamps
-    created_at = Column(DateTime, default=datetime.utcnow)
-    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
-    last_modified_date = Column(DateTime, default=datetime.utcnow)
-
-
-# ============================================================================
-# Database Initialization
-# ============================================================================
-
-
-def init_pgvector():
-    """Initialize pgvector extension and create tables"""
-    with engine.connect() as conn:
-        # Enable pgvector extension
-        conn.execute(text("CREATE EXTENSION IF NOT EXISTS vector"))
-        conn.commit()
-
-    # Create tables
-    Base.metadata.create_all(bind=engine)
-    logger.info("pgvector extension enabled and tables created")
 
 
 def get_db_session():
@@ -196,8 +140,8 @@ def store_in_kb(doc: dict) -> dict:
         # Create unique ID
         doc_id = uuid.uuid4()
 
-        # Create document record
-        kb_doc = KnowledgeBaseDocument(
+        # Create document record using KBDocument model
+        kb_doc = KBDocument(
             id=doc_id,
             content=content,
             embedding=embedding,
@@ -268,7 +212,7 @@ def store_bulk_in_kb(docs: list[dict]) -> dict:
             doc_id = uuid.uuid4()
             doc_ids.append(str(doc_id))
 
-            kb_doc = KnowledgeBaseDocument(
+            kb_doc = KBDocument(
                 id=doc_id,
                 content=doc.get("content", ""),
                 embedding=embeddings[i],
@@ -323,7 +267,7 @@ def delete_from_kb(doc_id: str) -> dict:
         logger.info(f"Deleting document: {doc_id}")
 
         db = get_db_session()
-        doc = db.query(KnowledgeBaseDocument).filter(KnowledgeBaseDocument.id == doc_id).first()
+        doc = db.query(KBDocument).filter(KBDocument.id == doc_id).first()
 
         if not doc:
             return {"status": "error", "message": "Document not found"}
@@ -361,8 +305,8 @@ def delete_bulk_from_kb(doc_ids: list[str]) -> dict:
 
         db = get_db_session()
         deleted_count = (
-            db.query(KnowledgeBaseDocument)
-            .filter(KnowledgeBaseDocument.id.in_(doc_ids))
+            db.query(KBDocument)
+            .filter(KBDocument.id.in_(doc_ids))
             .delete(synchronize_session=False)
         )
         db.commit()
@@ -651,7 +595,7 @@ def get_document_by_id(doc_id: str) -> dict | None:
     db = None
     try:
         db = get_db_session()
-        doc = db.query(KnowledgeBaseDocument).filter(KnowledgeBaseDocument.id == doc_id).first()
+        doc = db.query(KBDocument).filter(KBDocument.id == doc_id).first()
 
         if not doc:
             return None
@@ -698,7 +642,7 @@ def update_document(doc_id: str, updates: dict) -> dict:
         logger.info(f"Updating document: {doc_id}")
 
         db = get_db_session()
-        doc = db.query(KnowledgeBaseDocument).filter(KnowledgeBaseDocument.id == doc_id).first()
+        doc = db.query(KBDocument).filter(KBDocument.id == doc_id).first()
 
         if not doc:
             return {"status": "error", "message": "Document not found"}
@@ -753,21 +697,16 @@ def list_documents(
     db = None
     try:
         db = get_db_session()
-        query = db.query(KnowledgeBaseDocument)
+        query = db.query(KBDocument)
 
         if access_level is not None:
-            query = query.filter(KnowledgeBaseDocument.access_level <= access_level)
+            query = query.filter(KBDocument.access_level <= access_level)
         if company_id is not None:
-            query = query.filter(KnowledgeBaseDocument.company_id == company_id)
+            query = query.filter(KBDocument.company_id == company_id)
         if department is not None:
-            query = query.filter(KnowledgeBaseDocument.department == department)
+            query = query.filter(KBDocument.department == department)
 
-        docs = (
-            query.order_by(KnowledgeBaseDocument.created_at.desc())
-            .offset(offset)
-            .limit(limit)
-            .all()
-        )
+        docs = query.order_by(KBDocument.created_at.desc()).offset(offset).limit(limit).all()
 
         return [
             {
@@ -808,12 +747,12 @@ def get_document_count(
     db = None
     try:
         db = get_db_session()
-        query = db.query(KnowledgeBaseDocument)
+        query = db.query(KBDocument)
 
         if access_level is not None:
-            query = query.filter(KnowledgeBaseDocument.access_level <= access_level)
+            query = query.filter(KBDocument.access_level <= access_level)
         if company_id is not None:
-            query = query.filter(KnowledgeBaseDocument.company_id == company_id)
+            query = query.filter(KBDocument.company_id == company_id)
 
         return query.count()
 
@@ -840,7 +779,7 @@ def reindex_document(doc_id: str) -> dict:
         logger.info(f"Reindexing document: {doc_id}")
 
         db = get_db_session()
-        doc = db.query(KnowledgeBaseDocument).filter(KnowledgeBaseDocument.id == doc_id).first()
+        doc = db.query(KBDocument).filter(KBDocument.id == doc_id).first()
 
         if not doc:
             return {"status": "error", "message": "Document not found"}
@@ -876,7 +815,7 @@ def reindex_all_documents() -> dict:
         logger.info("Reindexing all documents...")
 
         db = get_db_session()
-        docs = db.query(KnowledgeBaseDocument).all()
+        docs = db.query(KBDocument).all()
 
         count = 0
         for doc in docs:
@@ -904,13 +843,3 @@ def reindex_all_documents() -> dict:
     finally:
         if db:
             db.close()
-
-
-# ============================================================================
-# Backward Compatibility Aliases
-# ============================================================================
-
-# Deprecated aliases for backward compatibility
-store_in_azure_kb = store_in_kb
-store_in_qdrant = store_in_kb
-search_qdrant = search_kb

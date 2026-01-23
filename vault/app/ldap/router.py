@@ -14,8 +14,7 @@ from typing import Any
 from fastapi import APIRouter, Depends, HTTPException, status
 from passlib.context import CryptContext
 from pydantic import BaseModel
-from sqlalchemy import (Boolean, Column, DateTime, ForeignKey, Integer, String,
-                        Text)
+from sqlalchemy import Boolean, Column, DateTime, ForeignKey, Integer, String, Text
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
 from sqlalchemy.future import select
@@ -25,8 +24,7 @@ from app.config import settings
 from app.email_service import send_welcome_email
 
 from .models import LDAPSearchInputModel, LDAPSearchResult, LoginModel
-from .service import (ldap_authenticate, ldap_search, sync_ldap_connector,
-                      test_ldap_connection)
+from .service import ldap_authenticate, ldap_search, sync_ldap_connector, test_ldap_connection
 
 logger = logging.getLogger(__name__)
 

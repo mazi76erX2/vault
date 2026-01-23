@@ -28,7 +28,7 @@ const ExpertStartPage: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [rows, setRows] = useState<Document[]>([]);
   const [selectedDocument, setSelectedDocument] = useState<Document | null>(
-    null
+    null,
   );
   const authContext = useAuthContext();
   const navigate = useNavigate();
@@ -80,14 +80,14 @@ const ExpertStartPage: React.FC = () => {
     try {
       setLoading(true);
       const response = await Api.get<FetchDocumentsResponse>(
-        "/api/v1/expert/documents"
+        "/api/v1/expert/documents",
       );
       setRows(response.data.documents);
     } catch (err: unknown) {
       console.error("Error fetching documents:", err);
       if (!(err instanceof AxiosError && err.response?.status === 401)) {
         toast.error(
-          err instanceof Error ? err.message : "Failed to fetch documents."
+          err instanceof Error ? err.message : "Failed to fetch documents.",
         );
       }
     } finally {

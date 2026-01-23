@@ -119,7 +119,7 @@ const HelperPreviousChatsPage: React.FC = () => {
         const chatsResponse = await Api.post(
           "/api/v1/helper/get_previous_chats",
           {
-            user_id: user.user.id,
+            user_id: user.user.user.id,
           }
         );
 

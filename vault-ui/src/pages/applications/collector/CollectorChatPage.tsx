@@ -98,13 +98,13 @@ const CollectorChatPage: React.FC = () => {
           return;
         }
         const userId = authContext.user.user.user.id;
-        const response = await Api.post(
-          "/api/v1/companies/get_theme_settings",
-          {
-            user_id: userId,
-          }
-        );
-        if (response.data?.status === "success") {
+        const response = await Api.post("/api/companies/theme/get", {
+          user_id: userId,
+        });
+        if (
+          response.data?.status === "success" &&
+          response.data?.theme_settings
+        ) {
           const settings = response.data.theme_settings;
           setThemeSettings({
             userChatBubbleColor:

@@ -3,9 +3,8 @@ Project model
 """
 
 import uuid
-from datetime import datetime
 
-from sqlalchemy import Column, DateTime, String, Text, ForeignKey, func
+from sqlalchemy import Column, DateTime, ForeignKey, String, Text, func
 from sqlalchemy.dialects.postgresql import UUID
 
 from .base import Base
@@ -20,9 +19,7 @@ class Project(Base):
     name = Column(String(255), nullable=False)
     description = Column(Text, nullable=True)
     manager_id = Column(
-        UUID(as_uuid=True), 
-        ForeignKey("profiles.id", ondelete="SET NULL"), 
-        nullable=True
+        UUID(as_uuid=True), ForeignKey("profiles.id", ondelete="SET NULL"), nullable=True
     )
     company_id = Column(String(255), nullable=True)
     company_reg_no = Column(String(100), nullable=True, index=True)

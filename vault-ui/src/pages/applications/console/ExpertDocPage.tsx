@@ -35,7 +35,7 @@ const ExpertDocPage: React.FC = () => {
   const [decision, setDecision] = useState<string>("");
   const [comments, setComments] = useState("");
   const [documentData, setDocumentData] = useState<DocumentDetails | null>(
-    null
+    null,
   );
   const authContext = useAuthContext();
   const navigate = useNavigate();
@@ -79,7 +79,7 @@ const ExpertDocPage: React.FC = () => {
         toast.error(
           err instanceof Error
             ? err.message
-            : "Failed to fetch document details."
+            : "Failed to fetch document details.",
         );
       }
     } finally {
@@ -107,7 +107,7 @@ const ExpertDocPage: React.FC = () => {
       console.error("Error submitting review:", err);
       if (!(err instanceof AxiosError && err.response?.status === 401)) {
         toast.error(
-          err instanceof Error ? err.message : "Failed to submit review."
+          err instanceof Error ? err.message : "Failed to submit review.",
         );
       }
     } finally {

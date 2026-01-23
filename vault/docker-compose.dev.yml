@@ -1,112 +1,88 @@
-services:
-  # Qdrant Vector Database
-  qdrant:
-    image: qdrant/qdrant:latest
-    container_name: vault-qdrant-dev
-    ports:
-      - "6333:6333"
-      - "6334:6334"
-    volumes:
-      - ./qdrant_storage:/qdrant/storage
-    environment:
-      - QDRANT__SERVICE__GRPC_PORT=6334
-    restart: unless-stopped
-    networks:
-      - vault-network
+version: "3.8"
 
-  # PostgreSQL with pgvector extension
+services:
+  # PostgreSQL with pgvector
   postgres:
     image: ankane/pgvector:latest
-    container_name: vault-postgres-dev
+    container_name: vault-postgres-prod
     environment:
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: postgres
-      POSTGRES_DB: vault
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB:-vault}
     ports:
       - "5432:5432"
     volumes:
-      - ./postgres_data:/var/lib/postgresql/data
-    restart: unless-stopped
+      - postgres_data_prod:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: always
     networks:
       - vault-network
 
-  # FastAPI Backend - DEVELOPMENT MODE with Docker Compose Watch
+  # Ollama (running in Docker for production)
+  ollama:
+    image: ollama/ollama:latest
+    container_name: vault-ollama-prod
+    ports:
+      - "11434:11434"
+    volumes:
+      - ollama_data:/root/.ollama
+    restart: always
+    networks:
+      - vault-network
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+
+  # FastAPI Backend (Production)
   backend:
     build:
       context: .
       dockerfile: Dockerfile.dev
-    container_name: vault-backend-dev
+      target: runtime
+    container_name: vault-backend
     ports:
       - "7860:7860"
     environment:
-      - OLLAMA_HOST=http://host.docker.internal:11434
-      - QDRANT_HOST=qdrant
-      - QDRANT_PORT=6333
-      - DATABASE_URL=postgresql://postgres:postgres@postgres:5432/vault_db
-      - LOG_LEVEL=DEBUG
-      - PYTHONUNBUFFERED=1
-      - PATH=/app/.venv/bin:/usr/local/bin:/usr/bin:/bin
+      - DATABASE_URL=postgresql+asyncpg://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-vault}
+      - OLLAMA_HOST=http://ollama:11434
+      - OLLAMA_EMBED_MODEL=nomic-embed-text
+      - EMBEDDING_DIMENSION=768
+      - DEBUG=False
+      - LOG_LEVEL=WARNING
+      - SECRET_KEY=${SECRET_KEY}
+      - ACCESS_TOKEN_EXPIRE_MINUTES=60
+      - TESSDATA_PREFIX=/usr/share/tesseract-ocr/5/tessdata
+      - WHISPER_MODEL=base
     depends_on:
-      - qdrant
-      - postgres
+      postgres:
+        condition: service_healthy
+      ollama:
+        condition: service_started
     volumes:
-      # Writable directories
       - ./uploads:/app/uploads
       - ./logs:/app/logs
-    restart: unless-stopped
+    restart: always
     networks:
       - vault-network
-    extra_hosts:
-      - "host.docker.internal:host-gateway"
-    command:
-      [
-        "/app/.venv/bin/uvicorn",
-        "main:app",
-        "--host",
-        "0.0.0.0",
-        "--port",
-        "7860",
-        "--reload",
-      ]
-
-    # Docker Compose Watch configuration
-    develop:
-      # Enable watch mode for this service
-      watch:
-        # Sync Python source files - triggers uvicorn hot reload
-        - action: sync
-          path: ./app
-          target: /app/app
-          ignore:
-            - __pycache__/
-            - "*.pyc"
-            - "*.pyo"
-            - "*.pyd"
-            - ".pytest_cache/"
-            - "*.egg-info/"
-
-        # Sync main.py - triggers uvicorn hot reload
-        - action: sync
-          path: ./main.py
-          target: /app/main.py
-
-        # Sync config files - requires container restart
-        - action: sync+restart
-          path: ./pyproject.toml
-          target: /app/pyproject.toml
-
-        - action: sync+restart
-          path: ./uv.lock
-          target: /app/uv.lock
-
-        # Rebuild if Dockerfile changes
-        - action: rebuild
-          path: ./Dockerfile.dev
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:7860/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
 
 networks:
   vault-network:
     driver: bridge
 
 volumes:
-  qdrant_storage:
-  postgres_data:
+  postgres_data_prod:
+  ollama_data:

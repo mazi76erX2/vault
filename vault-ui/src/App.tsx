@@ -10,7 +10,6 @@ import t, { useToaster } from "react-hot-toast";
 import router from "./routes/Routes";
 import { getCurrentUser, logout } from "./services/auth/Auth.service";
 
-
 function App() {
   const [toastLimit] = React.useState(3);
   const { toasts } = useToaster();

@@ -39,7 +39,7 @@ export function UserListTable({ users, onEdit, onDelete }: UserListTableProps) {
           ? moment(u.createdAt).format("DD MMM YYYY")
           : "N/A",
       })),
-    [users]
+    [users],
   );
 
   return (

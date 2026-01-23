@@ -61,7 +61,7 @@ const ValidatorSummaryPage: React.FC = () => {
       console.error("Error fetching summary:", err);
       if (!(err instanceof AxiosError && err.response?.status === 401)) {
         toast.error(
-          err instanceof Error ? err.message : "Failed to fetch summary."
+          err instanceof Error ? err.message : "Failed to fetch summary.",
         );
       }
     } finally {

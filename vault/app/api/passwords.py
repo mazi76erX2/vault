@@ -12,8 +12,12 @@ from sqlalchemy.ext.asyncio import AsyncSession
 import app.email_service as email_service
 from app.database import get_async_db
 from app.models import Profile, Session
-from app.schemas.auth import (CheckFirstLoginModel, PasswordChange,
-                              PasswordResetRequest, PasswordResetResponse)
+from app.schemas.auth import (
+    CheckFirstLoginModel,
+    PasswordChange,
+    PasswordResetRequest,
+    PasswordResetResponse,
+)
 from app.services.auth_service import AuthService
 
 router = APIRouter()

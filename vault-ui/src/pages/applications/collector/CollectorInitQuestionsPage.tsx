@@ -94,7 +94,7 @@ const CollectorInitQuestionsPage: React.FC = () => {
       setLoading(true);
       const response = await Api.post<GetQuestionsResponse>(
         "/api/v1/collector/get-questions",
-        { user_id: authContext.user.user.user.id }
+        { user_id: authContext.user.user.user.id },
       );
 
       if (!response.data) {
@@ -108,7 +108,7 @@ const CollectorInitQuestionsPage: React.FC = () => {
       if (!data.questions || data.questions.length === 0) {
         setRows([]);
         toast.error(
-          'No questions found. Click "Generate" to create new questions or "Upload Questions" to import from a file.'
+          'No questions found. Click "Generate" to create new questions or "Upload Questions" to import from a file.',
         );
       } else {
         const newRows = data.questions
@@ -133,7 +133,7 @@ const CollectorInitQuestionsPage: React.FC = () => {
       if (err instanceof AxiosError) {
         if (err.response?.status === 404) {
           toast.error(
-            'No questions found. Click "Generate" to create new questions or "Upload Questions" to import from a file.'
+            'No questions found. Click "Generate" to create new questions or "Upload Questions" to import from a file.',
           );
         } else if (err.response?.status !== 401) {
           toast.error(err.response?.data?.detail || "An error occurred");
@@ -160,7 +160,7 @@ const CollectorInitQuestionsPage: React.FC = () => {
       setLoading(true);
       const response = await Api.post<GenerateQuestionsResponse>(
         "/api/v1/collector/generate_questions",
-        { user_id: authContext.user.user.user.id }
+        { user_id: authContext.user.user.user.id },
       );
 
       if (!response.data.questions) {
@@ -195,7 +195,7 @@ const CollectorInitQuestionsPage: React.FC = () => {
   };
 
   const handleFileChange = async (
-    event: React.ChangeEvent<HTMLInputElement>
+    event: React.ChangeEvent<HTMLInputElement>,
   ) => {
     if (!authContext || !authContext.user?.user?.user?.id) {
       if (!authContext?.isLoadingUser) {
@@ -220,7 +220,7 @@ const CollectorInitQuestionsPage: React.FC = () => {
           const jsonArray = JSON.parse(text);
           if (!Array.isArray(jsonArray)) {
             throw new Error(
-              "JSON must be an array of objects: [ {question: '...'}, ... ]"
+              "JSON must be an array of objects: [ {question: '...'}, ... ]",
             );
           }
 
@@ -229,7 +229,7 @@ const CollectorInitQuestionsPage: React.FC = () => {
               if (!obj.question)
                 throw new Error("Each object needs a 'question' field.");
               return obj.question;
-            }
+            },
           );
 
           if (
@@ -292,7 +292,7 @@ const CollectorInitQuestionsPage: React.FC = () => {
 
       const response = await Api.post<StartChatResponse>(
         "/api/v1/collector/start-chat",
-        payload
+        payload,
       );
 
       console.log("start-chat response:", response.data);

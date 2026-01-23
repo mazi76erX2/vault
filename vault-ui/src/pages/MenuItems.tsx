@@ -11,6 +11,9 @@ import {
   CheckCircle,
   Mail,
   LogOut,
+  Database,
+  Upload,
+  Search,
 } from "lucide-react";
 import { useAuthContext } from "../hooks/useAuthContext";
 import { cn } from "@/lib/utils";
@@ -74,6 +77,24 @@ export const MenuListItems: React.FC<MenuListItemsProps> = ({ open }) => {
       to: "/theme/BusinessThemePage",
       icon: <Palette className="w-5 h-5" />,
       shouldHide: !isAdmin,
+    },
+    {
+      title: "Knowledge Base",
+      to: "/knowledge-base",
+      icon: <Database className="w-5 h-5" />,
+      shouldHide: !isAdmin,
+      subMenu: [
+        {
+          title: "Upload Documents",
+          to: "/knowledge-base/Upload",
+          icon: <Upload className="w-5 h-5" />,
+        },
+        {
+          title: "Browse Documents",
+          to: "/knowledge-base/Documents",
+          icon: <Search className="w-5 h-5" />,
+        },
+      ],
     },
     {
       title: "Applications",

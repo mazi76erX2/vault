@@ -4,8 +4,7 @@ Profile Model
 
 import enum
 
-from sqlalchemy import (BigInteger, Boolean, Column, DateTime, ForeignKey,
-                        Text, func)
+from sqlalchemy import BigInteger, Boolean, Column, DateTime, ForeignKey, Text, func
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import relationship
 

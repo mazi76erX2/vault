@@ -116,7 +116,8 @@ const UserDirectorySetup: React.FC<UserDirectorySetupProps> = ({ onBack }) => {
 
       {/* Tabs */}
       <div className="flex gap-0.5 border border-[#e66334] rounded-t bg-[#d3d3d3]">
-        <button type="button"
+        <button
+          type="button"
           className={`px-5 py-2.5 cursor-pointer rounded-t transition-colors ${
             activeTab === "server"
               ? "bg-[#e66334] text-white"
@@ -126,7 +127,8 @@ const UserDirectorySetup: React.FC<UserDirectorySetupProps> = ({ onBack }) => {
         >
           Server Settings
         </button>
-        <button type="button"
+        <button
+          type="button"
           className={`px-5 py-2.5 cursor-pointer rounded-t transition-colors ${
             activeTab === "user"
               ? "bg-[#e66334] text-white"
@@ -136,7 +138,8 @@ const UserDirectorySetup: React.FC<UserDirectorySetupProps> = ({ onBack }) => {
         >
           User Schema
         </button>
-        <button type="button"
+        <button
+          type="button"
           className={`px-5 py-2.5 cursor-pointer rounded-t transition-colors ${
             activeTab === "group"
               ? "bg-[#e66334] text-white"
