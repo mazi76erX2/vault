@@ -1,0 +1,57 @@
+version: '3.8'
+
+services:
+  postgres:
+    image: ankane/pgvector:latest
+    container_name: vault-postgres-debug
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: vault
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data_debug:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+    networks:
+      - vault-network
+
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile.debug
+    container_name: vault-backend-debug
+    ports:
+      - "7860:7860"
+      - "5678:5678"  # Debug port
+    environment:
+      - DATABASE_URL=postgresql+asyncpg://postgres:postgres@postgres:5432/vault
+      - OLLAMA_HOST=http://host.docker.internal:11434
+      - OLLAMA_EMBED_MODEL=nomic-embed-text
+      - EMBEDDING_DIMENSION=768
+      - DEBUG=True
+      - LOG_LEVEL=DEBUG
+      - SECRET_KEY=your-secret-key-change-in-production
+      - ACCESS_TOKEN_EXPIRE_MINUTES=60
+    depends_on:
+      postgres:
+        condition: service_healthy
+    volumes:
+      - .:/app
+      - ./uploads:/app/uploads
+      - ./logs:/app/logs
+    restart: unless-stopped
+    networks:
+      - vault-network
+
+networks:
+  vault-network:
+    driver: bridge
+
+volumes:
+  postgres_data_debug:

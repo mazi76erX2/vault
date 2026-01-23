@@ -1,0 +1,27 @@
+FROM python:3.14-slim
+
+WORKDIR /app
+
+# Install system dependencies
+RUN apt-get update && apt-get install -y \
+    build-essential \
+    curl \
+    && rm -rf /var/lib/apt/lists/*
+
+# Install UV for faster package management
+RUN pip install uv
+
+# Copy dependency files
+COPY requirements.txt pyproject.toml ./
+
+# Install Python dependencies including debugpy
+RUN uv pip install --system -r requirements.txt debugpy
+
+# Copy application code
+COPY . .
+
+# Expose application port and debug port
+EXPOSE 7860 5678
+
+# Run with debugpy for remote debugging
+CMD ["python", "-m", "debugpy", "--listen", "0.0.0.0:5678", "--wait-for-client", "-m", "uvicorn", "main:app", "--host", "0.0.0.0", "--port", "7860", "--reload"]

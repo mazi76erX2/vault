@@ -1,0 +1,90 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "Backend: Local Debug",
+      "type": "debugpy",
+      "request": "launch",
+      "module": "uvicorn",
+      "args": [
+        "main:app",
+        "--host",
+        "0.0.0.0",
+        "--port",
+        "7860",
+        "--reload"
+      ],
+      "jinja": true,
+      "justMyCode": false,
+      "env": {
+        "DEBUG": "True",
+        "LOG_LEVEL": "DEBUG",
+        "DATABASE_URL": "postgresql+asyncpg://postgres:postgres@localhost:5432/vault",
+        "OLLAMA_HOST": "http://localhost:11434"
+      },
+      "console": "integratedTerminal",
+      "cwd": "${workspaceFolder}",
+      "envFile": "${workspaceFolder}/.env"
+    },
+    {
+      "name": "Backend: Docker Attach",
+      "type": "debugpy",
+      "request": "attach",
+      "connect": {
+        "host": "localhost",
+        "port": 5678
+      },
+      "pathMappings": [
+        {
+          "localRoot": "${workspaceFolder}",
+          "remoteRoot": "/app"
+        }
+      ],
+      "justMyCode": false,
+      "django": false
+    },
+    {
+      "name": "Frontend: Chrome Debug",
+      "type": "chrome",
+      "request": "launch",
+      "url": "http://localhost:5173",
+      "webRoot": "${workspaceFolder}/vault-ui/src",
+      "sourceMaps": true,
+      "sourceMapPathOverrides": {
+        "webpack:///src/*": "${webRoot}/*"
+      }
+    },
+    {
+      "name": "Frontend: Edge Debug",
+      "type": "msedge",
+      "request": "launch",
+      "url": "http://localhost:5173",
+      "webRoot": "${workspaceFolder}/vault-ui/src",
+      "sourceMaps": true
+    },
+    {
+      "name": "Frontend: Firefox Debug",
+      "type": "firefox",
+      "request": "launch",
+      "url": "http://localhost:5173",
+      "webRoot": "${workspaceFolder}/vault-ui/src",
+      "pathMappings": [
+        {
+          "url": "webpack:///src",
+          "path": "${webRoot}"
+        }
+      ]
+    }
+  ],
+  "compounds": [
+    {
+      "name": "Full Stack: Local Debug",
+      "configurations": [
+        "Backend: Local Debug",
+        "Frontend: Chrome Debug"
+      ],
+      "stopAll": true,
+      "preLaunchTask": "Install Dependencies"
+    }
+  ]
+}
