@@ -1,6 +1,6 @@
 import asyncio
 from sqlalchemy import select
-from app.database import async_session_maker
+from app.core.database import async_session_maker
 from app.models.profile import Profile
 from app.models.company import Company
 from datetime import datetime

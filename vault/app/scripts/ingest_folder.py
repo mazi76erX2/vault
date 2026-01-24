@@ -1,12 +1,13 @@
 import argparse
 from pathlib import Path
 
+from sqlalchemy import func
 from sqlalchemy.orm import Session
 
 from app.core.config import settings
-from app.database import SessionLocal, init_db
+from app.core.database import SessionLocal  # Standardize on core database
 from app.integrations.ollama_client import embed
-from app.models.kb import KBChunk
+from app.models.kb import KBChunk, KBDocument
 from app.services.rag_service import chunk_text
 
 
@@ -42,20 +43,43 @@ def extract_text(path: Path) -> str:
     return ""
 
 
-def upsert_doc(db: Session, doc_id: str, title: str, sourcefile: str, chunks: list[str]) -> None:
-    db.query(KBChunk).filter(KBChunk.doc_id == doc_id).delete()
+def upsert_doc(db: Session, title: str, sourcefile: str, chunks: list[str], full_text: str) -> None:
+    # 1. Create or get the document record
+    kb_doc = db.query(KBDocument).filter(KBDocument.sourcefile == sourcefile).first()
+    if not kb_doc:
+        kb_doc = KBDocument(
+            title=title,
+            sourcefile=sourcefile,
+            content=full_text,
+            accesslevel=1,
+            # Populate parent TSVector for Hybrid Search
+            tsv=func.to_tsvector('english', full_text)
+        )
+        db.add(kb_doc)
+        db.flush() # Get ID
+    else:
+        # Update existing
+        kb_doc.content = full_text
+        kb_doc.tsv = func.to_tsvector('english', full_text)
 
+    # 2. Clear old chunks
+    db.query(KBChunk).filter(KBChunk.doc_id == kb_doc.id).delete()
+
+    # 3. Create new chunks with embeddings and TSVector
     rows: list[KBChunk] = []
     for i, ch in enumerate(chunks, start=1):
+        embedding = embed(ch)
         rows.append(
             KBChunk(
-                doc_id=doc_id,
+                doc_id=kb_doc.id,
                 chunk_index=i,
                 title=title,
                 sourcefile=sourcefile,
                 content=ch,
                 accesslevel=1,
-                embedding=embed(ch),
+                embedding=embedding,
+                # Explicitly populate TSVector for Hybrid Search per chunk
+                tsv=func.to_tsvector('english', ch)
             )
         )
 
@@ -66,11 +90,9 @@ def upsert_doc(db: Session, doc_id: str, title: str, sourcefile: str, chunks: li
 def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--folder", required=True, help="Folder with .txt/.pdf/.docx files")
-    parser.add_argument("--chunk-size", type=int, default=settings.kb_chunk_size)
-    parser.add_argument("--chunk-overlap", type=int, default=settings.kb_chunk_overlap)
+    parser.add_argument("--chunk-size", type=int, default=settings.KB_CHUNK_SIZE)
+    parser.add_argument("--chunk-overlap", type=int, default=settings.KB_CHUNK_OVERLAP)
     args = parser.parse_args()
-
-    init_db()
 
     folder = Path(args.folder)
     if not folder.exists():
@@ -88,17 +110,19 @@ def main() -> None:
             if not text:
                 continue
 
-            chunks = chunk_text(text, chunk_size=args.chunk_size, overlap=args.chunk_overlap)
+            # Uses Semantic Chunking by default via rag_service (strategy='semantic')
+            chunks = chunk_text(text, chunk_size=args.chunk_size, overlap=args.chunk_overlap, strategy="semantic")
             if not chunks:
                 continue
 
-            doc_id = str(path.resolve())
             title = path.name
             sourcefile = str(path)
 
-            upsert_doc(db, doc_id=doc_id, title=title, sourcefile=sourcefile, chunks=chunks)
+            upsert_doc(db, title=title, sourcefile=sourcefile, chunks=chunks, full_text=text)
             print(f"Ingested {path} ({len(chunks)} chunks)")
 
+    except Exception as e:
+        print(f"Error during ingestion: {e}")
     finally:
         db.close()
 

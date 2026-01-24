@@ -8,7 +8,7 @@ from sqlalchemy import ForeignKey, Text, func
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import relationship
 
-from ..config import settings
+from app.core.config import settings
 from .base import Base
 
 

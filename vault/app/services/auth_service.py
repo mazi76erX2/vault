@@ -17,8 +17,8 @@ from passlib.context import CryptContext
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.config import settings
-from app.database import get_async_db
+from app.core.config import settings
+from app.core.database import get_async_db
 from app.models.profile import Profile
 from app.models.role import Role, UserRole
 from app.models.user import User

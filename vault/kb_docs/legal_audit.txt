@@ -1,0 +1,7 @@
+Vault Legal Compliance - Data Retention and Access
+Internal Document No. LAW-2025-04
+
+Compliance Requirements:
+- Legal audit logs must be retained for at least 7 years.
+- Access to Critical level documents is restricted to Users with the 'Admin' role and explicit 'Critical' security clearance.
+- Managers have access to High and Medium level documents only.

@@ -1,215 +1,51 @@
-"""
-chat.py - RAG Chat Service with Ollama + Qdrant
-Updated for local-first architecture using Ollama for embeddings/completions and Qdrant for vector search
-Migration completed: December 2025
-"""
-
-import json
 import logging
 import os
-import re
 import uuid
 from pathlib import Path
 from types import SimpleNamespace
 
-import requests
-from dotenv import load_dotenv
 from fastapi import APIRouter, WebSocket
-from qdrant_client import QdrantClient
-from sklearn.metrics.pairwise import cosine_similarity
-from sqlalchemy import JSON, Column, Integer, String, Text, create_engine
-from sqlalchemy.dialects.postgresql import UUID
-from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy.orm import Session, sessionmaker
+from sqlalchemy.orm import Session
 
-from .shared_utils import filter_by_severity, read_docx, readpdf, readtxt
+from app.core.config import settings
+from app.core.database import SessionLocal
+from app.models.profile import Profile
+from app.services import rag_service
 
-# Load .env from current directory
-env_path = Path(__file__).parent / ".env"
-load_dotenv(env_path)
-
-# Database configuration
-DATABASE_URL = os.environ.get(
-    "DATABASE_URL", "postgresql://postgres:postgres@localhost:5432/postgres"
-)
-
-# SQLAlchemy setup
-engine = create_engine(DATABASE_URL)
-SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
-Base = declarative_base()
-
-
-# SQLAlchemy Models
-class Profile(Base):
-    __tablename__ = "profiles"
-
-    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    full_name = Column(String, nullable=True)
-    field_of_expertise = Column(String, nullable=True)
-    department = Column(String, nullable=True)
-    years_of_experience = Column(Integer, nullable=True)
-    CV_text = Column(Text, nullable=True)
-    user_access = Column(Integer, nullable=True)
-
-
-class ChatMessagesCollector(Base):
-    __tablename__ = "chat_messages_collector"
-
-    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    messages = Column(JSON, nullable=True)
-
-
-# Create tables if they don't exist
-Base.metadata.create_all(bind=engine)
-
-
-# Database dependency
-def get_db():
-    db = SessionLocal()
-    try:
-        yield db
-    finally:
-        db.close()
-
-
-# Ollama & Qdrant configuration (local-first architecture)
-OLLAMA_HOST = os.environ.get("OLLAMA_HOST", "http://localhost:11434")
-OLLAMA_MODEL = os.environ.get("OLLAMA_MODEL", "llama3.2:1b")
-OLLAMA_EMBED_MODEL = os.environ.get("OLLAMA_EMBED_MODEL", "nomic-embed-text")
-QDRANT_HOST = os.environ.get("QDRANT_HOST", "localhost")
-QDRANT_PORT = int(os.environ.get("QDRANT_PORT", "6333"))
-QDRANT_COLLECTION = os.environ.get("QDRANT_COLLECTION", "vault")
-chunk_size = os.environ.get("QDRANT_COLLECTION", 3000)
-
-RETRIEVAL_SIMILARITY_THRESHOLD = 0.5
-conversation_history = []
-
-logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
-
 ws_router = APIRouter()
 
 
-# Ollama helper functions for embeddings and completions
-def _ollama_embed(texts: list[str], model: str = None) -> list[list[float]]:
+def generate_response_helper(user_id, user_question, history, db: Session = None):
     """
-    Generate embeddings for a list of texts via Ollama HTTP API.
-
-    Args:
-        texts: list of text strings to embed
-        model: Model to use (defaults to OLLAMA_EMBED_MODEL)
-
-    Returns:
-        list of embedding vectors
+    Refactored to use centralized rag_service.
     """
-    if model is None:
-        model = OLLAMA_EMBED_MODEL
+    close_session = False
+    if db is None:
+        db = SessionLocal()
+        close_session = True
 
     try:
-        url = f"{OLLAMA_HOST.rstrip('/')}/api/embed"
-        payload = {"model": model, "input": texts}
-        resp = requests.post(url, json=payload, timeout=60)
-        resp.raise_for_status()
-        data = resp.json()
+        # Generate answer using optimized RAG pipeline (Hybrid + Reranking)
+        answer = rag_service.answer(db, user_question)
+        
+        # Build confidence and source metadata for UI backward compatibility
+        # (This can be further modularized once the UI is ready)
+        confidence = [("High Confidence", "High Confidence")]
+        md_text_formatted = "# 🔍 Search Results\n"
+        
+        # Retrieve chunks again for citation info (or modify rag_service to return them)
+        chunks = rag_service.retrieve(db, user_question, top_k=settings.KB_TOP_K)
+        for c in chunks:
+             md_text_formatted += f"### {c.title} | {c.score:.3f}\n[{c.sourcefile}]({c.sourcefile})\n\n---------------\n\n"
 
-        # Handle different response formats from Ollama
-        if isinstance(data, dict) and "embeddings" in data:
-            return data["embeddings"]
-        if isinstance(data, dict) and "embedding" in data:
-            # Single embedding returned
-            return [data["embedding"]] if len(texts) == 1 else data["embedding"]
-        if isinstance(data, list):
-            return data
+        history.append([user_question, answer])
+        
+        return answer, confidence, md_text_formatted, history
 
-        raise RuntimeError(f"Unexpected Ollama embed response shape: {type(data)}")
-    except Exception as e:
-        logger.error(f"Ollama embed request failed: {e}")
-        raise
-
-
-def _ollama_generate(
-    prompt: str, max_tokens: int = 800, temperature: float = 0.1, model: str = None
-) -> str:
-    """
-    Generate a text completion using Ollama HTTP API.
-
-    Args:
-        prompt: The prompt to complete
-        max_tokens: Maximum tokens to generate
-        temperature: Sampling temperature (0.0 to 1.0)
-        model: Model to use (defaults to OLLAMA_MODEL)
-
-    Returns:
-        Generated text response
-    """
-    if model is None:
-        model = OLLAMA_MODEL
-
-    try:
-        url = f"{OLLAMA_HOST.rstrip('/')}/api/generate"
-        payload = {
-            "model": model,
-            "prompt": prompt,
-            "stream": False,
-            "options": {
-                "num_predict": max_tokens,
-                "temperature": temperature,
-            },
-        }
-        resp = requests.post(url, json=payload, timeout=120)
-        resp.raise_for_status()
-        data = resp.json()
-
-        # Handle different response formats
-        if isinstance(data, dict):
-            if "response" in data:
-                return data["response"]
-            if "output" in data and isinstance(data["output"], str):
-                return data["output"]
-            if "text" in data and isinstance(data["text"], str):
-                return data["text"]
-
-        # Fallback to JSON dump
-        return json.dumps(data)
-    except Exception as e:
-        logger.error(f"Ollama generate request failed: {e}")
-        raise
-
-
-# Initialize Qdrant client
-_qdrant_client = QdrantClient(url=f"http://{QDRANT_HOST}:{QDRANT_PORT}")
-
-
-# Backward compatibility shim for OpenAI-style API calls
-class _ClientOpenAIShim:
-    """
-    Provides OpenAI-compatible API interface using Ollama backend.
-    Allows existing code to work without changes.
-    """
-
-    class _Chat:
-        class _Completions:
-            def create(self, model, messages, temperature=0.1, max_tokens=800, **kwargs):
-                # Convert messages list into a single prompt for Ollama
-                prompt_parts = []
-                for m in messages:
-                    role = m.get("role", "")
-                    content = m.get("content", "")
-                    prompt_parts.append(f"[{role}] {content}")
-                prompt = "\n".join(prompt_parts)
-
-                text = _ollama_generate(prompt, max_tokens=max_tokens, temperature=temperature)
-
-                return SimpleNamespace(
-                    model_dump=lambda: {"choices": [{"message": {"content": text}}]}
-                )
-
-        completions = _Completions()
-
-    chat = _Chat()
-
-
-client_openai = _ClientOpenAIShim()
+    finally:
+        if close_session:
+            db.close()
 
 
 @ws_router.websocket("/ws/chat")

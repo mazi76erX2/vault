@@ -7,7 +7,7 @@ import logging
 from fastapi import APIRouter, HTTPException
 from fastapi.responses import FileResponse
 
-import app.email_service as email_service
+import app.features.email.email_service as email_service
 from app.schemas.auth import EmailTestRequest
 
 router = APIRouter()

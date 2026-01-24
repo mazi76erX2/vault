@@ -8,7 +8,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.database import get_async_db
+from app.core.database import get_async_db
 from app.middleware.auth import verify_token
 from app.models import Company, Profile, Role, UserRole
 from app.schemas.company import (

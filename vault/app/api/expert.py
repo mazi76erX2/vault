@@ -12,7 +12,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.database import get_async_db
+from app.core.database import get_async_db
 from app.dto.expert import AcceptDocumentRequest
 from app.dto.expert import Document as DocumentDTO
 from app.dto.expert import DocumentRow, RejectRequest

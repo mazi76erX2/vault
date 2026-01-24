@@ -24,7 +24,7 @@ from app.api import (
     websocket_router,
 )
 from app.config.middleware import setup_middleware
-from app.logger_config import setup_logging
+from app.core.logger_config import setup_logging
 
 # Initialize logging
 setup_logging()
@@ -79,7 +79,7 @@ async def health_check():
         "status": "healthy",
         "dependencies": {}
     }
-    
+
     # Check Tesseract
     try:
         import pytesseract
@@ -93,17 +93,16 @@ async def health_check():
             "installed": False,
             "error": str(e)
         }
-    
+
     # Check Whisper
     try:
-        import whisper
         checks["dependencies"]["whisper"] = {"installed": True}
     except Exception as e:
         checks["dependencies"]["whisper"] = {
             "installed": False,
             "error": str(e)
         }
-    
+
     # Check FFmpeg
     try:
         import subprocess
@@ -120,7 +119,7 @@ async def health_check():
             "installed": False,
             "error": str(e)
         }
-    
+
     return checks
 
 

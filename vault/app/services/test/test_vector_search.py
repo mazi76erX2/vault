@@ -1,6 +1,6 @@
 import pytest
 
-from app.database import async_session_maker
+from app.core.database import async_session_maker
 from app.services.vector_service import VectorService
 
 

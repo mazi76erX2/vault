@@ -18,7 +18,7 @@ from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
 from sqlalchemy.future import select
 from sqlalchemy.orm import declarative_base, sessionmaker
 
-from app.config import settings
+from app.core.config import settings
 
 from .connector import authenticate_ldap, get_ldap_client
 from .errors import map_ldap_error

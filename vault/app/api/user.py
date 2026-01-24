@@ -10,7 +10,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.database import get_async_db
+from app.core.database import get_async_db
 from app.db.enums import DepartmentEnum
 from app.middleware.auth import verify_token_with_tenant
 from app.models import Company, Document, Profile, Role, UserRole

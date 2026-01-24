@@ -8,16 +8,16 @@ from __future__ import annotations
 import logging
 import os
 import shutil
+import uuid
 from datetime import datetime
 from pathlib import Path
 from typing import Any
-import uuid
 
-from fastapi import APIRouter, Depends, File, HTTPException, UploadFile, status, Form
+from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile, status
 from sqlalchemy import and_, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.database import get_async_db
+from app.core.database import get_async_db
 from app.dto.collector import (
     CollectorSummaryContinueRequest,
     CollectorSummaryContinueResponse,
@@ -1160,31 +1160,31 @@ async def upload_voice_collector(
     """Upload voice for collector chat."""
     try:
         from app.services.file_processor import extract_from_audio
-        
+
         audio_dir = Path("./uploads/audio")
         audio_dir.mkdir(parents=True, exist_ok=True)
-        
+
         audio_path = audio_dir / f"{uuid.uuid4()}{Path(audio.filename).suffix}"
-        
+
         with open(audio_path, "wb") as buffer:
             shutil.copyfileobj(audio.file, buffer)
-        
+
         try:
             transcription = extract_from_audio(audio_path)
-            
+
             if not transcription.strip():
                 raise ValueError("No speech detected")
-            
+
             return {
                 "status": "success",
                 "transcription": transcription,
                 "session_id": session_id,
             }
-            
+
         finally:
             if audio_path.exists():
                 audio_path.unlink()
-                
+
     except Exception as e:
         logger.error(f"Error processing voice: {e}")
         raise HTTPException(

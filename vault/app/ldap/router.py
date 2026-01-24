@@ -20,8 +20,8 @@ from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
 from sqlalchemy.future import select
 from sqlalchemy.orm import declarative_base, relationship, sessionmaker
 
-from app.config import settings
-from app.email_service import send_welcome_email
+from app.core.config import settings
+from app.features.email.email_service import send_welcome_email
 
 from .models import LDAPSearchInputModel, LDAPSearchResult, LoginModel
 from .service import ldap_authenticate, ldap_search, sync_ldap_connector, test_ldap_connection

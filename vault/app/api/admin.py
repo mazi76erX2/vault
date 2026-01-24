@@ -11,11 +11,15 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.database import get_async_db
-from app.email_service import send_welcome_email
+from app.core.database import get_async_db
+from app.features.email.email_service import send_welcome_email
 from app.middleware.auth import verify_token_with_tenant
 from app.models import Profile, Role, Session, User, UserRole
-from app.schemas.user import DeleteUserResponse, OrganisationDetails, UpdateUserDetailsRequest
+from app.schemas.user import (
+    DeleteUserResponse,
+    OrganisationDetails,
+    UpdateUserDetailsRequest,
+)
 from app.services.auth_service import AuthService
 from app.services.tenant_service import TenantService
 

@@ -16,7 +16,8 @@ logger = logging.getLogger(__name__)
 
 # =============================================================================
 # Configuration
-# =============================================================================
+# ====================================
+# =========================================
 
 OLLAMA_HOST = os.getenv("OLLAMA_HOST", "http://localhost:11434")
 EMBED_MODEL = os.getenv("OLLAMA_EMBED_MODEL", "nomic-embed-text")

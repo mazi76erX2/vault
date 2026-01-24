@@ -1,69 +1,72 @@
 from __future__ import annotations
 
-import re
-from dataclasses import dataclass
+from sqlalchemy import func, text
+from sqlalchemy.ext.asyncio import AsyncSession
 
-from sqlalchemy.orm import Session
+# ... imports ...
 
-from app.core.config import settings
-from app.integrations.ollama_client import chat, embed
-from app.models.kb import KBChunk
-
-
-@dataclass
-class RetrievedChunk:
-    doc_id: str
-    chunk_index: int
-    title: str | None
-    sourcefile: str | None
-    content: str
-    accesslevel: int
-    score: float  # smaller is better for L2 distance
-
-
-def chunk_text(text: str, chunk_size: int, overlap: int) -> list[str]:
-    text = re.sub(r"\s+", " ", text).strip()
-    if not text:
-        return []
-
-    chunks: list[str] = []
-    start = 0
-    while start < len(text):
-        end = min(len(text), start + chunk_size)
-        chunks.append(text[start:end])
-        if end == len(text):
-            break
-        start = max(0, end - overlap)
-    return chunks
-
-
-def retrieve(db: Session, question: str, top_k: int) -> list[RetrievedChunk]:
+async def retrieve(db: AsyncSession, question: str, top_k: int = 10) -> list[RetrievedChunk]:
+    """Hybrid Retrieval: pgvector (Dense) + TSVector (Sparse) + RRF."""
     q_emb = embed(question)
 
-    rows: list[tuple[KBChunk, float]] = (
-        db.query(KBChunk, KBChunk.embedding.l2_distance(q_emb).label("distance"))
+    # 1. Semantic Search (Dense)
+    dense_stmt = (
+        db.query(KBChunk, KBChunk.embedding.cosine_distance(q_emb).label("distance"))
         .order_by("distance")
-        .limit(top_k)
-        .all()
+        .limit(top_k * 2)
     )
+    # Wait, db.query is not supported in AsyncSession 2.0 style usually, but some setups allow it.
+    # Standard AsyncSession usage is select(KBChunk).
+    # Let's use select() which is standard for 2.0
 
-    out: list[RetrievedChunk] = []
-    for row, dist in rows:
-        out.append(
+    from sqlalchemy import select
+
+    dense_stmt = (
+        select(KBChunk, KBChunk.embedding.cosine_distance(q_emb).label("distance"))
+        .order_by("distance")
+        .limit(top_k * 2)
+    )
+    result = await db.execute(dense_stmt)
+    dense_hits = result.all()
+
+    # 2. Text Search (Sparse)
+    sparse_stmt = (
+        select(KBChunk, func.ts_rank_cd(KBChunk.tsv, func.plainto_tsquery("english", question)).label("rank"))
+        .filter(KBChunk.tsv.op("@@")(func.plainto_tsquery("english", question)))
+        .order_by(text("rank DESC"))
+        .limit(top_k * 2)
+    )
+    result = await db.execute(sparse_stmt)
+    sparse_hits = result.all()
+
+    # 3. Fusion (RRF)
+    # ... logic remains same ...
+    fused_results = reciprocal_rank_fusion(dense_hits, sparse_hits)
+
+    # ... mapping ...
+    items: list[RetrievedChunk] = []
+    for chunk, fusion_score in fused_results:
+        items.append(
             RetrievedChunk(
-                doc_id=row.doc_id,
-                chunk_index=row.chunk_index,
-                title=row.title,
-                sourcefile=row.sourcefile,
-                content=row.content,
-                accesslevel=row.accesslevel,
-                score=float(dist),
+                doc_id=str(chunk.doc_id),
+                chunk_index=chunk.chunk_index,
+                title=chunk.title,
+                sourcefile=chunk.sourcefile,
+                content=chunk.content,
+                accesslevel=chunk.accesslevel,
+                score=float(fusion_score),
             )
         )
-    return out
+
+    # 5. Reranking using Ollama
+    if settings.USE_RERANKER:
+        items = rerank_chunks_with_ollama(question, items, limit=settings.KB_TOP_K)
+
+    return items[:settings.KB_TOP_K]
 
 
 def build_messages(question: str, chunks: list[RetrievedChunk]) -> list[dict]:
+    # ... (same) ...
     context = "\n\n---\n\n".join(
         [
             f"TITLE: {c.title or ''}\nSOURCE: {c.sourcefile or ''}\nCONTENT:\n{c.content}"
@@ -81,7 +84,10 @@ def build_messages(question: str, chunks: list[RetrievedChunk]) -> list[dict]:
     return [{"role": "system", "content": system}, {"role": "user", "content": user}]
 
 
-def answer(db: Session, question: str) -> str:
-    chunks = retrieve(db, question, top_k=settings.kb_top_k)
+async def answer(db: AsyncSession, question: str) -> str:
+    chunks = await retrieve(db, question, top_k=settings.KB_TOP_K)
+    if not chunks:
+        return "I couldn't find any information on that topic in the knowledge base."
+
     messages = build_messages(question, chunks)
     return chat(messages)

@@ -4,7 +4,7 @@ Handles user authentication, registration, and JWT token management.
 
 This version:
 - Uses canonical ORM models from app.models (the ones Alembic sees).
-- Uses the shared AsyncSession dependency from app.database (get_async_db).
+- Uses the shared AsyncSession dependency from app.core.database (get_async_db).
 - Keeps refresh tokens stateless (JWT-only) to avoid requiring a refresh_tokens table.
 """
 
@@ -23,8 +23,11 @@ from fastapi.security import OAuth2PasswordBearer
 from sqlalchemy import or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.config import settings
-from app.email_service import send_password_reset_email
+from app.core.config import settings
+
+# Shared DB dependency
+from app.core.database import get_async_db
+from app.features.email.email_service import send_password_reset_email
 from app.models.profile import Profile
 from app.models.role import Role, UserRole
 from app.models.user import User
@@ -38,13 +41,6 @@ from app.schemas.auth import (
     UserLogin,
     UserResponse,
 )
-
-# Shared DB dependency (matches usage elsewhere in your repo)
-try:
-    from app.database import get_async_db  # type: ignore
-except ImportError:
-    from app.database import getasyncdb as get_async_db  # type: ignore
-
 
 logger = logging.getLogger(__name__)
 

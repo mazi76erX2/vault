@@ -9,8 +9,8 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-import app.email_service as email_service
-from app.database import get_async_db
+import app.features.email.email_service as email_service
+from app.core.database import get_async_db
 from app.models import Profile, Session
 from app.schemas.auth import (
     CheckFirstLoginModel,

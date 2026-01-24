@@ -2,7 +2,7 @@ import gradio as gr
 from chat import generate_summary_chat, generate_tags_chat
 from docx2python import docx2python
 
-from app.database import get_all_managers
+from app.core.database import get_all_managers
 
 levels_txt_int_map = {"Low": 1, "Medium": 2, "High": 3, "Critical": 4}
 

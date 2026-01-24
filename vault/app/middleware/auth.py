@@ -9,7 +9,7 @@ from fastapi import Depends, HTTPException, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.database import get_async_db
+from app.core.database import get_async_db
 from app.services.auth_service import AuthService
 
 logger = logging.getLogger(__name__)

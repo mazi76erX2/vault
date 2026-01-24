@@ -6,15 +6,14 @@ import shutil
 import uuid
 from pathlib import Path
 from typing import Any
-from fastapi import APIRouter, Depends, HTTPException, status, File, UploadFile, Form
+
+from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile, status
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.database import get_async_db
+from app.core.database import get_async_db
 from app.middleware.auth import verify_token_with_tenant
 from app.models import ChatMessage, Profile
-from app.connectors.store_data_in_kb import search_kb
-from app.integrations.ollama_client import chat
 
 router = APIRouter(prefix="/api/v1/helper", tags=["helper"])
 logger = logging.getLogger(__name__)
@@ -51,7 +50,7 @@ async def add_new_chat_session(
             user_id=user_id,
             message="[]",  # Empty message array initially
         )
-        
+
         db.add(new_chat)
         await db.commit()
         await db.refresh(new_chat)
@@ -118,14 +117,31 @@ async def send_message(
 
         # Search knowledge base for relevant documents
         logger.info(f"Searching KB for: {message_text}")
-        retrieved_docs = search_kb(
-            query=message_text,
-            limit=3,
-            access_level=user_access_level,
-            company_id=company_id,
-            company_reg_no=company_reg_no,
-            similarity_threshold=0.3,
+
+        # Search knowledge base and generate response using RAG Pipeline
+        logger.info(f"Processing message with RAG Pipeline: {message_text}")
+
+        from app.services.rag_pipeline import get_rag_pipeline
+        pipeline = get_rag_pipeline()
+
+        # Execute Pipeline
+        rag_response = await pipeline.query(
+            db,
+            message_text,
+            filters={"access_control": "public"},
+            top_k=5
         )
+
+        # Map to legacy structure for compatibility
+        retrieved_docs = [
+            {
+                "title": source.name,
+                "content": source.preview,
+                "score": source.score,
+                "id": str(source.metadata.get("id", "") or source.metadata.get("doc_id", ""))
+            }
+            for source in rag_response.sources
+        ]
 
         # Generate AI response using RAG
         if not retrieved_docs:
@@ -177,7 +193,7 @@ async def send_message(
                 )
 
                 confidence = "High Confidence" if len(retrieved_docs) >= 2 else "Moderate Confidence"
-                
+
             except Exception as llm_error:
                 logger.error(f"LLM error: {llm_error}")
                 response_text = (
@@ -333,7 +349,7 @@ async def get_user_maps(
     """Get user ID to name mapping for the company."""
     try:
         company_reg_no = get_company_regno(current_user)
-        
+
         if not company_reg_no:
             # If no company, return current user only
             user_id = get_user_id(current_user)
@@ -347,7 +363,7 @@ async def get_user_maps(
             )
             result = await db.execute(stmt)
             profiles = result.all()
-        
+
         user_maps = [
             {
                 "id": str(p.id),
@@ -355,9 +371,9 @@ async def get_user_maps(
             }
             for p in profiles
         ]
-        
+
         return {"usermaps": user_maps}
-        
+
     except Exception as e:
         logger.error(f"Error fetching user maps: {e}")
         raise HTTPException(
@@ -385,33 +401,33 @@ async def upload_voice(
     """Upload voice message and transcribe it."""
     try:
         from app.services.file_processor import extract_from_audio
-        
+
         user_id = get_user_id(current_user)
-        
+
         # Save audio temporarily
         audio_path = Path(f"./uploads/audio/{uuid.uuid4()}{Path(audio.filename).suffix}")
         audio_path.parent.mkdir(parents=True, exist_ok=True)
-        
+
         with open(audio_path, "wb") as buffer:
             shutil.copyfileobj(audio.file, buffer)
-        
+
         try:
             # Transcribe audio
             transcription = extract_from_audio(audio_path)
-            
+
             if not transcription.strip():
                 raise ValueError("No speech detected in audio")
-            
+
             return {
                 "status": "success",
                 "transcription": transcription,
                 "chat_id": chat_id,
             }
-            
+
         finally:
             if audio_path.exists():
                 audio_path.unlink()
-                
+
     except Exception as e:
         logger.error(f"Error processing voice: {e}")
         raise HTTPException(
@@ -430,33 +446,33 @@ async def upload_voice(
     """Upload voice message and transcribe it."""
     try:
         from app.services.file_processor import extract_from_audio
-        
+
         # Save audio temporarily
         audio_dir = Path("./uploads/audio")
         audio_dir.mkdir(parents=True, exist_ok=True)
-        
+
         audio_path = audio_dir / f"{uuid.uuid4()}{Path(audio.filename).suffix}"
-        
+
         with open(audio_path, "wb") as buffer:
             shutil.copyfileobj(audio.file, buffer)
-        
+
         try:
             # Transcribe audio
             transcription = extract_from_audio(audio_path)
-            
+
             if not transcription.strip():
                 raise ValueError("No speech detected in audio")
-            
+
             return {
                 "status": "success",
                 "transcription": transcription,
                 "chat_id": chat_id,
             }
-            
+
         finally:
             if audio_path.exists():
                 audio_path.unlink()
-                
+
     except Exception as e:
         logger.error(f"Error processing voice: {e}")
         raise HTTPException(
