@@ -1,20 +1,38 @@
 {
   "recommendations": [
+    // Python
     "ms-python.python",
     "ms-python.debugpy",
     "ms-python.black-formatter",
     "charliermarsh.ruff",
+    
+    // JavaScript/TypeScript
     "dbaeumer.vscode-eslint",
     "esbenp.prettier-vscode",
     "bradlc.vscode-tailwindcss",
-    "msjsdiag.debugger-for-chrome",
-    "ms-vscode.vscode-typescript-next",
+    "dsznajder.es7-react-js-snippets",
+    
+    // Modern JS Debugger (optional - nightly has latest features)
+    "ms-vscode.js-debug-nightly",
+    
+    // Docker & DevOps
     "ms-azuretools.vscode-docker",
+    
+    // Config Files
     "tamasfe.even-better-toml",
     "redhat.vscode-yaml",
-    "usernamehw.errorlens",
-    "GitHub.copilot",
+    
+    // Database
     "mtxr.sqltools",
-    "mtxr.sqltools-driver-pg"
+    "mtxr.sqltools-driver-pg",
+    
+    // DX Improvements
+    "usernamehw.errorlens",
+    "GitHub.copilot"
+  ],
+  "unwantedRecommendations": [
+    // Deprecated Chrome/Edge debuggers (replaced by built-in js-debug)
+    "msjsdiag.debugger-for-chrome",
+    "msjsdiag.debugger-for-edge"
   ]
 }

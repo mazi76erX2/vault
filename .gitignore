@@ -2,3 +2,5 @@ supabase-vault/
 supabase/
 qdrant_storage/
 postgres_data/
+.vscode/chrome-debug-profile/
+.vscode/edge-debug-profile/

@@ -1,24 +1,46 @@
 {
   "version": "2.0.0",
   "tasks": [
+    // =====================
+    // LOCAL TASKS (No Docker)
+    // =====================
     {
-      "label": "Install Dependencies",
+      "label": "Local: Install Dependencies (Bun)",
       "type": "shell",
-      "command": "npm install",
+      "command": "bun install",
       "options": {
         "cwd": "${workspaceFolder}/vault-ui"
       },
-      "problemMatcher": []
+      "problemMatcher": [],
+      "presentation": {
+        "reveal": "always",
+        "panel": "shared"
+      }
     },
     {
-      "label": "Backend: Start Local Server",
+      "label": "Local: Install Dependencies (npm)",
+      "type": "shell",
+      "command": "npm install --legacy-peer-deps",
+      "options": {
+        "cwd": "${workspaceFolder}/vault-ui"
+      },
+      "problemMatcher": [],
+      "presentation": {
+        "reveal": "always",
+        "panel": "shared"
+      }
+    },
+    {
+      "label": "Local: Start Backend",
       "type": "shell",
       "command": "uvicorn main:app --host 0.0.0.0 --port 7860 --reload",
       "options": {
         "cwd": "${workspaceFolder}",
         "env": {
           "DEBUG": "True",
-          "LOG_LEVEL": "DEBUG"
+          "LOG_LEVEL": "DEBUG",
+          "DATABASE_URL": "postgresql+asyncpg://postgres:postgres@localhost:5432/vault",
+          "OLLAMA_HOST": "http://localhost:11434"
         }
       },
       "problemMatcher": [],
@@ -29,7 +51,66 @@
       }
     },
     {
-      "label": "Backend: Docker Up (Dev)",
+      "label": "Local: Start Frontend (Bun)",
+      "type": "shell",
+      "command": "bun run start",
+      "options": {
+        "cwd": "${workspaceFolder}/vault-ui"
+      },
+      "isBackground": true,
+      "problemMatcher": {
+        "pattern": {
+          "regexp": "^$"
+        },
+        "background": {
+          "activeOnStart": true,
+          "beginsPattern": ".",
+          "endsPattern": "Local:.*localhost"
+        }
+      },
+      "presentation": {
+        "reveal": "silent",
+        "panel": "dedicated"
+      }
+    },
+    {
+      "label": "Local: Start Frontend (npm)",
+      "type": "shell",
+      "command": "npm run start",
+      "options": {
+        "cwd": "${workspaceFolder}/vault-ui"
+      },
+      "isBackground": true,
+      "problemMatcher": {
+        "pattern": {
+          "regexp": "^$"
+        },
+        "background": {
+          "activeOnStart": true,
+          "beginsPattern": ".",
+          "endsPattern": "Local:.*localhost"
+        }
+      },
+      "presentation": {
+        "reveal": "silent",
+        "panel": "dedicated"
+      }
+    },
+
+    // =====================
+    // DOCKER TASKS
+    // =====================
+    {
+      "label": "Docker: Start Postgres Only",
+      "type": "shell",
+      "command": "docker compose -f docker-compose.dev.yml up -d postgres",
+      "options": {
+        "cwd": "${workspaceFolder}"
+      },
+      "problemMatcher": []
+    },
+    {
+      "label": "Docker: Start Backend + Postgres",
       "type": "shell",
       "command": "docker compose -f docker-compose.dev.yml up postgres backend",
       "options": {
@@ -43,21 +124,12 @@
       }
     },
     {
-      "label": "Backend: Docker Down",
+      "label": "Docker: Start Frontend",
       "type": "shell",
-      "command": "docker compose -f docker-compose.dev.yml down",
+      "command": "docker compose -f docker-compose.dev.yml up vaultui",
       "options": {
         "cwd": "${workspaceFolder}"
       },
-      "problemMatcher": []
-    },
-    {
-      "label": "Frontend: Start Vite Dev Server",
-      "type": "shell",
-      "command": "npm run start",
-      "options": {
-        "cwd": "${workspaceFolder}/vault-ui"
-      },
       "problemMatcher": [],
       "isBackground": true,
       "presentation": {
@@ -66,21 +138,7 @@
       }
     },
     {
-      "label": "Frontend: Docker Up",
-      "type": "shell",
-      "command": "docker compose up vaultui",
-      "options": {
-        "cwd": "${workspaceFolder}/vault-ui"
-      },
-      "problemMatcher": [],
-      "isBackground": true,
-      "presentation": {
-        "reveal": "always",
-        "panel": "new"
-      }
-    },
-    {
-      "label": "Full Stack: Start All Services (Docker)",
+      "label": "Docker: Start Full Stack",
       "type": "shell",
       "command": "docker compose -f docker-compose.dev.yml up",
       "options": {
@@ -92,6 +150,56 @@
         "reveal": "always",
         "panel": "new"
       }
+    },
+    {
+      "label": "Docker: Stop All",
+      "type": "shell",
+      "command": "docker compose -f docker-compose.dev.yml down",
+      "options": {
+        "cwd": "${workspaceFolder}"
+      },
+      "problemMatcher": []
+    },
+    {
+      "label": "Docker: Stop All + Remove Volumes",
+      "type": "shell",
+      "command": "docker compose -f docker-compose.dev.yml down -v",
+      "options": {
+        "cwd": "${workspaceFolder}"
+      },
+      "problemMatcher": []
+    },
+    {
+      "label": "Docker: Rebuild All",
+      "type": "shell",
+      "command": "docker compose -f docker-compose.dev.yml up --build",
+      "options": {
+        "cwd": "${workspaceFolder}"
+      },
+      "problemMatcher": [],
+      "isBackground": true,
+      "presentation": {
+        "reveal": "always",
+        "panel": "new"
+      }
+    },
+
+    // =====================
+    // UTILITY TASKS
+    // =====================
+    {
+      "label": "Terminate All Tasks",
+      "command": "echo ${input:terminate}",
+      "type": "shell",
+      "problemMatcher": []
+    }
+  ],
+  "inputs": [
+    {
+      "id": "terminate",
+      "type": "command",
+      "command": "workbench.action.tasks.terminate",
+      "args": "terminateAll"
     }
   ]
 }

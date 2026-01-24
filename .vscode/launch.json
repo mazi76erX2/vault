@@ -1,19 +1,15 @@
 {
   "version": "0.2.0",
   "configurations": [
+    // =====================
+    // LOCAL DEBUG (No Docker)
+    // =====================
     {
-      "name": "Backend: Local Debug",
+      "name": "Local: Backend Debug",
       "type": "debugpy",
       "request": "launch",
       "module": "uvicorn",
-      "args": [
-        "main:app",
-        "--host",
-        "0.0.0.0",
-        "--port",
-        "7860",
-        "--reload"
-      ],
+      "args": ["main:app", "--host", "0.0.0.0", "--port", "7860", "--reload"],
       "jinja": true,
       "justMyCode": false,
       "env": {
@@ -27,7 +23,81 @@
       "envFile": "${workspaceFolder}/.env"
     },
     {
-      "name": "Backend: Docker Attach",
+      "name": "Local: Frontend Debug (Chrome)",
+      "type": "chrome",
+      "request": "launch",
+      "url": "http://localhost:8081",
+      "webRoot": "${workspaceFolder}/vault-ui/src",
+      "sourceMaps": true,
+      "pauseForSourceMap": true,
+      "resolveSourceMapLocations": [
+        "${workspaceFolder}/vault-ui/**",
+        "!**/node_modules/**"
+      ],
+      "sourceMapPathOverrides": {
+        "webpack:///./src/*": "${webRoot}/*",
+        "webpack:///./*": "${webRoot}/*",
+        "webpack:///src/*": "${webRoot}/*",
+        "webpack:///*": "*",
+        "meteor://💻app/*": "${webRoot}/*"
+      },
+      "userDataDir": "${workspaceFolder}/.vscode/chrome-debug-profile",
+      "runtimeArgs": ["--disable-web-security"],
+      "preLaunchTask": "Local: Start Frontend (Bun)",
+      "timeout": 30000
+    },
+    {
+      "name": "Local: Frontend Debug (Edge)",
+      "type": "msedge",
+      "request": "launch",
+      "url": "http://localhost:8081",
+      "webRoot": "${workspaceFolder}/vault-ui/src",
+      "sourceMaps": true,
+      "pauseForSourceMap": true,
+      "resolveSourceMapLocations": [
+        "${workspaceFolder}/vault-ui/**",
+        "!**/node_modules/**"
+      ],
+      "sourceMapPathOverrides": {
+        "webpack:///./src/*": "${webRoot}/*",
+        "webpack:///./*": "${webRoot}/*",
+        "webpack:///src/*": "${webRoot}/*",
+        "webpack:///*": "*",
+        "meteor://💻app/*": "${webRoot}/*"
+      },
+      "userDataDir": "${workspaceFolder}/.vscode/edge-debug-profile",
+      "preLaunchTask": "Local: Start Frontend (Bun)",
+      "timeout": 30000
+    },
+    {
+      "name": "Local: Frontend Debug (npm + Chrome)",
+      "type": "chrome",
+      "request": "launch",
+      "url": "http://localhost:8081",
+      "webRoot": "${workspaceFolder}/vault-ui/src",
+      "sourceMaps": true,
+      "pauseForSourceMap": true,
+      "resolveSourceMapLocations": [
+        "${workspaceFolder}/vault-ui/**",
+        "!**/node_modules/**"
+      ],
+      "sourceMapPathOverrides": {
+        "webpack:///./src/*": "${webRoot}/*",
+        "webpack:///./*": "${webRoot}/*",
+        "webpack:///src/*": "${webRoot}/*",
+        "webpack:///*": "*"
+      },
+      "userDataDir": "${workspaceFolder}/.vscode/chrome-debug-profile",
+      "runtimeArgs": ["--disable-web-security"],
+      "preLaunchTask": "Local: Start Frontend (npm)",
+      "timeout": 30000
+    },
+
+    // =====================
+    // DOCKER DEBUG
+    // =====================
+    {
+      "name": "Docker: Attach to Backend",
       "type": "debugpy",
       "request": "attach",
       "connect": {
@@ -40,51 +110,86 @@
           "remoteRoot": "/app"
         }
       ],
-      "justMyCode": false,
-      "django": false
+      "justMyCode": false
     },
     {
-      "name": "Frontend: Chrome Debug",
+      "name": "Docker: Frontend Debug (Chrome)",
       "type": "chrome",
       "request": "launch",
-      "url": "http://localhost:5173",
+      "url": "http://localhost:8081",
       "webRoot": "${workspaceFolder}/vault-ui/src",
       "sourceMaps": true,
-      "sourceMapPathOverrides": {
-        "webpack:///src/*": "${webRoot}/*"
-      }
+      "pauseForSourceMap": true,
+      "resolveSourceMapLocations": [
+        "${workspaceFolder}/vault-ui/**",
+        "!**/node_modules/**"
+      ],
+      "userDataDir": "${workspaceFolder}/.vscode/chrome-debug-profile",
+      "preLaunchTask": "Docker: Start Frontend",
+      "timeout": 30000
     },
+
+    // =====================
+    // ATTACH TO RUNNING
+    // =====================
     {
-      "name": "Frontend: Edge Debug",
-      "type": "msedge",
-      "request": "launch",
-      "url": "http://localhost:5173",
+      "name": "Attach: Chrome (Port 9222)",
+      "type": "chrome",
+      "request": "attach",
+      "port": 9222,
       "webRoot": "${workspaceFolder}/vault-ui/src",
       "sourceMaps": true
-    },
-    {
-      "name": "Frontend: Firefox Debug",
-      "type": "firefox",
-      "request": "launch",
-      "url": "http://localhost:5173",
-      "webRoot": "${workspaceFolder}/vault-ui/src",
-      "pathMappings": [
-        {
-          "url": "webpack:///src",
-          "path": "${webRoot}"
-        }
-      ]
     }
   ],
   "compounds": [
+    // =====================
+    // LOCAL COMPOUNDS (No Docker)
+    // =====================
     {
-      "name": "Full Stack: Local Debug",
+      "name": "Local: Full Stack (Bun)",
       "configurations": [
-        "Backend: Local Debug",
-        "Frontend: Chrome Debug"
+        "Local: Backend Debug",
+        "Local: Frontend Debug (Chrome)"
       ],
       "stopAll": true,
-      "preLaunchTask": "Install Dependencies"
+      "preLaunchTask": "Local: Install Dependencies (Bun)",
+      "presentation": {
+        "hidden": false,
+        "group": "Local",
+        "order": 1
+      }
+    },
+    {
+      "name": "Local: Full Stack (npm)",
+      "configurations": [
+        "Local: Backend Debug",
+        "Local: Frontend Debug (npm + Chrome)"
+      ],
+      "stopAll": true,
+      "preLaunchTask": "Local: Install Dependencies (npm)",
+      "presentation": {
+        "hidden": false,
+        "group": "Local",
+        "order": 2
+      }
+    },
+
+    // =====================
+    // DOCKER COMPOUNDS
+    // =====================
+    {
+      "name": "Docker: Full Stack Debug",
+      "configurations": [
+        "Docker: Attach to Backend",
+        "Docker: Frontend Debug (Chrome)"
+      ],
+      "stopAll": true,
+      "preLaunchTask": "Docker: Start Full Stack",
+      "presentation": {
+        "hidden": false,
+        "group": "Docker",
+        "order": 1
+      }
     }
   ]
 }
