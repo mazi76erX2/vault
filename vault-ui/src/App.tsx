@@ -8,25 +8,21 @@ import { RouterProvider } from "react-router-dom";
 import { useEffect } from "react";
 import t, { useToaster } from "react-hot-toast";
 import router from "./routes/Routes";
-import { getCurrentUser, logout } from "./services/auth/Auth.service";
+import { useAppDispatch } from "./store/hooks";
+import { hydrateSession } from "./store/slices/authSlice";
+
+import { QueryClientProvider } from "@tanstack/react-query";
+import { queryClient } from "./lib/queryClient";
 
 function App() {
   const [toastLimit] = React.useState(3);
   const { toasts } = useToaster();
 
-  // Move handleTabClosing BEFORE useEffect that uses it
-  const handleTabClosing = () => {
-    const user = getCurrentUser();
-    if (!user) logout();
-  };
+  const dispatch = useAppDispatch();
 
   useEffect(() => {
-    window.addEventListener("unload", handleTabClosing);
-
-    return () => {
-      window.removeEventListener("unload", handleTabClosing);
-    };
-  }, []); // Add empty dependency array
+    dispatch(hydrateSession());
+  }, [dispatch]);
 
   React.useEffect(() => {
     toasts
@@ -35,7 +31,11 @@ function App() {
       .forEach((tt) => t.dismiss(tt.id));
   }, [toastLimit, toasts]);
 
-  return <RouterProvider router={router} />;
+  return (
+    <QueryClientProvider client={queryClient}>
+      <RouterProvider router={router} />
+    </QueryClientProvider>
+  );
 }
 
 export default App;

@@ -9,11 +9,11 @@ import {
   TableHead,
   TableHeader,
   TableRow,
-} from "@/components/ui/table";
-import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import moment from "moment";
-import { getCurrentUser } from "../../services/auth/Auth.service";
+} from "@/components/ui/table/table";
+import { Button } from "@/components/ui/button/button";
+import { Badge } from "@/components/ui/badge/badge";
+import { format } from "date-fns";
+import { getCurrentUser } from "@/features/auth/Auth.service";
 
 export interface UserDTO {
   id: string;
@@ -36,7 +36,7 @@ export function UserListTable({ users, onEdit, onDelete }: UserListTableProps) {
       users.map((u) => ({
         ...u,
         dateAdded: u.createdAt
-          ? moment(u.createdAt).format("DD MMM YYYY")
+          ? format(new Date(u.createdAt), "dd MMM yyyy")
           : "N/A",
       })),
     [users],

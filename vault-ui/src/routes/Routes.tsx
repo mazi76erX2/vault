@@ -1,44 +1,43 @@
 import { createBrowserRouter, useNavigate, Navigate } from "react-router-dom";
 import React, { useEffect, ReactNode } from "react";
-import PasswordResetPage from "../pages/auth/PasswordResetPage";
-import LoginPage from "../pages/login/LoginPage";
-import HomePage from "../pages/HomePage";
-import RootLayout from "../pages/RootLayout";
-// import AdminsPage from '../pages/users/AdminsPage';
-import { Page } from "../pages/Page";
+import PasswordResetPage from "@/features/auth/pages/reset-password/PasswordResetPage";
+import LoginPage from "@/features/auth/pages/login/LoginPage";
+import HomePage from "@/features/dashboard/pages/HomePage";
+import RootLayout from "@/features/layout/RootLayout";
+import { Page } from "@/features/layout/Page";
 import { PageContextProvider } from "../contexts/PageContext";
 import { PageHeaderProps } from "../components/PageHeader/PageHeader";
-// import { getCurrentUser } from '../services/auth/Auth.service';
-import ApplicationsPage from "../pages/applications/ApplicationsPage";
-import CollectorMainPage from "../pages/applications/collector/CollectorMainPage";
-import HelperMainPage from "../pages/applications/helper/HelperMainPage";
-import CollectorStartPage from "../pages/applications/collector/CollectorStartPage";
-import CollectorInitQuestionsPage from "../pages/applications/collector/CollectorInitQuestionsPage";
-import CollectorChatPage from "../pages/applications/collector/CollectorChatPage";
-import CollectorSummaryPage from "../pages/applications/collector/CollectorSummaryPage";
-import CollectorMetaDataPage from "../pages/applications/collector/CollectorMetaDataPage";
-import HelperChatPage from "../pages/applications/helper/HelperChatPage";
-import CollectorResumePage from "../pages/applications/collector/CollectorResumePage";
-import CollectorDocumentsStatusPage from "../pages/applications/collector/CollectorDocumentsStatusPage";
-import ConsoleMainPage from "../pages/applications/console/ConsoleMainPage";
-import ValidatorStartPage from "../pages/applications/console/ValidatorStartPage";
-import ValidatorDocPage from "../pages/applications/console/ValidatorDocPage";
-import ExpertDocPage from "../pages/applications/console/ExpertDocPage";
-import ExpertStartPage from "../pages/applications/console/ExpertStartPage";
-import ValidatorStartExpertReviewPage from "../pages/applications/console/ValidatorStartExpertReviewPage";
-import ValidatorStartCompletedPage from "../pages/applications/console/ValidatorStartCompletedPage";
-import ExpertPreviousReviewsPage from "../pages/applications/console/ExpertPreviousReviewsPage";
-import PreviousChatPage from "../pages/applications/helper/HelperPreviousChats";
+import OrganisationDetailsPage from "@/features/users/pages/OrganisationDetailsPage";
+import UserDirectoryPage from "@/features/users/pages/UserDirectoryPage";
+import OrganisationPage from "@/features/users/pages/OrganisationPage";
+import OrganisationListPage from "@/features/users/pages/OrganisationListPage";
+import ApplicationsPage from "@/features/applications/pages/ApplicationsPage";
+import CollectorMainPage from "@/features/applications/pages/collector/CollectorMainPage";
+import HelperMainPage from "@/features/applications/pages/helper/HelperMainPage";
+import CollectorStartPage from "@/features/applications/pages/collector/CollectorStartPage";
+import CollectorInitQuestionsPage from "@/features/applications/pages/collector/CollectorInitQuestionsPage";
+import CollectorChatPage from "@/features/applications/pages/collector/CollectorChatPage";
+import CollectorSummaryPage from "@/features/applications/pages/collector/CollectorSummaryPage";
+import CollectorMetaDataPage from "@/features/applications/pages/collector/CollectorMetaDataPage";
+import HelperChatPage from "@/features/applications/pages/helper/HelperChatPage";
+import CollectorResumePage from "@/features/applications/pages/collector/CollectorResumePage";
+import CollectorDocumentsStatusPage from "@/features/applications/pages/collector/CollectorDocumentsStatusPage";
+import ConsoleMainPage from "@/features/applications/pages/console/ConsoleMainPage";
+import ValidatorStartPage from "@/features/applications/pages/console/ValidatorStartPage";
+import ValidatorDocPage from "@/features/applications/pages/console/ValidatorDocPage";
+import ExpertDocPage from "@/features/applications/pages/console/ExpertDocPage";
+import ExpertStartPage from "@/features/applications/pages/console/ExpertStartPage";
+import ValidatorStartExpertReviewPage from "@/features/applications/pages/console/ValidatorStartExpertReviewPage";
+import ValidatorStartCompletedPage from "@/features/applications/pages/console/ValidatorStartCompletedPage";
+import ExpertPreviousReviewsPage from "@/features/applications/pages/console/ExpertPreviousReviewsPage";
+import PreviousChatPage from "@/features/applications/pages/helper/HelperPreviousChats";
 import { useAuthContext } from "../hooks/useAuthContext";
-import NotFoundPage from "../pages/NotFoundPage";
-import MaintenancePage from "../pages/MaintenancePage";
-import OrganisationDetailsPage from "../pages/users/OrganisationDetailsPage";
-import UserDirectoryPage from "../pages/users/UserDirectoryPage";
-import OrganisationPage from "../pages/users/OrganisationPage";
-import OrganisationListPage from "../pages/users/OrganisationListPage";
-import BusinessThemePage from "../pages/theme/BusinessThemePage";
-import KBUploadPage from "../pages/KB/KBUploadPage";
-import KBDocumentsPage from "../pages/KB/KBDocumentsPage";
+import NotFoundPage from "@/features/common/pages/NotFoundPage";
+import MaintenancePage from "@/features/common/pages/MaintenancePage";
+import BusinessThemePage from "@/features/theme/pages/BusinessThemePage";
+import KBUploadPage from "@/features/kb/pages/KBUploadPage";
+import KBDocumentsPage from "@/features/kb/pages/KBDocumentsPage";
+import { Loader } from "../components/feedback/loader";
 
 interface ChildrenProps {
   children: ReactNode;
@@ -86,7 +85,7 @@ const RoleRoute: React.FC<{ roles: string[]; children: React.ReactNode }> = ({
   // It's crucial to handle the case where authContext itself might be undefined initially
   if (!authContext) {
     console.log(
-      "[RoleRoute] AuthContext is undefined, returning null (should be temporary)"
+      "[RoleRoute] AuthContext is undefined, returning null (should be temporary)",
     );
     return null; // Or a global loading spinner
   }
@@ -99,8 +98,12 @@ const RoleRoute: React.FC<{ roles: string[]; children: React.ReactNode }> = ({
 
   // While user data is loading from the context
   if (isLoadingUser) {
-    console.log("[RoleRoute] isLoadingUser is true, returning null");
-    return null; // Or a loading spinner
+    console.log("[RoleRoute] isLoadingUser is true, returning Loader");
+    return (
+      <div className="flex h-screen items-center justify-center">
+        <Loader />
+      </div>
+    );
   }
 
   // If no authenticated user is found in the context after loading
@@ -117,7 +120,7 @@ const RoleRoute: React.FC<{ roles: string[]; children: React.ReactNode }> = ({
     "[RoleRoute] authUser present. isLoadingUser false. Roles from context:",
     currentUserRoles,
     "Required roles:",
-    roles
+    roles,
   );
 
   // Check if the user has 'Administrator' role or any of the required roles for the route
@@ -129,7 +132,7 @@ const RoleRoute: React.FC<{ roles: string[]; children: React.ReactNode }> = ({
       "[RoleRoute] Access GRANTED for user roles:",
       currentUserRoles,
       "to route requiring:",
-      roles
+      roles,
     );
     return <>{children}</>;
   }
@@ -140,7 +143,7 @@ const RoleRoute: React.FC<{ roles: string[]; children: React.ReactNode }> = ({
     currentUserRoles,
     "to route requiring:",
     roles,
-    ". Redirecting to dashboard."
+    ". Redirecting to dashboard.",
   );
   return <Navigate to="/dashboard" replace />;
 };
@@ -198,7 +201,7 @@ const router = createBrowserRouter([
         id: "Dashboard",
       },
       {
-        path: "/users/OrganisationPage",
+        path: "/users/organisation",
         element: (
           <RoleRoute roles={["Administrator"]}>
             {renderPage(<OrganisationPage />)}
@@ -414,7 +417,7 @@ const router = createBrowserRouter([
         id: "Helper",
       },
       {
-        path: "/users/OrganisationDetailsPage",
+        path: "/users/details",
         element: (
           <RoleRoute roles={["Administrator"]}>
             {renderPage(<OrganisationDetailsPage />)}
@@ -423,7 +426,7 @@ const router = createBrowserRouter([
         id: "OrganisationDetailsPage",
       },
       {
-        path: "/users/UserDirectoryPage",
+        path: "/users/directory",
         element: (
           <RoleRoute roles={["Administrator"]}>
             {renderPage(<UserDirectoryPage />)}
@@ -432,7 +435,7 @@ const router = createBrowserRouter([
         id: "UserDirectoryPage",
       },
       {
-        path: "/users/UserManagementPage",
+        path: "/users/management",
         element: (
           <RoleRoute roles={["Administrator"]}>
             {renderPage(<OrganisationListPage />)}

@@ -5,8 +5,8 @@ import {
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "@/components/ui/select";
-import { Label } from "@/components/ui/label";
+} from "@/components/ui/select/select/select";
+import { Label } from "@/components/ui/label/label/label";
 import { cn } from "@/lib/utils";
 
 export interface EnumOption {

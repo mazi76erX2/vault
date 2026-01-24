@@ -9,9 +9,9 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
-import { Button } from "@/components/ui/button";
-import { DropdownMenuItem } from "@/components/ui/dropdown-menu";
+} from "@/components/ui/alert-dialog/alert-dialog";
+import { Button } from "@/components/ui/button/button";
+import { DropdownMenuItem } from "@/components/ui/dropdown-menu/dropdown-menu";
 import { LogOut } from "lucide-react";
 import { useAuthContext } from "@/hooks/useAuthContext";
 

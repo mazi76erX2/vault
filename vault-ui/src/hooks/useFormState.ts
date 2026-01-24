@@ -1,33 +1,23 @@
 /* eslint-disable no-unused-vars */
 import React, { useState } from "react";
-import validate from "validate.js";
-import {
-  ValidateJSSchema,
-  ValidateFunctionValidator,
-} from "../typings/validatejs";
+import { z } from "zod";
 
 export interface FormStateValues<T> {
   isValid: boolean;
   values: T;
-  touched: { [Property in keyof T]: boolean };
-  errors: { [Property in keyof T]: string[] };
+  touched: { [Property in keyof T]?: boolean };
+  errors: { [Property in keyof T]?: string[] };
   isLoading?: boolean;
 }
 
-interface Schema extends ValidateJSSchema {
-  [key: string]: unknown;
-}
-
 interface FormStateProps<T> {
-  schema?: {
-    [Property in keyof T]?: Schema | ValidateFunctionValidator<T>;
-  };
+  schema?: z.ZodSchema<any>;
   initialState?: {
     isLoading?: boolean;
     isValid?: boolean;
     values: T;
-    touched?: { [Property in keyof T]: boolean };
-    errors?: { [Property in keyof T]: string[] };
+    touched?: { [Property in keyof T]?: boolean };
+    errors?: { [Property in keyof T]?: string[] };
   };
 }
 
@@ -40,20 +30,16 @@ export interface FormState<T> {
   setFormState: React.Dispatch<React.SetStateAction<FormStateValues<T>>>;
 }
 
-export const useFormState = <T extends NonNullable<unknown>>({
+export const useFormState = <T extends Record<string, any>>({
   schema,
   ...props
 }: FormStateProps<T>): FormState<T> => {
   const [formState, setFormState] = useState<FormStateValues<T>>({
     isLoading: false,
     isValid: false,
-    values: { ...props?.initialState?.values } as unknown as T,
-    touched: { ...props?.initialState?.touched } as {
-      [Property in keyof T]: boolean;
-    },
-    errors: { ...props?.initialState?.errors } as {
-      [Property in keyof T]: string[];
-    },
+    values: { ...props?.initialState?.values } as T,
+    touched: { ...props?.initialState?.touched } || {},
+    errors: { ...props?.initialState?.errors } || {},
   });
 
   const values = React.useMemo(() => formState.values, [formState.values]);
@@ -61,14 +47,21 @@ export const useFormState = <T extends NonNullable<unknown>>({
   const handleErrorUpdates = () => {
     if (!schema) return;
 
-    const errors = validate(formState.values, schema) as {
-      [Property in keyof T]: string[];
-    };
+    const result = schema.safeParse(formState.values);
+
+    const errors: Record<string, string[]> = {};
+    if (!result.success) {
+      result.error.errors.forEach((err) => {
+        const path = err.path[0] as string;
+        if (!errors[path]) errors[path] = [];
+        errors[path].push(err.message);
+      });
+    }
 
     setFormState((currentFormState) => ({
       ...currentFormState,
-      isValid: !errors,
-      errors: errors || ({} as { [Property in keyof T]: string[] }),
+      isValid: result.success,
+      errors: errors as { [Property in keyof T]?: string[] },
     }));
   };
 
@@ -76,6 +69,8 @@ export const useFormState = <T extends NonNullable<unknown>>({
     setFormState({
       ...formState,
       values: props?.initialState?.values as T,
+      touched: {},
+      errors: {},
     });
   };
 
@@ -121,12 +116,7 @@ export const useFormState = <T extends NonNullable<unknown>>({
     handleValueChange,
     hasError,
     handleClear,
-    formState: {
-      ...formState,
-      values: {
-        ...formState.values,
-      } as T,
-    },
+    formState,
     setFormState,
   };
 };

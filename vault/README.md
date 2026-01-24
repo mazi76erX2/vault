@@ -1,4 +1,4 @@
-# HICO Vault - Knowledge Management System
+# Vault - Knowledge Management System
 
 > **Fast, local-first knowledge management powered by Ollama, Qdrant, and FastAPI**
 
@@ -718,6 +718,6 @@ For issues, questions, or contributions:
 
 ---
 
-**Built with ❤️ by HICO Group**
+**Built with ❤️ by This Charming**
 
-*Last Updated: December 31, 2025*
+*Last Updated: January 24, 2026*

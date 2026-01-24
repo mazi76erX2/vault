@@ -1,7 +1,7 @@
 // vault-ui/src/components/HeaderLabel/HeaderLabel.tsx
 import React from "react";
 import { Info } from "lucide-react";
-import { Badge } from "@/components/ui/badge";
+import { Badge } from "@/components/ui/badge/badge";
 import { cn } from "@/lib/utils";
 
 interface HeaderLabelProps {

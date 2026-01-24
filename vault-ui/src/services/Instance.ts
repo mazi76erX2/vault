@@ -10,9 +10,9 @@ import {
   setCurrentUser,
   getAccessToken,
   getRefreshToken,
-} from "./auth/Auth.service";
+} from "@/features/auth/Auth.service";
 import { VAULT_API_URL } from "../config";
-import { LoginResponseDTO } from "../types/LoginResponseDTO";
+import { LoginResponseDTO } from "@/types/dtos/LoginResponseDTO";
 
 const Api: AxiosInstance = axios.create({
   baseURL: VAULT_API_URL,
@@ -27,7 +27,7 @@ let failedQueue: Array<{
 
 const processQueue = (
   error: AxiosError | null,
-  token: string | null = null
+  token: string | null = null,
 ) => {
   failedQueue.forEach((prom) => {
     if (error) {
@@ -74,7 +74,7 @@ Api.interceptors.request.use(
     }
     return config;
   },
-  (requestError) => Promise.reject(requestError)
+  (requestError) => Promise.reject(requestError),
 );
 
 Api.interceptors.response.use(
@@ -121,17 +121,17 @@ Api.interceptors.response.use(
           `${VAULT_API_URL}/api/auth/refresh`,
           {
             refresh_token: refreshToken,
-          }
+          },
         );
 
         if (refreshResponse.data?.access_token) {
           localStorage.setItem(
             "access_token",
-            refreshResponse.data.access_token
+            refreshResponse.data.access_token,
           );
           localStorage.setItem(
             "refresh_token",
-            refreshResponse.data.refresh_token
+            refreshResponse.data.refresh_token,
           );
           if (refreshResponse.data.user) {
             setCurrentUser(refreshResponse.data.user);
@@ -161,7 +161,7 @@ Api.interceptors.response.use(
     }
 
     return Promise.reject(error);
-  }
+  },
 );
 
 export default Api;

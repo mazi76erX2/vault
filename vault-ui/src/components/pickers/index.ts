@@ -1,2 +1,2 @@
-export * from "./color-picker";
-export * from "./icon-picker";
+export * from "./ColorPicker/ColorPicker";
+export * from "./IconPicker/IconPicker";

@@ -1,6 +1,6 @@
 // vault-ui/src/components/StatusLabel/StatusLabel.tsx
 import React from "react";
-import { Badge } from "@/components/ui/badge";
+import { Badge } from "@/components/ui/badge/badge";
 
 type StatusLabelType =
   | "success"

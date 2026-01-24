@@ -1,11 +1,11 @@
 // Forms
-export { Button } from "./forms/button";
-export type { EnhancedButtonProps } from "./forms/button";
-export { TextField } from "./forms/text-field";
-export type { TextFieldProps } from "./forms/text-field";
+export { Button } from "./forms/Button/Button";
+export type { EnhancedButtonProps } from "./forms/Button/Button";
+export { TextField } from "./forms/TextField/TextField";
+export type { TextFieldProps } from "./forms/TextField/TextField";
 
 // Data Display
-export { DataTable } from "./data-display/data-table";
+export { DataTable } from "./data-display/DataTable/DataTable";
 export { EnumDropDown } from "./EnumDropDown/EnumDropDown";
 export type {
   EnumDropDownProps,
@@ -13,5 +13,5 @@ export type {
 } from "./EnumDropDown/EnumDropDown";
 
 // Feedback
-export { notification } from "./feedback/notification";
-export { default as Notification } from "./feedback/notification";
+export { Notification } from "./feedback/Notification/Notification";
+export { notification } from "./feedback/Notification/Notification";

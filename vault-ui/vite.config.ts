@@ -17,5 +17,11 @@ export default defineConfig({
     globals: true,
     environment: "jsdom",
     setupFiles: "./src/setup.tsx",
+    include: ["src/**/*.{test,spec}.{ts,tsx}"],
+    coverage: {
+      reporter: ["text", "json", "html"],
+      include: ["src/**/*"],
+      exclude: ["src/components/ui/**"], // Exclude shadcn UI components
+    },
   },
 });
