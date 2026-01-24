@@ -1,11 +1,8 @@
 import React from "react";
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { DancingBot } from "@/components/media/dancing-bot";
 import { useAuthContext } from "@/hooks/useAuthContext";
 import { Loader } from "@/components/feedback/loader";
-
-const DRAWER_WIDTH = 240;
 
 const HomePage: React.FC = () => {
   const authContext = useAuthContext();
@@ -28,17 +25,7 @@ const HomePage: React.FC = () => {
   const isValidator = hasRole("Validator");
 
   return (
-    <div
-      className="flex items-center justify-center p-5 flex-wrap relative min-h-[80vh]"
-      style={{
-        marginLeft: `-${DRAWER_WIDTH}px`,
-        width: `calc(100% + ${DRAWER_WIDTH}px)`,
-      }}
-    >
-      <div className="flex justify-center items-center">
-        <DancingBot state="greeting" className="w-[600px] h-[600px]" />
-      </div>
-
+    <div className="flex items-center justify-center p-5 flex-wrap relative min-h-[80vh]">
       <div className="flex flex-col gap-5 justify-center">
         <Link to="/applications/collector/CollectorMainPage">
           <Button

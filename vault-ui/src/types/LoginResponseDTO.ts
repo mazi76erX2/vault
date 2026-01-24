@@ -4,6 +4,22 @@ export interface LoginRequestDTO {
   password: string;
 }
 
+export interface FlattenedUser {
+  id: string;
+  email: string;
+  email_confirmed: boolean;
+  full_name?: string | null;
+  username?: string | null;
+  telephone?: string | null;
+  company_id?: number | null;
+  company_name?: string | null;
+  company_reg_no: string;
+  department?: string | null;
+  user_access?: number | null;
+  status: string;
+  roles: string[];
+}
+
 export interface LoginResponseDTO {
   access_token: string;
   refresh_token: string;

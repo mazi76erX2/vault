@@ -3,8 +3,6 @@ import { ChevronRight } from "lucide-react";
 import { Link } from "react-router-dom";
 import { usePageContext } from "@/hooks/usePageContext";
 
-const DRAWER_WIDTH = 240;
-
 export interface PageHeaderProps {
   title?: string;
   subtitle?: string;
@@ -20,12 +18,7 @@ export const Page: React.FC<PageProps> = ({ view, headerProps }) => {
   const { breadcrumbs } = usePageContext();
 
   return (
-    <div
-      className="p-0 mx-0 min-h-screen bg-background text-foreground"
-      style={{
-        maxWidth: `calc(100vw - ${DRAWER_WIDTH}px)`,
-      }}
-    >
+    <div className="p-0 mx-0 min-h-screen bg-background text-foreground">
       {breadcrumbs && breadcrumbs.length > 0 && (
         <nav className="flex items-center gap-2 px-6 py-4 text-sm text-muted-foreground">
           {breadcrumbs.map((crumb, index) => (

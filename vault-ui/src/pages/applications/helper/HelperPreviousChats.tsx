@@ -5,7 +5,6 @@ import { AxiosError } from "axios";
 import { ArrowRight } from "lucide-react";
 import type { ColumnDef } from "@tanstack/react-table";
 import { useAuthContext } from "@/hooks/useAuthContext";
-import { DancingBot } from "@/components/media/dancing-bot";
 import { DataTable } from "@/components/data-display/data-table";
 import { Loader } from "@/components/feedback/loader";
 import { Button } from "@/components/ui/button";
@@ -53,7 +52,7 @@ const HelperPreviousChatsPage: React.FC = () => {
   ];
 
   const adaptChatsToRows = async (
-    chatsData: ChatMessage[]
+    chatsData: ChatMessage[],
   ): Promise<ChatRow[]> => {
     const adaptedRows = await Promise.all(
       chatsData.map(async (chat) => {
@@ -87,7 +86,7 @@ const HelperPreviousChatsPage: React.FC = () => {
           createdAt: formattedDate,
           topic: firstAssistantMessage,
         };
-      })
+      }),
     );
 
     return adaptedRows;
@@ -113,14 +112,14 @@ const HelperPreviousChatsPage: React.FC = () => {
 
         const profiles = response.data.user_maps.data as Profile[];
         const userMap = new Map(
-          profiles.map((profile: Profile) => [profile.id, profile.fullName])
+          profiles.map((profile: Profile) => [profile.id, profile.fullName]),
         );
 
         const chatsResponse = await Api.post(
           "/api/v1/helper/get_previous_chats",
           {
-            user_id: user.user.user.id,
-          }
+            user_id: user.id,
+          },
         );
 
         if (!chatsResponse.data || !chatsResponse.data.get_previous_chats) {
@@ -176,15 +175,13 @@ const HelperPreviousChatsPage: React.FC = () => {
         </div>
       )}
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-start">
-        <DancingBot state="idling" className="w-full max-w-[600px] mx-auto" />
-
+      <div className="max-w-4xl mx-auto p-6">
         <div>
           <div className="mb-6">
-            <h1 className="text-2xl font-bold text-foreground">
+            <h1 className="text-2xl font-bold text-foreground text-center">
               Chats previously started
             </h1>
-            <p className="text-muted-foreground mt-2">
+            <p className="text-muted-foreground mt-2 text-center">
               Select a chat to continue your conversation.
             </p>
           </div>

@@ -10,7 +10,6 @@ import {
   AppWindow,
   CheckCircle,
   Mail,
-  LogOut,
   Database,
   Upload,
   Search,
@@ -45,7 +44,7 @@ export const MenuListItems: React.FC<MenuListItemsProps> = ({ open }) => {
 
   const hasRole = (roleName: string): boolean => {
     return userRoles.some((role) =>
-      role.toLowerCase().includes(roleName.toLowerCase())
+      role.toLowerCase().includes(roleName.toLowerCase()),
     );
   };
 
@@ -158,7 +157,6 @@ interface MenuListItemProps {
   showText?: boolean;
   activeIndex?: string;
   onActiveIndexChanged?: (active?: string) => void;
-  parent?: MenuItem;
 }
 
 const MenuListItem: React.FC<MenuListItemProps> = ({
@@ -167,7 +165,6 @@ const MenuListItem: React.FC<MenuListItemProps> = ({
   showText = true,
   onActiveIndexChanged,
   activeIndex,
-  parent,
 }) => {
   const location = useLocation();
   const navigate = useNavigate();
@@ -177,13 +174,10 @@ const MenuListItem: React.FC<MenuListItemProps> = ({
   const isActive = pathname.includes(item.to);
 
   React.useEffect(() => {
-    if (activeIndex !== pathname) {
-      // Handle active index changes
-    }
     if (isActive && item.subMenu) {
       setIsExpanded(true);
     }
-  }, [pathname, isActive, activeIndex, item.subMenu]);
+  }, [isActive, item.subMenu]);
 
   if (item.shouldHide) return null;
 
@@ -205,12 +199,13 @@ const MenuListItem: React.FC<MenuListItemProps> = ({
         type="button"
         onClick={handleClick}
         className={cn(
-          "w-full flex items-center gap-3 h-10 transition-all duration-200",
-          "hover:bg-muted/50 px-6",
-          subItem ? "px-8" : "px-6",
+          "w-full flex items-center h-10 transition-all duration-200",
+          "hover:bg-muted/50",
+          !showText ? "justify-center px-0" : "gap-3 px-4",
+          subItem && showText && "px-8",
           isActive && !subItem && "bg-primary text-primary-foreground",
           isActive && subItem && "text-primary font-medium bg-muted",
-          !isActive && "text-foreground bg-transparent"
+          !isActive && "text-foreground bg-transparent",
         )}
       >
         {!subItem && item.icon && (
@@ -223,7 +218,7 @@ const MenuListItem: React.FC<MenuListItemProps> = ({
           <span
             className={cn(
               "flex-1 text-left",
-              subItem && isActive ? "font-bold" : "text-base"
+              subItem && isActive ? "font-bold" : "text-base",
             )}
           >
             {item.title}
@@ -245,7 +240,7 @@ const MenuListItem: React.FC<MenuListItemProps> = ({
         <div
           className={cn(
             "overflow-hidden transition-all duration-300 ease-in-out bg-muted/50",
-            isExpanded ? "max-h-96 opacity-100" : "max-h-0 opacity-0"
+            isExpanded ? "max-h-96 opacity-100" : "max-h-0 opacity-0",
           )}
         >
           <ul className="pl-0">
@@ -253,7 +248,6 @@ const MenuListItem: React.FC<MenuListItemProps> = ({
               <MenuListItem
                 key={index}
                 item={subMenu}
-                parent={item}
                 onActiveIndexChanged={onActiveIndexChanged}
                 activeIndex={activeIndex}
                 subItem

@@ -4,7 +4,6 @@ import { toast } from "sonner";
 import { AxiosError } from "axios";
 import type { ColumnDef } from "@tanstack/react-table";
 import { useAuthContext } from "@/hooks/useAuthContext";
-import { DancingBot } from "@/components/media/dancing-bot";
 import { DataTable } from "@/components/data-display/data-table";
 import { Loader } from "@/components/feedback/loader";
 import { Button } from "@/components/ui/button";
@@ -65,11 +64,7 @@ const ExpertStartPage: React.FC = () => {
   ];
 
   const fetchDocuments = async () => {
-    if (
-      !authContext ||
-      !authContext.user?.user?.id ||
-      !authContext.isLoggedIn
-    ) {
+    if (!authContext || !authContext.user?.id || !authContext.isLoggedIn) {
       if (!authContext?.isLoadingUser) {
         toast.error("User not authenticated or session has expired.");
         setLoading(false);
@@ -126,15 +121,13 @@ const ExpertStartPage: React.FC = () => {
         </div>
       )}
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-start">
-        <DancingBot state="greeting" className="w-full max-w-[600px] mx-auto" />
-
+      <div className="max-w-4xl mx-auto p-6">
         <div>
           <div className="mb-6">
-            <h1 className="text-2xl font-bold text-foreground">
+            <h1 className="text-2xl font-bold text-foreground text-center">
               Expert Review Documents
             </h1>
-            <p className="text-muted-foreground mt-2">
+            <p className="text-muted-foreground mt-2 text-center">
               Select a document to perform expert review.
             </p>
           </div>

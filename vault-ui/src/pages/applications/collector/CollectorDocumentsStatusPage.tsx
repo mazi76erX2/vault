@@ -4,7 +4,6 @@ import { toast } from "sonner";
 import { AxiosError } from "axios";
 import type { ColumnDef } from "@tanstack/react-table";
 import { useAuthContext } from "@/hooks/useAuthContext";
-import { DancingBot } from "@/components/media/dancing-bot";
 import { DataTable } from "@/components/data-display/data-table";
 import { Loader } from "@/components/feedback/loader";
 import { Button } from "@/components/ui/button";
@@ -40,11 +39,7 @@ const CollectorStartPage: React.FC = () => {
   ];
 
   const fetchProjects = async () => {
-    if (
-      !authContext ||
-      !authContext.user?.user?.id ||
-      !authContext.isLoggedIn
-    ) {
+    if (!authContext || !authContext.user?.id || !authContext.isLoggedIn) {
       if (!authContext?.isLoadingUser) {
         toast.error("User not authenticated or session has expired.");
         setLoading(false);
@@ -95,26 +90,25 @@ const CollectorStartPage: React.FC = () => {
         </div>
       )}
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-start">
-        <DancingBot state="greeting" className="w-full max-w-[600px] mx-auto" />
-
+      <div className="max-w-4xl mx-auto p-6">
         <div>
           <div className="mb-6">
-            <h1 className="text-2xl font-bold">Start a new session</h1>
-            <p className="text-gray-600 mt-2">
+            <h1 className="text-2xl font-bold text-center">
+              Start a new session
+            </h1>
+            <p className="text-muted-foreground mt-2 text-center">
               Select a project to begin your interview session.
             </p>
           </div>
 
-          <div className="bg-[#d3d3d3] p-6 rounded-lg shadow-md">
+          <div className="bg-card text-card-foreground p-6 rounded-lg shadow-md border border-border">
             <DataTable
               columns={columns}
               data={rows}
               pageSize={5}
-              onRowClick={(params) => setSelectedProject(params.row as Project)}
-              getRowClassName={(params) =>
-                params.row.id === selectedProject?.id ? "bg-blue-100" : ""
-              }
+              onRowClick={(row) => setSelectedProject(row as Project)}
+              selectedRowId={selectedProject?.id}
+              getRowId={(row) => (row as Project).id}
             />
           </div>
 

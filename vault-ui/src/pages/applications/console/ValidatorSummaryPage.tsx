@@ -3,7 +3,6 @@ import { useNavigate, useLocation } from "react-router-dom";
 import { toast } from "sonner";
 import { AxiosError } from "axios";
 import { useAuthContext } from "@/hooks/useAuthContext";
-import { DancingBot } from "@/components/media/dancing-bot";
 import { Button } from "@/components/ui/button";
 import { Loader } from "@/components/feedback/loader";
 import { Card, CardContent } from "@/components/ui/card";
@@ -35,11 +34,7 @@ const ValidatorSummaryPage: React.FC = () => {
   const { documentId } = (location.state as LocationState) || {};
 
   const fetchSummary = async () => {
-    if (
-      !authContext ||
-      !authContext.user?.user?.id ||
-      !authContext.isLoggedIn
-    ) {
+    if (!authContext || !authContext.user?.id || !authContext.isLoggedIn) {
       if (!authContext?.isLoadingUser) {
         toast.error("User not authenticated or session has expired.");
         setLoading(false);
@@ -96,118 +91,112 @@ const ValidatorSummaryPage: React.FC = () => {
         </div>
       )}
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-start">
-        <DancingBot state="greeting" className="w-full max-w-[600px] mx-auto" />
+      <div className="max-w-4xl mx-auto p-6">
+        <div className="mb-6">
+          <h1 className="text-2xl font-bold text-foreground text-center">
+            Review Summary
+          </h1>
+          <p className="text-muted-foreground mt-2 text-center">
+            Your review has been submitted successfully.
+          </p>
+        </div>
 
-        <div>
-          <div className="mb-6">
-            <h1 className="text-2xl font-bold text-foreground">
-              Review Summary
-            </h1>
-            <p className="text-muted-foreground mt-2">
-              Your review has been submitted successfully.
-            </p>
-          </div>
+        <Card className="bg-card text-card-foreground shadow-md">
+          <CardContent className="p-6 space-y-4">
+            {summary && (
+              <>
+                <div className="flex items-center justify-between">
+                  <h3 className="text-sm font-semibold text-muted-foreground">
+                    Status
+                  </h3>
+                  <Badge
+                    variant={getDecisionBadgeVariant(summary.decision)}
+                    className="capitalize"
+                  >
+                    {summary.decision.replace("_", " ")}
+                  </Badge>
+                </div>
 
-          <Card className="bg-card text-card-foreground shadow-md">
-            <CardContent className="p-6 space-y-4">
-              {summary && (
-                <>
-                  <div className="flex items-center justify-between">
-                    <h3 className="text-sm font-semibold text-muted-foreground">
-                      Status
-                    </h3>
-                    <Badge
-                      variant={getDecisionBadgeVariant(summary.decision)}
-                      className="capitalize"
-                    >
-                      {summary.decision.replace("_", " ")}
-                    </Badge>
-                  </div>
+                <div>
+                  <h3 className="text-sm font-semibold text-muted-foreground">
+                    Document Title
+                  </h3>
+                  <p className="text-lg text-foreground">{summary.title}</p>
+                </div>
 
-                  <div>
-                    <h3 className="text-sm font-semibold text-muted-foreground">
-                      Document Title
-                    </h3>
-                    <p className="text-lg text-foreground">{summary.title}</p>
-                  </div>
+                <div>
+                  <h3 className="text-sm font-semibold text-muted-foreground">
+                    Author
+                  </h3>
+                  <p className="text-lg text-foreground">{summary.author}</p>
+                </div>
 
-                  <div>
-                    <h3 className="text-sm font-semibold text-muted-foreground">
-                      Author
-                    </h3>
-                    <p className="text-lg text-foreground">{summary.author}</p>
-                  </div>
+                <div>
+                  <h3 className="text-sm font-semibold text-muted-foreground">
+                    Description
+                  </h3>
+                  <p className="text-lg text-foreground">
+                    {summary.description}
+                  </p>
+                </div>
 
-                  <div>
-                    <h3 className="text-sm font-semibold text-muted-foreground">
-                      Description
-                    </h3>
-                    <p className="text-lg text-foreground">
-                      {summary.description}
-                    </p>
-                  </div>
+                <div className="border-t border-border pt-4">
+                  <h2 className="text-xl font-bold mb-4 text-foreground">
+                    Your Review
+                  </h2>
 
-                  <div className="border-t border-border pt-4">
-                    <h2 className="text-xl font-bold mb-4 text-foreground">
-                      Your Review
-                    </h2>
+                  <div className="space-y-4">
+                    <div>
+                      <h3 className="text-sm font-semibold text-muted-foreground">
+                        Decision
+                      </h3>
+                      <p className="text-lg capitalize text-foreground">
+                        {summary.decision.replace("_", " ")}
+                      </p>
+                    </div>
 
-                    <div className="space-y-4">
+                    {summary.comments && (
                       <div>
                         <h3 className="text-sm font-semibold text-muted-foreground">
-                          Decision
-                        </h3>
-                        <p className="text-lg capitalize text-foreground">
-                          {summary.decision.replace("_", " ")}
-                        </p>
-                      </div>
-
-                      {summary.comments && (
-                        <div>
-                          <h3 className="text-sm font-semibold text-muted-foreground">
-                            Comments
-                          </h3>
-                          <p className="text-lg text-foreground">
-                            {summary.comments}
-                          </p>
-                        </div>
-                      )}
-
-                      <div>
-                        <h3 className="text-sm font-semibold text-muted-foreground">
-                          Reviewed By
+                          Comments
                         </h3>
                         <p className="text-lg text-foreground">
-                          {summary.reviewedBy}
+                          {summary.comments}
                         </p>
                       </div>
+                    )}
 
-                      <div>
-                        <h3 className="text-sm font-semibold text-muted-foreground">
-                          Reviewed At
-                        </h3>
-                        <p className="text-lg text-foreground">
-                          {new Date(summary.reviewedAt).toLocaleString()}
-                        </p>
-                      </div>
+                    <div>
+                      <h3 className="text-sm font-semibold text-muted-foreground">
+                        Reviewed By
+                      </h3>
+                      <p className="text-lg text-foreground">
+                        {summary.reviewedBy}
+                      </p>
+                    </div>
+
+                    <div>
+                      <h3 className="text-sm font-semibold text-muted-foreground">
+                        Reviewed At
+                      </h3>
+                      <p className="text-lg text-foreground">
+                        {new Date(summary.reviewedAt).toLocaleString()}
+                      </p>
                     </div>
                   </div>
-                </>
-              )}
-            </CardContent>
-          </Card>
+                </div>
+              </>
+            )}
+          </CardContent>
+        </Card>
 
-          <div className="mt-6 flex justify-end">
-            <Button
-              onClick={() =>
-                navigate("/applications/console/ValidatorStartPage")
-              }
-              size="lg"
-            >
-              Back to Documents
-            </Button>
-          </div>
+        <div className="mt-6 flex justify-end">
+          <Button
+            onClick={() => navigate("/applications/console/ValidatorStartPage")}
+            size="lg"
+          >
+            Back to Documents
+          </Button>
         </div>
       </div>
     </div>

@@ -6,7 +6,6 @@ import { Button } from "@/components/ui/button";
 import { TextField } from "@/components/forms/text-field";
 import { CheckBox } from "@/components/forms/checkbox";
 import { Loader } from "@/components/feedback/loader";
-import { DancingBot } from "@/components/media/dancing-bot";
 import { Card } from "@/components/ui/card";
 import { SegmentTabs } from "@/components/layout/segment-tabs";
 import { useAuthContext } from "@/hooks/useAuthContext";
@@ -80,7 +79,7 @@ const UserDirectoryPage: React.FC = () => {
 
     try {
       setLoading(true);
-      const userId = authContext?.user?.user?.id;
+      const userId = authContext?.user?.id;
 
       const roles: string[] = [];
       if (userData.isAdmin) roles.push("Administrator");
@@ -138,11 +137,11 @@ const UserDirectoryPage: React.FC = () => {
         </div>
       )}
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-start">
-        <DancingBot state="greeting" className="w-full max-w-[600px] mx-auto" />
-
+      <div className="max-w-4xl mx-auto p-6">
         <div>
-          <h1 className="text-2xl font-bold mb-6">User Directory</h1>
+          <h1 className="text-2xl font-bold mb-6 text-center">
+            User Directory
+          </h1>
 
           <SegmentTabs
             tabs={tabs}
@@ -266,9 +265,11 @@ const UserDirectoryPage: React.FC = () => {
                 Upload a CSV file to import multiple users at once.
               </p>
               <input type="file" accept=".csv" className="mb-4" />
-              <Button className="bg-[#e66334] hover:bg-[#FF8234]" size="lg">
-                Import
-              </Button>
+              <div className="flex justify-end">
+                <Button className="bg-[#e66334] hover:bg-[#FF8234]" size="lg">
+                  Import
+                </Button>
+              </div>
             </Card>
           )}
         </div>

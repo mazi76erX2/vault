@@ -1,19 +1,16 @@
 import React from "react";
-import { DancingBot } from "@/components/media/dancing-bot";
 
 const MaintenancePage: React.FC = () => (
-  <div className="grid grid-cols-1 lg:grid-cols-2 gap-5 p-5 min-h-[80vh] items-center">
-    <div className="flex justify-center items-center">
-      <DancingBot state="thinking" className="w-full max-w-[600px] h-[600px]" />
-    </div>
-
-    <div className="flex justify-center items-center">
-      <h1 className="text-4xl font-bold text-center text-foreground">
-        Oops!
-        <br />
-        Under Maintenance
-      </h1>
-    </div>
+  <div className="flex flex-col items-center justify-center min-h-[60vh] p-8 text-center max-w-4xl mx-auto">
+    <h1 className="text-4xl font-bold text-foreground">
+      Oops!
+      <br />
+      Under Maintenance
+    </h1>
+    <p className="text-xl text-muted-foreground mt-4 max-w-lg">
+      We're working hard to bring you something amazing. Please check back
+      later!
+    </p>
   </div>
 );
 

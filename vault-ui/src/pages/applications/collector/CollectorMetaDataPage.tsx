@@ -3,7 +3,6 @@ import { useNavigate, useLocation } from "react-router-dom";
 import { toast } from "sonner";
 import { AxiosError } from "axios";
 import { useAuthContext } from "@/hooks/useAuthContext";
-import { DancingBot } from "@/components/media/dancing-bot";
 import { Button } from "@/components/ui/button";
 import { Loader } from "@/components/feedback/loader";
 import { Input } from "@/components/ui/input";
@@ -146,18 +145,15 @@ const CollectorMetaDataPage: React.FC = () => {
         </div>
       )}
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-start">
-        <DancingBot state="greeting" className="w-full max-w-[600px] mx-auto" />
-
-        <div>
-          <div className="mb-6">
-            <h1 className="text-2xl font-bold text-foreground">
-              Document Details
-            </h1>
-            <p className="text-muted-foreground mt-2">
-              Please provide additional information about the document.
-            </p>
-          </div>
+      <div className="max-w-xl mx-auto p-6 space-y-6">
+        <div className="mb-6 text-center">
+          <h1 className="text-2xl font-bold text-foreground">
+            Document Details
+          </h1>
+          <p className="text-muted-foreground mt-2">
+            Please provide additional information about the document.
+          </p>
+        </div>
 
           <div className="bg-card text-card-foreground p-6 rounded-lg shadow-md border border-border space-y-6">
             <div className="space-y-2">

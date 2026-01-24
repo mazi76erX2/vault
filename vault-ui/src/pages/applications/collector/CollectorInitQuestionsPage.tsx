@@ -6,7 +6,6 @@ import { AxiosError } from "axios";
 import { ArrowRight, Upload, Sparkles } from "lucide-react";
 import type { ColumnDef } from "@tanstack/react-table";
 import { useAuthContext } from "@/hooks/useAuthContext";
-import { DancingBot } from "@/components/media/dancing-bot";
 import { DataTable } from "@/components/data-display/data-table";
 import { Button } from "@/components/ui/button";
 import { Loader } from "@/components/feedback/loader";
@@ -82,7 +81,7 @@ const CollectorInitQuestionsPage: React.FC = () => {
   }, [authContext, project]);
 
   const fetchQuestions = async () => {
-    if (!authContext || !authContext.user?.user?.user?.id) {
+    if (!authContext || !authContext.user?.id) {
       if (!authContext?.isLoadingUser) {
         toast.error("User not authenticated or session has expired.");
       }
@@ -94,7 +93,7 @@ const CollectorInitQuestionsPage: React.FC = () => {
       setLoading(true);
       const response = await Api.post<GetQuestionsResponse>(
         "/api/v1/collector/get-questions",
-        { user_id: authContext.user.user.user.id },
+        { user_id: authContext.user.id },
       );
 
       if (!response.data) {
@@ -149,7 +148,7 @@ const CollectorInitQuestionsPage: React.FC = () => {
   };
 
   const generateQuestions = async () => {
-    if (!authContext || !authContext.user?.user?.user?.id) {
+    if (!authContext || !authContext.user?.id) {
       if (!authContext?.isLoadingUser) {
         toast.error("User not authenticated or session has expired.");
       }
@@ -160,7 +159,7 @@ const CollectorInitQuestionsPage: React.FC = () => {
       setLoading(true);
       const response = await Api.post<GenerateQuestionsResponse>(
         "/api/v1/collector/generate_questions",
-        { user_id: authContext.user.user.user.id },
+        { user_id: authContext.user.id },
       );
 
       if (!response.data.questions) {
@@ -197,7 +196,7 @@ const CollectorInitQuestionsPage: React.FC = () => {
   const handleFileChange = async (
     event: React.ChangeEvent<HTMLInputElement>,
   ) => {
-    if (!authContext || !authContext.user?.user?.user?.id) {
+    if (!authContext || !authContext.user?.id) {
       if (!authContext?.isLoadingUser) {
         toast.error("User not authenticated or session has expired.");
       }
@@ -232,18 +231,13 @@ const CollectorInitQuestionsPage: React.FC = () => {
             },
           );
 
-          if (
-            !authContext ||
-            !authContext.user ||
-            !authContext.user.user ||
-            !authContext.user.user.user.id
-          ) {
+          if (!authContext || !authContext.user || !authContext.user.id) {
             toast.error("User not authenticated or user ID is missing.");
             return;
           }
 
           const response = await Api.post("/api/v1/collector/init_questions", {
-            user_id: authContext.user.user.user.id,
+            user_id: authContext.user.id,
             questions: questionStrings,
           });
 
@@ -271,8 +265,7 @@ const CollectorInitQuestionsPage: React.FC = () => {
   const handleStartChat = async (question: QuestionRowData) => {
     if (!authContext || authContext.isLoadingUser) return;
 
-    const currentUserId =
-      authContext.user?.user?.user?.id ?? authContext.user?.user?.user?.id;
+    const currentUserId = authContext.user?.id;
 
     if (!currentUserId) {
       toast.error("User not authenticated or session has expired.");
@@ -356,11 +349,9 @@ const CollectorInitQuestionsPage: React.FC = () => {
         </div>
       )}
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-start">
-        <DancingBot state="idling" className="w-full max-w-[600px] mx-auto" />
-
+      <div className="max-w-4xl mx-auto p-6">
         <div>
-          <div className="mb-6">
+          <div className="mb-6 text-center">
             <h1 className="text-2xl font-bold text-foreground">Super!</h1>
             <p className="text-muted-foreground mt-2">
               Pick a question to start

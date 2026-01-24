@@ -4,10 +4,14 @@ import {
   login as apiLogin,
   logout as apiLogout,
 } from "../services/auth/Auth.service";
-import { LoginRequestDTO, LoginResponseDTO } from "../types/LoginResponseDTO";
+import {
+  LoginRequestDTO,
+  LoginResponseDTO,
+  FlattenedUser,
+} from "../types/LoginResponseDTO";
 
 interface AuthState {
-  user: LoginResponseDTO | null;
+  user: FlattenedUser | null;
   isLoggedIn: boolean;
   isLoadingUser: boolean;
   error: string | null;
@@ -31,22 +35,30 @@ const initialState: AuthState = {
 type AuthAction =
   | {
       type: "LOGIN_SUCCESS";
-      payload: { user: LoginResponseDTO; roles: string[] };
+      payload: { user: FlattenedUser; roles: string[] };
     }
   | { type: "LOGIN_FAILURE"; payload: string }
   | { type: "LOGOUT" }
-  | { type: "SET_USER"; payload: { user: LoginResponseDTO; roles: string[] } }
+  | { type: "SET_USER"; payload: { user: FlattenedUser; roles: string[] } }
   | { type: "SET_LOADING"; payload: boolean }
   | { type: "SET_ROLES"; payload: string[] };
 
-const extractRolesFromResponse = (
-  response: LoginResponseDTO | null
-): string[] => {
-  if (!response) return [];
-  if (response.user && Array.isArray(response.user.roles)) {
-    return response.user.roles;
-  }
-  return [];
+const flattenUserResponse = (response: LoginResponseDTO): FlattenedUser => {
+  return {
+    id: response.user.user.id,
+    email: response.user.user.email,
+    email_confirmed: response.user.user.email_confirmed,
+    full_name: response.user.profile.full_name,
+    username: response.user.profile.username,
+    telephone: response.user.profile.telephone,
+    company_id: response.user.profile.company_id,
+    company_name: response.user.profile.company_name,
+    company_reg_no: response.user.profile.company_reg_no,
+    department: response.user.profile.department,
+    user_access: response.user.profile.user_access,
+    status: response.user.profile.status,
+    roles: response.user.roles,
+  };
 };
 
 const authReducer = (state: AuthState, action: AuthAction): AuthState => {
@@ -98,7 +110,7 @@ const authReducer = (state: AuthState, action: AuthAction): AuthState => {
 };
 
 export const AuthContext = createContext<AuthContextType | undefined>(
-  undefined
+  undefined,
 );
 
 interface AuthProviderProps {
@@ -109,10 +121,23 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const [state, dispatch] = useReducer(authReducer, initialState);
 
   useEffect(() => {
-    const storedUser = getCurrentUser();
-    if (storedUser) {
-      const roles = extractRolesFromResponse(storedUser);
-      dispatch({ type: "SET_USER", payload: { user: storedUser, roles } });
+    const rawUser = getCurrentUser();
+    if (rawUser && (rawUser as any).access_token) {
+      // It's a full LoginResponseDTO or similar
+      const flattened = flattenUserResponse(
+        rawUser as unknown as LoginResponseDTO,
+      );
+      dispatch({
+        type: "SET_USER",
+        payload: { user: flattened, roles: flattened.roles },
+      });
+    } else if (rawUser && (rawUser as any).id) {
+      // It's already flattened (from a previous session after our fix)
+      const flattened = rawUser as unknown as FlattenedUser;
+      dispatch({
+        type: "SET_USER",
+        payload: { user: flattened, roles: flattened.roles },
+      });
     } else {
       dispatch({ type: "SET_LOADING", payload: false });
     }
@@ -122,11 +147,11 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     try {
       dispatch({ type: "SET_LOADING", payload: true });
       const userData = await apiLogin(loginData);
-      const roles = extractRolesFromResponse(userData);
+      const flattened = flattenUserResponse(userData);
 
       dispatch({
         type: "LOGIN_SUCCESS",
-        payload: { user: userData, roles },
+        payload: { user: flattened, roles: flattened.roles },
       });
 
       await new Promise((resolve) => setTimeout(resolve, 100));

@@ -3,7 +3,6 @@ import { useNavigate, useLocation } from "react-router-dom";
 import { toast } from "sonner";
 import { AxiosError } from "axios";
 import { useAuthContext } from "@/hooks/useAuthContext";
-import { DancingBot } from "@/components/media/dancing-bot";
 import { TextField } from "@/components/forms/text-field";
 import { Button } from "@/components/ui/button";
 import { Loader } from "@/components/feedback/loader";
@@ -43,9 +42,9 @@ const ExpertDocPage: React.FC = () => {
   const { document } = (location.state as LocationState) || {};
 
   const decisionOptions = [
-    { value: "approve", label: "Approve" },
-    { value: "reject", label: "Reject" },
-    { value: "request_changes", label: "Request Changes" },
+    { id: "approve", label: "Approve" },
+    { id: "reject", label: "Reject" },
+    { id: "request_changes", label: "Request Changes" },
   ];
 
   useEffect(() => {
@@ -58,11 +57,7 @@ const ExpertDocPage: React.FC = () => {
   }, [document]);
 
   const fetchDocumentDetails = async (docId: string) => {
-    if (
-      !authContext ||
-      !authContext.user?.user?.id ||
-      !authContext.isLoggedIn
-    ) {
+    if (!authContext || !authContext.user?.id || !authContext.isLoggedIn) {
       if (!authContext?.isLoadingUser) {
         toast.error("User not authenticated or session has expired.");
       }
@@ -123,112 +118,110 @@ const ExpertDocPage: React.FC = () => {
         </div>
       )}
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-start">
-        <DancingBot state="idling" className="w-full max-w-[600px] mx-auto" />
+      <div className="max-w-4xl mx-auto p-6">
+        <div className="mb-6">
+          <h1 className="text-2xl font-bold text-foreground text-center">
+            Expert Review
+          </h1>
+          {document && (
+            <p className="text-muted-foreground mt-2 text-center">
+              Document:{" "}
+              <span className="font-semibold text-foreground">
+                {document.title}
+              </span>
+            </p>
+          )}
+        </div>
 
-        <div>
-          <div className="mb-6">
-            <h1 className="text-2xl font-bold text-foreground">
-              Expert Review
-            </h1>
-            {document && (
-              <p className="text-muted-foreground mt-2">
-                Document:{" "}
-                <span className="font-semibold text-foreground">
-                  {document.title}
-                </span>
-              </p>
-            )}
-          </div>
+        <Card className="bg-card text-card-foreground shadow-md mb-6">
+          <CardContent className="p-6 space-y-6">
+            {documentData && (
+              <>
+                <div>
+                  <h3 className="text-sm font-semibold text-muted-foreground">
+                    Title
+                  </h3>
+                  <p className="text-lg text-foreground">
+                    {documentData.title}
+                  </p>
+                </div>
 
-          <Card className="bg-card text-card-foreground shadow-md mb-6">
-            <CardContent className="p-6 space-y-6">
-              {documentData && (
-                <>
-                  <div>
-                    <h3 className="text-sm font-semibold text-muted-foreground">
-                      Title
-                    </h3>
-                    <p className="text-lg text-foreground">
-                      {documentData.title}
+                <div>
+                  <h3 className="text-sm font-semibold text-muted-foreground">
+                    Author
+                  </h3>
+                  <p className="text-lg text-foreground">
+                    {documentData.author}
+                  </p>
+                </div>
+
+                <div>
+                  <h3 className="text-sm font-semibold text-muted-foreground">
+                    Description
+                  </h3>
+                  <p className="text-lg text-foreground">
+                    {documentData.description}
+                  </p>
+                </div>
+
+                <div>
+                  <h3 className="text-sm font-semibold text-muted-foreground">
+                    Content
+                  </h3>
+                  <div className="bg-muted/20 border border-border p-4 rounded mt-2 max-h-[300px] overflow-y-auto">
+                    <p className="whitespace-pre-wrap text-foreground">
+                      {documentData.content}
                     </p>
                   </div>
+                </div>
 
-                  <div>
-                    <h3 className="text-sm font-semibold text-muted-foreground">
-                      Author
-                    </h3>
-                    <p className="text-lg text-foreground">
-                      {documentData.author}
-                    </p>
-                  </div>
+                <div className="border-t border-border pt-4">
+                  <h2 className="text-xl font-bold mb-4 text-foreground text-center">
+                    Validator Review
+                  </h2>
 
-                  <div>
-                    <h3 className="text-sm font-semibold text-muted-foreground">
-                      Description
-                    </h3>
-                    <p className="text-lg text-foreground">
-                      {documentData.description}
-                    </p>
-                  </div>
+                  <div className="space-y-4">
+                    <div>
+                      <h3 className="text-sm font-semibold text-muted-foreground">
+                        Decision
+                      </h3>
+                      <p className="text-lg capitalize text-foreground">
+                        {documentData.validatorDecision}
+                      </p>
+                    </div>
 
-                  <div>
-                    <h3 className="text-sm font-semibold text-muted-foreground">
-                      Content
-                    </h3>
-                    <div className="bg-muted/20 border border-border p-4 rounded mt-2 max-h-[300px] overflow-y-auto">
-                      <p className="whitespace-pre-wrap text-foreground">
-                        {documentData.content}
+                    {documentData.validatorComments && (
+                      <div>
+                        <h3 className="text-sm font-semibold text-muted-foreground">
+                          Comments
+                        </h3>
+                        <p className="text-lg text-foreground">
+                          {documentData.validatorComments}
+                        </p>
+                      </div>
+                    )}
+
+                    <div>
+                      <h3 className="text-sm font-semibold text-muted-foreground">
+                        Reviewed By
+                      </h3>
+                      <p className="text-lg text-foreground">
+                        {documentData.validatorReviewedBy}
                       </p>
                     </div>
                   </div>
+                </div>
+              </>
+            )}
+          </CardContent>
+        </Card>
 
-                  <div className="border-t border-border pt-4">
-                    <h2 className="text-xl font-bold mb-4 text-foreground">
-                      Validator Review
-                    </h2>
+        <div className="bg-card text-card-foreground p-6 rounded-lg shadow-md border border-border space-y-6 text-center">
+          <h2 className="text-xl font-bold text-foreground">
+            Your Expert Review
+          </h2>
 
-                    <div className="space-y-4">
-                      <div>
-                        <h3 className="text-sm font-semibold text-muted-foreground">
-                          Decision
-                        </h3>
-                        <p className="text-lg capitalize text-foreground">
-                          {documentData.validatorDecision}
-                        </p>
-                      </div>
-
-                      {documentData.validatorComments && (
-                        <div>
-                          <h3 className="text-sm font-semibold text-muted-foreground">
-                            Comments
-                          </h3>
-                          <p className="text-lg text-foreground">
-                            {documentData.validatorComments}
-                          </p>
-                        </div>
-                      )}
-
-                      <div>
-                        <h3 className="text-sm font-semibold text-muted-foreground">
-                          Reviewed By
-                        </h3>
-                        <p className="text-lg text-foreground">
-                          {documentData.validatorReviewedBy}
-                        </p>
-                      </div>
-                    </div>
-                  </div>
-                </>
-              )}
-            </CardContent>
-          </Card>
-
-          <div className="bg-card text-card-foreground p-6 rounded-lg shadow-md border border-border space-y-6">
-            <h2 className="text-xl font-bold text-foreground">
-              Your Expert Review
-            </h2>
-
+          <div className="flex justify-center">
             <RadioGroup
               label="Decision"
               options={decisionOptions}
@@ -236,29 +229,29 @@ const ExpertDocPage: React.FC = () => {
               onChange={setDecision}
               required
             />
-
-            <TextField
-              label="Comments"
-              value={comments}
-              onChange={(e) => setComments(e.target.value)}
-              placeholder="Add your expert review comments..."
-              multiline
-              rows={4}
-            />
           </div>
 
-          <div className="mt-6 flex justify-end gap-4">
-            <Button variant="outline" onClick={() => navigate(-1)} size="lg">
-              Back
-            </Button>
-            <Button
-              onClick={handleSubmit}
-              disabled={loading || !decision}
-              size="lg"
-            >
-              Submit Expert Review
-            </Button>
-          </div>
+          <TextField
+            label="Comments"
+            value={comments}
+            onChange={(e) => setComments(e.target.value)}
+            placeholder="Add your expert review comments..."
+            multiline
+            rows={4}
+          />
+        </div>
+
+        <div className="mt-6 flex justify-end gap-4">
+          <Button variant="outline" onClick={() => navigate(-1)} size="lg">
+            Back
+          </Button>
+          <Button
+            onClick={handleSubmit}
+            disabled={loading || !decision}
+            size="lg"
+          >
+            Submit Expert Review
+          </Button>
         </div>
       </div>
     </div>

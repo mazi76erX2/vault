@@ -19,7 +19,7 @@ interface OrganisationDetails {
 }
 
 const OrganisationDetailsPage: React.FC = () => {
-  const [activeTab, setActiveTab] = useState(0);
+  const [activeTab, setActiveTab] = useState("0");
   const [loading, setLoading] = useState(false);
   const authContext = useAuthContext();
 
@@ -33,13 +33,13 @@ const OrganisationDetailsPage: React.FC = () => {
   });
 
   const tabs = [
-    { label: "Details", value: 0 },
-    { label: "License", value: 1 },
+    { label: "Details", value: "0", content: <div /> },
+    { label: "License", value: "1", content: <div /> },
   ];
 
   useEffect(() => {
-    if (authContext?.user?.user?.id) {
-      fetchCompanyContactDetails(authContext.user.user.id);
+    if (authContext?.user?.id) {
+      fetchCompanyContactDetails(authContext.user.id);
     }
   }, [authContext?.user]);
 
@@ -79,7 +79,7 @@ const OrganisationDetailsPage: React.FC = () => {
 
     try {
       setLoading(true);
-      const userId = authContext?.user?.user?.id;
+      const userId = authContext?.user?.id;
 
       await Api.post("/api/v1/companies/updatecompanycontactdetails", {
         userid: userId,
@@ -102,8 +102,8 @@ const OrganisationDetailsPage: React.FC = () => {
   };
 
   const handleReset = () => {
-    if (authContext?.user?.user?.id) {
-      fetchCompanyContactDetails(authContext.user.user.id);
+    if (authContext?.user?.id) {
+      fetchCompanyContactDetails(authContext.user.id);
     }
   };
 
@@ -118,13 +118,13 @@ const OrganisationDetailsPage: React.FC = () => {
       <SegmentTabs
         tabs={tabs}
         value={activeTab}
-        onChange={setActiveTab}
+        onValueChange={setActiveTab}
         className="mb-6"
       />
 
       <form onSubmit={handleSubmit}>
         <Card className="bg-[#d3d3d3] p-6 shadow-md">
-          {activeTab === 0 && (
+          {activeTab === "0" && (
             <div className="space-y-6">
               <h3 className="text-xl font-bold mb-4">
                 Organisation Contact Details
@@ -191,7 +191,7 @@ const OrganisationDetailsPage: React.FC = () => {
             </div>
           )}
 
-          {activeTab === 1 && (
+          {activeTab === "1" && (
             <div className="space-y-6">
               <h3 className="text-xl font-bold mb-4">License Information</h3>
               <p className="text-gray-600">

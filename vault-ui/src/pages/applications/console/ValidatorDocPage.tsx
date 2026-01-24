@@ -3,7 +3,6 @@ import { useNavigate, useLocation } from "react-router-dom";
 import { toast } from "sonner";
 import { AxiosError } from "axios";
 import { useAuthContext } from "@/hooks/useAuthContext";
-import { DancingBot } from "@/components/media/dancing-bot";
 import { TextField } from "@/components/forms/text-field";
 import { Button } from "@/components/ui/button";
 import { Loader } from "@/components/feedback/loader";
@@ -40,9 +39,9 @@ const ValidatorDocPage: React.FC = () => {
   const { document } = (location.state as LocationState) || {};
 
   const decisionOptions = [
-    { value: "approve", label: "Approve" },
-    { value: "reject", label: "Reject" },
-    { value: "expert_review", label: "Send to Expert Review" },
+    { id: "approve", label: "Approve" },
+    { id: "reject", label: "Reject" },
+    { id: "expert_review", label: "Send to Expert Review" },
   ];
 
   useEffect(() => {
@@ -55,11 +54,7 @@ const ValidatorDocPage: React.FC = () => {
   }, [document]);
 
   const fetchDocumentDetails = async (docId: string) => {
-    if (
-      !authContext ||
-      !authContext.user?.user?.id ||
-      !authContext.isLoggedIn
-    ) {
+    if (!authContext || !authContext.user?.id || !authContext.isLoggedIn) {
       if (!authContext?.isLoadingUser) {
         toast.error("User not authenticated or session has expired.");
       }
@@ -122,101 +117,97 @@ const ValidatorDocPage: React.FC = () => {
         </div>
       )}
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-start">
-        <DancingBot state="idling" className="w-full max-w-[600px] mx-auto" />
+      <div className="max-w-4xl mx-auto p-6">
+        <div className="mb-6">
+          <h1 className="text-2xl font-bold text-foreground text-center">
+            Validate Document
+          </h1>
+          {document && (
+            <p className="text-muted-foreground mt-2 text-center">
+              Document:{" "}
+              <span className="font-semibold text-foreground">
+                {document.title}
+              </span>
+            </p>
+          )}
+        </div>
 
-        <div>
-          <div className="mb-6">
-            <h1 className="text-2xl font-bold text-foreground">
-              Validate Document
-            </h1>
-            {document && (
-              <p className="text-muted-foreground mt-2">
-                Document:{" "}
-                <span className="font-semibold text-foreground">
-                  {document.title}
-                </span>
-              </p>
+        <Card className="bg-card text-card-foreground shadow-md mb-6">
+          <CardContent className="p-6 space-y-6">
+            {documentData && (
+              <>
+                <div>
+                  <h3 className="text-sm font-semibold text-muted-foreground">
+                    Title
+                  </h3>
+                  <p className="text-lg text-foreground">
+                    {documentData.title}
+                  </p>
+                </div>
+
+                <div>
+                  <h3 className="text-sm font-semibold text-muted-foreground">
+                    Author
+                  </h3>
+                  <p className="text-lg text-foreground">
+                    {documentData.author}
+                  </p>
+                </div>
+
+                <div>
+                  <h3 className="text-sm font-semibold text-muted-foreground">
+                    Description
+                  </h3>
+                  <p className="text-lg text-foreground">
+                    {documentData.description}
+                  </p>
+                </div>
+
+                <div>
+                  <h3 className="text-sm font-semibold text-muted-foreground">
+                    Content
+                  </h3>
+                  <div className="bg-muted/20 border border-border p-4 rounded mt-2 max-h-[300px] overflow-y-auto">
+                    <p className="whitespace-pre-wrap text-foreground">
+                      {documentData.content}
+                    </p>
+                  </div>
+                </div>
+              </>
             )}
-          </div>
+          </CardContent>
+        </Card>
 
-          <Card className="bg-card text-card-foreground shadow-md mb-6">
-            <CardContent className="p-6 space-y-6">
-              {documentData && (
-                <>
-                  <div>
-                    <h3 className="text-sm font-semibold text-muted-foreground">
-                      Title
-                    </h3>
-                    <p className="text-lg text-foreground">
-                      {documentData.title}
-                    </p>
-                  </div>
+        <div className="bg-card text-card-foreground p-6 rounded-lg shadow-md border border-border space-y-6">
+          <RadioGroup
+            label="Decision"
+            options={decisionOptions}
+            value={decision}
+            onChange={setDecision}
+            required
+          />
 
-                  <div>
-                    <h3 className="text-sm font-semibold text-muted-foreground">
-                      Author
-                    </h3>
-                    <p className="text-lg text-foreground">
-                      {documentData.author}
-                    </p>
-                  </div>
+          <TextField
+            label="Comments"
+            value={comments}
+            onChange={(e) => setComments(e.target.value)}
+            placeholder="Add your review comments..."
+            multiline
+            rows={4}
+          />
+        </div>
 
-                  <div>
-                    <h3 className="text-sm font-semibold text-muted-foreground">
-                      Description
-                    </h3>
-                    <p className="text-lg text-foreground">
-                      {documentData.description}
-                    </p>
-                  </div>
-
-                  <div>
-                    <h3 className="text-sm font-semibold text-muted-foreground">
-                      Content
-                    </h3>
-                    <div className="bg-muted/20 border border-border p-4 rounded mt-2 max-h-[300px] overflow-y-auto">
-                      <p className="whitespace-pre-wrap text-foreground">
-                        {documentData.content}
-                      </p>
-                    </div>
-                  </div>
-                </>
-              )}
-            </CardContent>
-          </Card>
-
-          <div className="bg-card text-card-foreground p-6 rounded-lg shadow-md border border-border space-y-6">
-            <RadioGroup
-              label="Decision"
-              options={decisionOptions}
-              value={decision}
-              onChange={setDecision}
-              required
-            />
-
-            <TextField
-              label="Comments"
-              value={comments}
-              onChange={(e) => setComments(e.target.value)}
-              placeholder="Add your review comments..."
-              multiline
-              rows={4}
-            />
-          </div>
-
-          <div className="mt-6 flex justify-end gap-4">
-            <Button variant="outline" onClick={() => navigate(-1)} size="lg">
-              Back
-            </Button>
-            <Button
-              onClick={handleSubmit}
-              disabled={loading || !decision}
-              size="lg"
-            >
-              Submit Review
-            </Button>
-          </div>
+        <div className="mt-6 flex justify-end gap-4">
+          <Button variant="outline" onClick={() => navigate(-1)} size="lg">
+            Back
+          </Button>
+          <Button
+            onClick={handleSubmit}
+            disabled={loading || !decision}
+            size="lg"
+          >
+            Submit Review
+          </Button>
         </div>
       </div>
     </div>

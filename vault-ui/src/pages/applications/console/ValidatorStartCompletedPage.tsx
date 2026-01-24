@@ -3,7 +3,6 @@ import { useNavigate, useLocation } from "react-router-dom";
 import { toast } from "sonner";
 import { AxiosError } from "axios";
 import { useAuthContext } from "@/hooks/useAuthContext";
-import { DancingBot } from "@/components/media/dancing-bot";
 import { Button } from "@/components/ui/button";
 import { Loader } from "@/components/feedback/loader";
 import { Card, CardContent } from "@/components/ui/card";
@@ -49,11 +48,7 @@ const ValidatorStartCompletedPage: React.FC = () => {
   }, [document]);
 
   const fetchDocumentDetails = async (docId: string) => {
-    if (
-      !authContext ||
-      !authContext.user?.user?.id ||
-      !authContext.isLoggedIn
-    ) {
+    if (!authContext || !authContext.user?.id || !authContext.isLoggedIn) {
       if (!authContext?.isLoadingUser) {
         toast.error("User not authenticated or session has expired.");
       }
@@ -86,16 +81,14 @@ const ValidatorStartCompletedPage: React.FC = () => {
         </div>
       )}
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-start">
-        <DancingBot state="idling" className="w-full max-w-[600px] mx-auto" />
-
+      <div className="max-w-4xl mx-auto p-6">
         <div>
           <div className="mb-6">
-            <h1 className="text-2xl font-bold text-foreground">
+            <h1 className="text-2xl font-bold text-foreground text-center">
               Completed Document
             </h1>
             {document && (
-              <p className="text-muted-foreground mt-2">
+              <p className="text-muted-foreground mt-2 text-center">
                 Document:{" "}
                 <span className="font-semibold text-foreground">
                   {document.title}
@@ -146,7 +139,7 @@ const ValidatorStartCompletedPage: React.FC = () => {
                     </div>
                   </div>
 
-                  <div className="border-t border-border pt-4">
+                  <div className="border-t border-border pt-4 text-center">
                     <h2 className="text-xl font-bold mb-4 text-foreground">
                       Review Details
                     </h2>

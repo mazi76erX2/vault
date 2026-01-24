@@ -18,7 +18,6 @@ import {
 import { useAuthContext } from "@/hooks/useAuthContext";
 import Api from "@/services/Instance";
 import { Loader } from "@/components/feedback/loader";
-import { DancingBot } from "@/components/media/dancing-bot";
 
 interface User {
   id: string;
@@ -87,7 +86,7 @@ const OrganisationListPage: React.FC = () => {
         return;
       }
 
-      const companyId = authContext?.user?.user?.profile?.company_id;
+      const companyId = authContext?.user?.id;
 
       console.log("Company ID:", companyId);
 
@@ -109,7 +108,7 @@ const OrganisationListPage: React.FC = () => {
   const fetchDirectoryUsers = async () => {
     try {
       setLoading(true);
-      const companyId = authContext?.user?.user?.profile?.company_id;
+      const companyId = authContext?.user?.id;
       const response = await Api.get(`/api/ldap/directory/users/${companyId}`);
       setDirectoryUsers(response.data || []);
       setShowDirectoryBrowser(true);
@@ -150,7 +149,7 @@ const OrganisationListPage: React.FC = () => {
   const handleSaveUser = async () => {
     try {
       setLoading(true);
-      const companyId = authContext?.user?.profile?.company_id;
+      const companyId = authContext?.user?.id;
 
       if (selectedUser) {
         // Update existing user
@@ -199,7 +198,7 @@ const OrganisationListPage: React.FC = () => {
   const handleImportDirectoryUsers = async () => {
     try {
       setLoading(true);
-      const companyId = authContext?.user?.profile?.company_id;
+      const companyId = authContext?.user?.id;
 
       await Api.post("/api/users/import-directory", {
         companyId,
@@ -231,7 +230,7 @@ const OrganisationListPage: React.FC = () => {
     setSelectedDirectoryUsers((prev) =>
       prev.includes(userId)
         ? prev.filter((id) => id !== userId)
-        : [...prev, userId]
+        : [...prev, userId],
     );
   };
 
@@ -244,263 +243,257 @@ const OrganisationListPage: React.FC = () => {
       )}
 
       <div className="w-full max-w-7xl mx-auto p-5">
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-          <DancingBot state="greeting" className="w-full max-w-[600px]" />
+        <div>
+          <h2 className="text-2xl font-bold mb-5 text-center">
+            USER MANAGEMENT
+          </h2>
 
-          <div>
-            <h2 className="text-2xl font-bold mb-5">USER MANAGEMENT</h2>
+          {!showAddUser && !showDirectoryBrowser && (
+            <>
+              <div className="flex gap-3 mb-6 justify-end">
+                <Button
+                  onClick={fetchDirectoryUsers}
+                  className="bg-[#e66334] hover:bg-[#FF8234]"
+                >
+                  <Users className="w-4 h-4 mr-2" />
+                  Add from Directory
+                </Button>
+                <Button
+                  onClick={handleAddUser}
+                  className="bg-[#e66334] hover:bg-[#FF8234]"
+                >
+                  Add User
+                </Button>
+              </div>
 
-            {!showAddUser && !showDirectoryBrowser && (
-              <>
-                <div className="flex gap-3 mb-6 justify-end">
-                  <Button
-                    onClick={fetchDirectoryUsers}
-                    className="bg-[#e66334] hover:bg-[#FF8234]"
-                  >
-                    <Users className="w-4 h-4 mr-2" />
-                    Add from Directory
-                  </Button>
-                  <Button
-                    onClick={handleAddUser}
-                    className="bg-[#e66334] hover:bg-[#FF8234]"
-                  >
-                    Add User
-                  </Button>
-                </div>
-
-                <Card className="overflow-hidden">
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead>Username</TableHead>
-                        <TableHead>Name</TableHead>
-                        <TableHead>Email</TableHead>
-                        <TableHead>Roles</TableHead>
-                        <TableHead>Actions</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {users.map((user) => (
-                        <TableRow
-                          key={user.id}
-                          className="hover:bg-gray-50 cursor-pointer"
-                          onClick={() => handleEditUser(user)}
-                        >
-                          <TableCell>{user.username}</TableCell>
-                          <TableCell>
-                            {user.firstName} {user.lastName}
-                          </TableCell>
-                          <TableCell>{user.email}</TableCell>
-                          <TableCell>{user.roles.join(", ")}</TableCell>
-                          <TableCell>
-                            <Button
-                              variant="destructive"
-                              size="sm"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                handleDeleteUser(user.id);
-                              }}
-                            >
-                              Delete
-                            </Button>
-                          </TableCell>
-                        </TableRow>
-                      ))}
-                    </TableBody>
-                  </Table>
-                </Card>
-              </>
-            )}
-
-            {showAddUser && (
-              <Card className="p-6 bg-[#d3d3d3]">
-                <h3 className="text-lg font-semibold mb-4">
-                  {selectedUser ? "Edit User" : "Add New User"}
-                </h3>
-
-                <div className="space-y-4">
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <Label className="font-bold">
-                        Username
-                        <span className="text-red-500">*</span>
-                      </Label>
-                      <TextField
-                        value={formData.username}
-                        onChange={(e) =>
-                          setFormData({ ...formData, username: e.target.value })
-                        }
-                      />
-                    </div>
-
-                    <div>
-                      <Label className="font-bold">
-                        Email
-                        <span className="text-red-500">*</span>
-                      </Label>
-                      <TextField
-                        type="email"
-                        value={formData.email}
-                        onChange={(e) =>
-                          setFormData({ ...formData, email: e.target.value })
-                        }
-                      />
-                    </div>
-
-                    <div>
-                      <Label className="font-bold">
-                        First Name
-                        <span className="text-red-500">*</span>
-                      </Label>
-                      <TextField
-                        value={formData.firstName}
-                        onChange={(e) =>
-                          setFormData({
-                            ...formData,
-                            firstName: e.target.value,
-                          })
-                        }
-                      />
-                    </div>
-
-                    <div>
-                      <Label className="font-bold">
-                        Last Name
-                        <span className="text-red-500">*</span>
-                      </Label>
-                      <TextField
-                        value={formData.lastName}
-                        onChange={(e) =>
-                          setFormData({ ...formData, lastName: e.target.value })
-                        }
-                      />
-                    </div>
-
-                    <div className="col-span-2">
-                      <Label className="font-bold">
-                        Password
-                        {!selectedUser && (
-                          <span className="text-red-500">*</span>
-                        )}
-                      </Label>
-                      <TextField
-                        type="password"
-                        value={formData.password}
-                        onChange={(e) =>
-                          setFormData({ ...formData, password: e.target.value })
-                        }
-                        placeholder={
-                          selectedUser ? "Leave blank to keep current" : ""
-                        }
-                      />
-                    </div>
-                  </div>
-
-                  <div className="mt-6">
-                    <h4 className="font-semibold mb-3">Roles</h4>
-                    <div className="flex flex-wrap gap-4">
-                      {availableRoles.map((role) => (
-                        <div key={role} className="flex items-center space-x-2">
-                          <Checkbox
-                            id={role}
-                            checked={formData.roles.includes(role)}
-                            onCheckedChange={() => toggleRole(role)}
-                          />
-                          <Label htmlFor={role}>{role}</Label>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-
-                  <div className="flex justify-end gap-3 mt-8">
-                    <Button
-                      variant="outline"
-                      onClick={() => setShowAddUser(false)}
-                    >
-                      <X className="w-4 h-4 mr-2" />
-                      Cancel
-                    </Button>
-                    <Button
-                      onClick={handleSaveUser}
-                      className="bg-[#e66334] hover:bg-[#FF8234]"
-                    >
-                      <Save className="w-4 h-4 mr-2" />
-                      Save
-                    </Button>
-                  </div>
-                </div>
-              </Card>
-            )}
-
-            {showDirectoryBrowser && (
-              <Card className="p-6 bg-[#d3d3d3]">
-                <h3 className="text-lg font-semibold mb-4">
-                  Import from Directory
-                </h3>
-
-                <div className="overflow-x-auto">
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead className="w-12">
-                          <Checkbox
-                            checked={
-                              selectedDirectoryUsers.length ===
-                              directoryUsers.length
-                            }
-                            onCheckedChange={(checked) => {
-                              setSelectedDirectoryUsers(
-                                checked ? directoryUsers.map((u) => u.id) : []
-                              );
+              <Card className="overflow-hidden">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Username</TableHead>
+                      <TableHead>Name</TableHead>
+                      <TableHead>Email</TableHead>
+                      <TableHead>Roles</TableHead>
+                      <TableHead>Actions</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {users.map((user) => (
+                      <TableRow
+                        key={user.id}
+                        className="hover:bg-gray-50 cursor-pointer"
+                        onClick={() => handleEditUser(user)}
+                      >
+                        <TableCell>{user.username}</TableCell>
+                        <TableCell>
+                          {user.firstName} {user.lastName}
+                        </TableCell>
+                        <TableCell>{user.email}</TableCell>
+                        <TableCell>{user.roles.join(", ")}</TableCell>
+                        <TableCell>
+                          <Button
+                            variant="destructive"
+                            size="sm"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleDeleteUser(user.id);
                             }}
-                          />
-                        </TableHead>
-                        <TableHead>Username</TableHead>
-                        <TableHead>Display Name</TableHead>
-                        <TableHead>Email</TableHead>
+                          >
+                            Delete
+                          </Button>
+                        </TableCell>
                       </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {directoryUsers.map((user) => (
-                        <TableRow key={user.id} className="hover:bg-gray-50">
-                          <TableCell>
-                            <Checkbox
-                              checked={selectedDirectoryUsers.includes(user.id)}
-                              onCheckedChange={() =>
-                                toggleDirectoryUser(user.id)
-                              }
-                            />
-                          </TableCell>
-                          <TableCell>{user.username}</TableCell>
-                          <TableCell>{user.displayName}</TableCell>
-                          <TableCell>{user.email}</TableCell>
-                        </TableRow>
-                      ))}
-                    </TableBody>
-                  </Table>
+                    ))}
+                  </TableBody>
+                </Table>
+              </Card>
+            </>
+          )}
+
+          {showAddUser && (
+            <Card className="p-6 bg-[#d3d3d3] max-w-4xl mx-auto">
+              <h3 className="text-lg font-semibold mb-4">
+                {selectedUser ? "Edit User" : "Add New User"}
+              </h3>
+
+              <div className="space-y-4">
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <Label className="font-bold">
+                      Username
+                      <span className="text-red-500">*</span>
+                    </Label>
+                    <TextField
+                      value={formData.username}
+                      onChange={(e) =>
+                        setFormData({ ...formData, username: e.target.value })
+                      }
+                    />
+                  </div>
+
+                  <div>
+                    <Label className="font-bold">
+                      Email
+                      <span className="text-red-500">*</span>
+                    </Label>
+                    <TextField
+                      type="email"
+                      value={formData.email}
+                      onChange={(e) =>
+                        setFormData({ ...formData, email: e.target.value })
+                      }
+                    />
+                  </div>
+
+                  <div>
+                    <Label className="font-bold">
+                      First Name
+                      <span className="text-red-500">*</span>
+                    </Label>
+                    <TextField
+                      value={formData.firstName}
+                      onChange={(e) =>
+                        setFormData({
+                          ...formData,
+                          firstName: e.target.value,
+                        })
+                      }
+                    />
+                  </div>
+
+                  <div>
+                    <Label className="font-bold">
+                      Last Name
+                      <span className="text-red-500">*</span>
+                    </Label>
+                    <TextField
+                      value={formData.lastName}
+                      onChange={(e) =>
+                        setFormData({ ...formData, lastName: e.target.value })
+                      }
+                    />
+                  </div>
+
+                  <div className="col-span-2">
+                    <Label className="font-bold">
+                      Password
+                      {!selectedUser && <span className="text-red-500">*</span>}
+                    </Label>
+                    <TextField
+                      type="password"
+                      value={formData.password}
+                      onChange={(e) =>
+                        setFormData({ ...formData, password: e.target.value })
+                      }
+                      placeholder={
+                        selectedUser ? "Leave blank to keep current" : ""
+                      }
+                    />
+                  </div>
+                </div>
+
+                <div className="mt-6">
+                  <h4 className="font-semibold mb-3">Roles</h4>
+                  <div className="flex flex-wrap gap-4">
+                    {availableRoles.map((role) => (
+                      <div key={role} className="flex items-center space-x-2">
+                        <Checkbox
+                          id={role}
+                          checked={formData.roles.includes(role)}
+                          onCheckedChange={() => toggleRole(role)}
+                        />
+                        <Label htmlFor={role}>{role}</Label>
+                      </div>
+                    ))}
+                  </div>
                 </div>
 
                 <div className="flex justify-end gap-3 mt-8">
                   <Button
                     variant="outline"
-                    onClick={() => {
-                      setShowDirectoryBrowser(false);
-                      setSelectedDirectoryUsers([]);
-                    }}
+                    onClick={() => setShowAddUser(false)}
                   >
+                    <X className="w-4 h-4 mr-2" />
                     Cancel
                   </Button>
                   <Button
-                    onClick={handleImportDirectoryUsers}
-                    disabled={selectedDirectoryUsers.length === 0}
+                    onClick={handleSaveUser}
                     className="bg-[#e66334] hover:bg-[#FF8234]"
                   >
-                    Import Selected ({selectedDirectoryUsers.length})
+                    <Save className="w-4 h-4 mr-2" />
+                    Save
                   </Button>
                 </div>
-              </Card>
-            )}
-          </div>
+              </div>
+            </Card>
+          )}
+
+          {showDirectoryBrowser && (
+            <Card className="p-6 bg-[#d3d3d3] max-w-4xl mx-auto">
+              <h3 className="text-lg font-semibold mb-4">
+                Import from Directory
+              </h3>
+
+              <div className="overflow-x-auto">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead className="w-12">
+                        <Checkbox
+                          checked={
+                            selectedDirectoryUsers.length ===
+                            directoryUsers.length
+                          }
+                          onCheckedChange={(checked) => {
+                            setSelectedDirectoryUsers(
+                              checked ? directoryUsers.map((u) => u.id) : [],
+                            );
+                          }}
+                        />
+                      </TableHead>
+                      <TableHead>Username</TableHead>
+                      <TableHead>Display Name</TableHead>
+                      <TableHead>Email</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {directoryUsers.map((user) => (
+                      <TableRow key={user.id} className="hover:bg-gray-50">
+                        <TableCell>
+                          <Checkbox
+                            checked={selectedDirectoryUsers.includes(user.id)}
+                            onCheckedChange={() => toggleDirectoryUser(user.id)}
+                          />
+                        </TableCell>
+                        <TableCell>{user.username}</TableCell>
+                        <TableCell>{user.displayName}</TableCell>
+                        <TableCell>{user.email}</TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
+
+              <div className="flex justify-end gap-3 mt-8">
+                <Button
+                  variant="outline"
+                  onClick={() => {
+                    setShowDirectoryBrowser(false);
+                    setSelectedDirectoryUsers([]);
+                  }}
+                >
+                  Cancel
+                </Button>
+                <Button
+                  onClick={handleImportDirectoryUsers}
+                  disabled={selectedDirectoryUsers.length === 0}
+                  className="bg-[#e66334] hover:bg-[#FF8234]"
+                >
+                  Import Selected ({selectedDirectoryUsers.length})
+                </Button>
+              </div>
+            </Card>
+          )}
         </div>
       </div>
     </div>

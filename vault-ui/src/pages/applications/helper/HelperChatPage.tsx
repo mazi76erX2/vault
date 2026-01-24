@@ -4,7 +4,6 @@ import { toast } from "sonner";
 import { AxiosError } from "axios";
 import { Send, FileText, TrendingUp } from "lucide-react";
 import { useAuthContext } from "@/hooks/useAuthContext";
-import { DancingBot } from "@/components/media/dancing-bot";
 import { TextField } from "@/components/forms/text-field";
 import { Button } from "@/components/ui/button";
 import { Loader } from "@/components/feedback/loader";
@@ -62,11 +61,7 @@ const HelperChatPage: React.FC = () => {
   }, [messages]);
 
   const createNewChat = async () => {
-    if (
-      !authContext ||
-      !authContext.user?.user?.user?.id ||
-      !authContext.isLoggedIn
-    ) {
+    if (!authContext || !authContext.user?.id || !authContext.isLoggedIn) {
       if (!authContext?.isLoadingUser) {
         toast.error("User not authenticated or session has expired.");
       }
@@ -75,7 +70,7 @@ const HelperChatPage: React.FC = () => {
 
     try {
       setLoading(true);
-      const userId = authContext.user.user.user.id;
+      const userId = authContext.user.id;
 
       const response = await Api.post("/api/v1/helper/addnewchatsession", {
         userId: userId,
@@ -93,7 +88,7 @@ const HelperChatPage: React.FC = () => {
       console.error("Error creating chat:", err);
       if (!(err instanceof AxiosError && err.response?.status === 401)) {
         toast.error(
-          err instanceof Error ? err.message : "Failed to create chat."
+          err instanceof Error ? err.message : "Failed to create chat.",
         );
       }
     } finally {
@@ -102,11 +97,7 @@ const HelperChatPage: React.FC = () => {
   };
 
   const fetchChat = async (id: string) => {
-    if (
-      !authContext ||
-      !authContext.user?.user?.user?.id ||
-      !authContext.isLoggedIn
-    ) {
+    if (!authContext || !authContext.user?.id || !authContext.isLoggedIn) {
       if (!authContext?.isLoadingUser) {
         toast.error("User not authenticated or session has expired.");
       }
@@ -129,7 +120,7 @@ const HelperChatPage: React.FC = () => {
               timestamp: response.data.created_at || new Date().toISOString(),
               confidence: msg.confidence,
               sources: msg.sources,
-            })
+            }),
           );
           setMessages(transformedMessages);
         }
@@ -151,7 +142,7 @@ const HelperChatPage: React.FC = () => {
               role: msg.role || "assistant",
               content: msg.content || msg.text || "",
               timestamp: new Date().toISOString(),
-            })
+            }),
           );
 
           setMessages(transformedMessages);
@@ -161,7 +152,7 @@ const HelperChatPage: React.FC = () => {
       console.error("Error fetching chat:", err);
       if (!(err instanceof AxiosError && err.response?.status === 401)) {
         toast.error(
-          err instanceof Error ? err.message : "Failed to fetch chat."
+          err instanceof Error ? err.message : "Failed to fetch chat.",
         );
       }
     } finally {
@@ -220,7 +211,7 @@ const HelperChatPage: React.FC = () => {
 
         if (response.data.retrievedDocs > 0) {
           toast.success(
-            `Found ${response.data.retrievedDocs} relevant document(s)`
+            `Found ${response.data.retrievedDocs} relevant document(s)`,
           );
         }
       } catch (err) {
@@ -228,10 +219,10 @@ const HelperChatPage: React.FC = () => {
         const response = await Api.post(
           "/api/v1/helper/generateanswerresponse",
           {
-            userId: authContext?.user?.user?.user?.id,
+            userId: authContext?.user?.id,
             userText: messageToSend,
             chatId: chatId,
-          }
+          },
         );
 
         const assistantMessage: Message = {
@@ -260,7 +251,7 @@ const HelperChatPage: React.FC = () => {
 
       if (!(err instanceof AxiosError && err.response?.status === 401)) {
         toast.error(
-          err instanceof Error ? err.message : "Failed to send message."
+          err instanceof Error ? err.message : "Failed to send message.",
         );
       }
     } finally {
@@ -292,191 +283,175 @@ const HelperChatPage: React.FC = () => {
         </div>
       )}
 
-      <div className="grid grid-cols-1 lg:grid-cols-[400px_1fr] gap-8 h-full">
-        {/* Dancing Bot Sidebar */}
-        <div className="hidden lg:flex flex-col items-center justify-center space-y-4">
-          <DancingBot state="idling" className="w-full h-[400px]" />
-          <div className="text-center space-y-2 px-4">
-            <h2 className="text-xl font-semibold text-foreground">
-              AI Knowledge Assistant
-            </h2>
-            <p className="text-sm text-muted-foreground">
-              Ask me anything about your company's knowledge base
-            </p>
+      <div className="flex flex-col h-full bg-card text-card-foreground rounded-lg shadow-md border border-border">
+        {/* Header */}
+        <div className="p-6 border-b border-border">
+          <div className="flex justify-between items-center">
+            <div>
+              <h1 className="text-2xl font-bold text-foreground">
+                Helper Chat
+              </h1>
+              <p className="text-sm text-muted-foreground mt-1">
+                Powered by RAG & AI
+              </p>
+            </div>
+            <Button
+              onClick={() => navigate("/applications/helper/HelperMainPage")}
+              variant="outline"
+              size="sm"
+            >
+              Back to Main
+            </Button>
           </div>
         </div>
 
-        {/* Chat Container */}
-        <div className="flex flex-col h-full bg-card text-card-foreground rounded-lg shadow-md border border-border">
-          {/* Header */}
-          <div className="p-6 border-b border-border">
-            <div className="flex justify-between items-center">
+        {/* Messages */}
+        <div className="flex-1 overflow-y-auto p-6 space-y-6 scrollbar-thin">
+          {messages.length === 0 && !loading && (
+            <div className="flex flex-col items-center justify-center h-full text-center space-y-4">
+              <div className="text-6xl">💬</div>
               <div>
-                <h1 className="text-2xl font-bold text-foreground">
-                  Helper Chat
-                </h1>
-                <p className="text-sm text-muted-foreground mt-1">
-                  Powered by RAG & AI
+                <p className="text-lg font-medium text-foreground">
+                  Start a conversation
+                </p>
+                <p className="text-sm text-muted-foreground mt-2">
+                  Ask questions about your company's documents and knowledge
+                  base
                 </p>
               </div>
-              <Button
-                onClick={() => navigate("/applications/helper/HelperMainPage")}
-                variant="outline"
-                size="sm"
-              >
-                Back to Main
-              </Button>
             </div>
-          </div>
+          )}
 
-          {/* Messages */}
-          <div className="flex-1 overflow-y-auto p-6 space-y-6 scrollbar-thin">
-            {messages.length === 0 && !loading && (
-              <div className="flex flex-col items-center justify-center h-full text-center space-y-4">
-                <div className="text-6xl">💬</div>
-                <div>
-                  <p className="text-lg font-medium text-foreground">
-                    Start a conversation
-                  </p>
-                  <p className="text-sm text-muted-foreground mt-2">
-                    Ask questions about your company's documents and knowledge
-                    base
-                  </p>
-                </div>
-              </div>
-            )}
-
-            {messages.map((message) => (
+          {messages.map((message) => (
+            <div
+              key={message.id}
+              className={`flex ${
+                message.role === "user" ? "justify-end" : "justify-start"
+              }`}
+            >
               <div
-                key={message.id}
-                className={`flex ${
-                  message.role === "user" ? "justify-end" : "justify-start"
+                className={`max-w-[75%] rounded-lg p-4 ${
+                  message.role === "user"
+                    ? "bg-primary text-primary-foreground"
+                    : "bg-muted text-foreground border border-border"
                 }`}
               >
-                <div
-                  className={`max-w-[75%] rounded-lg p-4 ${
-                    message.role === "user"
-                      ? "bg-primary text-primary-foreground"
-                      : "bg-muted text-foreground border border-border"
-                  }`}
-                >
-                  {/* Message Content */}
-                  <p className="whitespace-pre-wrap leading-relaxed">
-                    {message.content}
-                  </p>
+                {/* Message Content */}
+                <p className="whitespace-pre-wrap leading-relaxed">
+                  {message.content}
+                </p>
 
-                  {/* Confidence Badge */}
-                  {message.confidence && message.role === "assistant" && (
-                    <div className="mt-3 flex items-center gap-2">
-                      <TrendingUp className="w-3 h-3" />
-                      <span
-                        className={`text-xs font-medium px-2 py-1 rounded ${getConfidenceBadgeStyle(
-                          message.confidence
-                        )}`}
-                      >
-                        {message.confidence}
-                      </span>
+                {/* Confidence Badge */}
+                {message.confidence && message.role === "assistant" && (
+                  <div className="mt-3 flex items-center gap-2">
+                    <TrendingUp className="w-3 h-3" />
+                    <span
+                      className={`text-xs font-medium px-2 py-1 rounded ${getConfidenceBadgeStyle(
+                        message.confidence,
+                      )}`}
+                    >
+                      {message.confidence}
+                    </span>
+                  </div>
+                )}
+
+                {/* Sources */}
+                {message.sources && message.sources.length > 0 && (
+                  <div className="mt-4 pt-3 border-t border-border/50">
+                    <div className="flex items-center gap-2 mb-2">
+                      <FileText className="w-3 h-3 text-muted-foreground" />
+                      <p className="text-xs font-semibold text-muted-foreground uppercase">
+                        Sources ({message.sources.length})
+                      </p>
                     </div>
-                  )}
+                    <ul className="space-y-2">
+                      {message.sources.map((source, idx) => (
+                        <li
+                          key={source.id}
+                          className="text-xs flex items-start gap-2 bg-background/50 p-2 rounded"
+                        >
+                          <span className="text-muted-foreground font-mono">
+                            {idx + 1}.
+                          </span>
+                          <div className="flex-1">
+                            <p className="font-medium text-foreground">
+                              {source.title}
+                            </p>
+                            <p className="text-muted-foreground mt-0.5">
+                              Relevance: {(source.score * 100).toFixed(0)}%
+                            </p>
+                          </div>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
 
-                  {/* Sources */}
-                  {message.sources && message.sources.length > 0 && (
-                    <div className="mt-4 pt-3 border-t border-border/50">
-                      <div className="flex items-center gap-2 mb-2">
-                        <FileText className="w-3 h-3 text-muted-foreground" />
-                        <p className="text-xs font-semibold text-muted-foreground uppercase">
-                          Sources ({message.sources.length})
-                        </p>
-                      </div>
-                      <ul className="space-y-2">
-                        {message.sources.map((source, idx) => (
-                          <li
-                            key={source.id}
-                            className="text-xs flex items-start gap-2 bg-background/50 p-2 rounded"
-                          >
-                            <span className="text-muted-foreground font-mono">
-                              {idx + 1}.
-                            </span>
-                            <div className="flex-1">
-                              <p className="font-medium text-foreground">
-                                {source.title}
-                              </p>
-                              <p className="text-muted-foreground mt-0.5">
-                                Relevance: {(source.score * 100).toFixed(0)}%
-                              </p>
-                            </div>
-                          </li>
-                        ))}
-                      </ul>
-                    </div>
-                  )}
+                {/* Timestamp */}
+                <span className="text-xs opacity-60 mt-2 block">
+                  {new Date(message.timestamp).toLocaleTimeString()}
+                </span>
+              </div>
+            </div>
+          ))}
 
-                  {/* Timestamp */}
-                  <span className="text-xs opacity-60 mt-2 block">
-                    {new Date(message.timestamp).toLocaleTimeString()}
+          {/* Typing Indicator */}
+          {isTyping && (
+            <div className="flex justify-start">
+              <div className="bg-muted text-foreground border border-border rounded-lg p-4 max-w-[75%]">
+                <div className="flex items-center gap-2">
+                  <div className="flex space-x-1">
+                    <div className="w-2 h-2 bg-foreground/50 rounded-full animate-bounce [animation-delay:-0.3s]"></div>
+                    <div className="w-2 h-2 bg-foreground/50 rounded-full animate-bounce [animation-delay:-0.15s]"></div>
+                    <div className="w-2 h-2 bg-foreground/50 rounded-full animate-bounce"></div>
+                  </div>
+                  <span className="text-sm text-muted-foreground">
+                    Searching knowledge base...
                   </span>
                 </div>
               </div>
-            ))}
-
-            {/* Typing Indicator */}
-            {isTyping && (
-              <div className="flex justify-start">
-                <div className="bg-muted text-foreground border border-border rounded-lg p-4 max-w-[75%]">
-                  <div className="flex items-center gap-2">
-                    <div className="flex space-x-1">
-                      <div className="w-2 h-2 bg-foreground/50 rounded-full animate-bounce [animation-delay:-0.3s]"></div>
-                      <div className="w-2 h-2 bg-foreground/50 rounded-full animate-bounce [animation-delay:-0.15s]"></div>
-                      <div className="w-2 h-2 bg-foreground/50 rounded-full animate-bounce"></div>
-                    </div>
-                    <span className="text-sm text-muted-foreground">
-                      Searching knowledge base...
-                    </span>
-                  </div>
-                </div>
-              </div>
-            )}
-
-            <div ref={messagesEndRef} />
-          </div>
-
-          {/* Input */}
-          <div className="p-6 border-t border-border bg-background/50">
-            <div className="flex gap-2">
-              <VoiceRecorder
-                chatId={chatId || ""}
-                onTranscription={(text) => {
-                  setInputMessage(text);
-                  // Optionally auto-send
-                  // handleSendMessage();
-                }}
-              />
-              <TextField
-                value={inputMessage}
-                onChange={(e) => setInputMessage(e.target.value)}
-                placeholder="Ask the Helper anything..."
-                onKeyDown={(e) => {
-                  if (e.key === "Enter" && !e.shiftKey) {
-                    e.preventDefault();
-                    handleSendMessage();
-                  }
-                }}
-                disabled={loading}
-                className="flex-1"
-              />
-              <Button
-                onClick={handleSendMessage}
-                disabled={loading || !inputMessage?.trim()}
-                size="icon"
-                className="shrink-0"
-              >
-                <Send className="w-4 h-4" />
-              </Button>
             </div>
-            <p className="text-xs text-muted-foreground mt-2 text-center">
-              Press Enter to send • Shift+Enter for new line
-            </p>
+          )}
+
+          <div ref={messagesEndRef} />
+        </div>
+
+        {/* Input */}
+        <div className="p-6 border-t border-border bg-background/50">
+          <div className="flex gap-2">
+            <VoiceRecorder
+              chatId={chatId || ""}
+              onTranscription={(text) => {
+                setInputMessage(text);
+                // Optionally auto-send
+                // handleSendMessage();
+              }}
+            />
+            <TextField
+              value={inputMessage}
+              onChange={(e) => setInputMessage(e.target.value)}
+              placeholder="Ask the Helper anything..."
+              onKeyDown={(e) => {
+                if (e.key === "Enter" && !e.shiftKey) {
+                  e.preventDefault();
+                  handleSendMessage();
+                }
+              }}
+              disabled={loading}
+              className="flex-1"
+            />
+            <Button
+              onClick={handleSendMessage}
+              disabled={loading || !inputMessage?.trim()}
+              size="icon"
+              className="shrink-0"
+            >
+              <Send className="w-4 h-4" />
+            </Button>
           </div>
+          <p className="text-xs text-muted-foreground mt-2 text-center">
+            Press Enter to send • Shift+Enter for new line
+          </p>
         </div>
       </div>
     </div>

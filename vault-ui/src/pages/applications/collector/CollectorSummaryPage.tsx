@@ -3,7 +3,6 @@ import { useNavigate, useLocation } from "react-router-dom";
 import { toast } from "sonner";
 import { AxiosError } from "axios";
 import { useAuthContext } from "@/hooks/useAuthContext";
-import { DancingBot } from "@/components/media/dancing-bot";
 import { Button } from "@/components/ui/button";
 import { Loader } from "@/components/feedback/loader";
 import { Card } from "@/components/ui/card";
@@ -155,18 +154,15 @@ const CollectorSummaryPage: React.FC = () => {
         </div>
       )}
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-start">
-        <DancingBot state="greeting" className="w-full max-w-[600px] mx-auto" />
-
-        <div>
-          <div className="mb-6">
-            <h1 className="text-2xl font-bold text-foreground">
-              Session Summary
-            </h1>
-            <p className="text-muted-foreground mt-2">
-              Review your session details before submitting.
-            </p>
-          </div>
+      <div className="max-w-xl mx-auto p-6 space-y-6">
+        <div className="mb-6 text-center">
+          <h1 className="text-2xl font-bold text-foreground">
+            Session Summary
+          </h1>
+          <p className="text-muted-foreground mt-2">
+            Review your session details before submitting.
+          </p>
+        </div>
 
           <Card className="bg-card text-card-foreground shadow-md p-6 space-y-4">
             {summary ? (

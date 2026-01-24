@@ -94,10 +94,10 @@ const CollectorChatPage: React.FC = () => {
   useEffect(() => {
     async function loadThemeSettings() {
       try {
-        if (!authContext?.user?.user?.user?.id) {
+        if (!authContext?.user?.id) {
           return;
         }
-        const userId = authContext.user.user.user.id;
+        const userId = authContext.user.id;
         const response = await Api.post("/api/companies/theme/get", {
           user_id: userId,
         });
@@ -125,7 +125,7 @@ const CollectorChatPage: React.FC = () => {
         }
       }
     }
-    if (authContext?.user?.user?.user?.id) loadThemeSettings();
+    if (authContext?.user?.id) loadThemeSettings();
   }, [authContext?.user]);
 
   useEffect(() => {
@@ -141,7 +141,7 @@ const CollectorChatPage: React.FC = () => {
 
         const response = await Api.post(
           "/api/v1/collector/fetch_chat_conversation",
-          { sessionid: sessionId }
+          { sessionid: sessionId },
         );
 
         const rawData = response.data;
@@ -186,7 +186,7 @@ const CollectorChatPage: React.FC = () => {
         {
           chat_prompt_id: chatMessageId,
           user_text: userAnswer,
-        }
+        },
       );
 
       if (!response.data || !response.data.follow_up_question) {
@@ -339,7 +339,7 @@ const CollectorChatPage: React.FC = () => {
             >
               <span className="whitespace-pre-wrap">{message.text}</span>
             </div>
-          )
+          ),
         )}
       </div>
 

@@ -3,7 +3,6 @@ import { useNavigate, useLocation } from "react-router-dom";
 import { toast } from "sonner";
 import { AxiosError } from "axios";
 import { useAuthContext } from "@/hooks/useAuthContext";
-import { DancingBot } from "@/components/media/dancing-bot";
 import { Button } from "@/components/ui/button";
 import { Loader } from "@/components/feedback/loader";
 import { Card, CardContent } from "@/components/ui/card";
@@ -54,11 +53,7 @@ const ValidatorStartExpertReviewPage: React.FC = () => {
   }, [document]);
 
   const fetchDocumentDetails = async (docId: string) => {
-    if (
-      !authContext ||
-      !authContext.user?.user?.id ||
-      !authContext.isLoggedIn
-    ) {
+    if (!authContext || !authContext.user?.id || !authContext.isLoggedIn) {
       if (!authContext?.isLoadingUser) {
         toast.error("User not authenticated or session has expired.");
       }
@@ -91,78 +86,113 @@ const ValidatorStartExpertReviewPage: React.FC = () => {
         </div>
       )}
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-start">
-        <DancingBot state="idling" className="w-full max-w-[600px] mx-auto" />
+      <div className="max-w-4xl mx-auto p-6">
+        <div className="mb-6">
+          <h1 className="text-2xl font-bold text-foreground text-center">
+            Document in Expert Review
+          </h1>
+          {document && (
+            <p className="text-muted-foreground mt-2 text-center">
+              Document:{" "}
+              <span className="font-semibold text-foreground">
+                {document.title}
+              </span>
+            </p>
+          )}
+        </div>
 
-        <div>
-          <div className="mb-6">
-            <h1 className="text-2xl font-bold text-foreground">
-              Document in Expert Review
-            </h1>
-            {document && (
-              <p className="text-muted-foreground mt-2">
-                Document:{" "}
-                <span className="font-semibold text-foreground">
-                  {document.title}
-                </span>
-              </p>
-            )}
-          </div>
+        <Card className="bg-card text-card-foreground shadow-md">
+          <CardContent className="p-6 space-y-6">
+            {documentData && (
+              <>
+                <div className="flex items-center justify-between">
+                  <h3 className="text-sm font-semibold text-muted-foreground">
+                    Status
+                  </h3>
+                  <Badge variant="secondary" className="capitalize">
+                    {documentData.status}
+                  </Badge>
+                </div>
 
-          <Card className="bg-card text-card-foreground shadow-md">
-            <CardContent className="p-6 space-y-6">
-              {documentData && (
-                <>
-                  <div className="flex items-center justify-between">
-                    <h3 className="text-sm font-semibold text-muted-foreground">
-                      Status
-                    </h3>
-                    <Badge variant="secondary" className="capitalize">
-                      {documentData.status}
-                    </Badge>
-                  </div>
+                <div>
+                  <h3 className="text-sm font-semibold text-muted-foreground">
+                    Title
+                  </h3>
+                  <p className="text-lg text-foreground">
+                    {documentData.title}
+                  </p>
+                </div>
 
-                  <div>
-                    <h3 className="text-sm font-semibold text-muted-foreground">
-                      Title
-                    </h3>
-                    <p className="text-lg text-foreground">
-                      {documentData.title}
+                <div>
+                  <h3 className="text-sm font-semibold text-muted-foreground">
+                    Author
+                  </h3>
+                  <p className="text-lg text-foreground">
+                    {documentData.author}
+                  </p>
+                </div>
+
+                <div>
+                  <h3 className="text-sm font-semibold text-muted-foreground">
+                    Description
+                  </h3>
+                  <p className="text-lg text-foreground">
+                    {documentData.description}
+                  </p>
+                </div>
+
+                <div>
+                  <h3 className="text-sm font-semibold text-muted-foreground">
+                    Content
+                  </h3>
+                  <div className="bg-muted/20 border border-border p-4 rounded mt-2 max-h-[300px] overflow-y-auto">
+                    <p className="whitespace-pre-wrap text-foreground">
+                      {documentData.content}
                     </p>
                   </div>
+                </div>
 
-                  <div>
-                    <h3 className="text-sm font-semibold text-muted-foreground">
-                      Author
-                    </h3>
-                    <p className="text-lg text-foreground">
-                      {documentData.author}
-                    </p>
-                  </div>
+                <div className="border-t border-border pt-4">
+                  <h2 className="text-xl font-bold mb-4 text-foreground">
+                    Validator Review
+                  </h2>
 
-                  <div>
-                    <h3 className="text-sm font-semibold text-muted-foreground">
-                      Description
-                    </h3>
-                    <p className="text-lg text-foreground">
-                      {documentData.description}
-                    </p>
-                  </div>
+                  <div className="space-y-4">
+                    <div>
+                      <h3 className="text-sm font-semibold text-muted-foreground">
+                        Decision
+                      </h3>
+                      <p className="text-lg capitalize text-foreground">
+                        {documentData.validatorDecision}
+                      </p>
+                    </div>
 
-                  <div>
-                    <h3 className="text-sm font-semibold text-muted-foreground">
-                      Content
-                    </h3>
-                    <div className="bg-muted/20 border border-border p-4 rounded mt-2 max-h-[300px] overflow-y-auto">
-                      <p className="whitespace-pre-wrap text-foreground">
-                        {documentData.content}
+                    {documentData.validatorComments && (
+                      <div>
+                        <h3 className="text-sm font-semibold text-muted-foreground">
+                          Comments
+                        </h3>
+                        <p className="text-lg text-foreground">
+                          {documentData.validatorComments}
+                        </p>
+                      </div>
+                    )}
+
+                    <div>
+                      <h3 className="text-sm font-semibold text-muted-foreground">
+                        Reviewed By
+                      </h3>
+                      <p className="text-lg text-foreground">
+                        {documentData.validatorReviewedBy}
                       </p>
                     </div>
                   </div>
+                </div>
 
+                {documentData.expertDecision && (
                   <div className="border-t border-border pt-4">
                     <h2 className="text-xl font-bold mb-4 text-foreground">
-                      Validator Review
+                      Expert Review
                     </h2>
 
                     <div className="space-y-4">
@@ -171,17 +201,17 @@ const ValidatorStartExpertReviewPage: React.FC = () => {
                           Decision
                         </h3>
                         <p className="text-lg capitalize text-foreground">
-                          {documentData.validatorDecision}
+                          {documentData.expertDecision}
                         </p>
                       </div>
 
-                      {documentData.validatorComments && (
+                      {documentData.expertComments && (
                         <div>
                           <h3 className="text-sm font-semibold text-muted-foreground">
                             Comments
                           </h3>
                           <p className="text-lg text-foreground">
-                            {documentData.validatorComments}
+                            {documentData.expertComments}
                           </p>
                         </div>
                       )}
@@ -191,78 +221,37 @@ const ValidatorStartExpertReviewPage: React.FC = () => {
                           Reviewed By
                         </h3>
                         <p className="text-lg text-foreground">
-                          {documentData.validatorReviewedBy}
+                          {documentData.expertReviewedBy}
                         </p>
                       </div>
-                    </div>
-                  </div>
 
-                  {documentData.expertDecision && (
-                    <div className="border-t border-border pt-4">
-                      <h2 className="text-xl font-bold mb-4 text-foreground">
-                        Expert Review
-                      </h2>
-
-                      <div className="space-y-4">
+                      {documentData.expertReviewedAt && (
                         <div>
                           <h3 className="text-sm font-semibold text-muted-foreground">
-                            Decision
-                          </h3>
-                          <p className="text-lg capitalize text-foreground">
-                            {documentData.expertDecision}
-                          </p>
-                        </div>
-
-                        {documentData.expertComments && (
-                          <div>
-                            <h3 className="text-sm font-semibold text-muted-foreground">
-                              Comments
-                            </h3>
-                            <p className="text-lg text-foreground">
-                              {documentData.expertComments}
-                            </p>
-                          </div>
-                        )}
-
-                        <div>
-                          <h3 className="text-sm font-semibold text-muted-foreground">
-                            Reviewed By
+                            Reviewed At
                           </h3>
                           <p className="text-lg text-foreground">
-                            {documentData.expertReviewedBy}
+                            {new Date(
+                              documentData.expertReviewedAt,
+                            ).toLocaleString()}
                           </p>
                         </div>
-
-                        {documentData.expertReviewedAt && (
-                          <div>
-                            <h3 className="text-sm font-semibold text-muted-foreground">
-                              Reviewed At
-                            </h3>
-                            <p className="text-lg text-foreground">
-                              {new Date(
-                                documentData.expertReviewedAt,
-                              ).toLocaleString()}
-                            </p>
-                          </div>
-                        )}
-                      </div>
+                      )}
                     </div>
-                  )}
-                </>
-              )}
-            </CardContent>
-          </Card>
+                  </div>
+                )}
+              </>
+            )}
+          </CardContent>
+        </Card>
 
-          <div className="mt-6 flex justify-end">
-            <Button
-              onClick={() =>
-                navigate("/applications/console/ValidatorStartPage")
-              }
-              size="lg"
-            >
-              Back to Documents
-            </Button>
-          </div>
+        <div className="mt-6 flex justify-end">
+          <Button
+            onClick={() => navigate("/applications/console/ValidatorStartPage")}
+            size="lg"
+          >
+            Back to Documents
+          </Button>
         </div>
       </div>
     </div>
