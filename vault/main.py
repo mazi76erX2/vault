@@ -18,6 +18,7 @@ from app.api import (
     helper_router,
     kb_router,
     passwords_router,
+    rag_router,
     users_router,
     utils_router,
     validator_router,
@@ -53,6 +54,7 @@ app.include_router(users_router, prefix="/api/users", tags=["Users"])
 app.include_router(admin_router, prefix="/api/admin", tags=["Admin"])
 app.include_router(companies_router, prefix="/api/companies", tags=["Companies"])
 app.include_router(kb_router, tags=["Knowledge Base"])
+app.include_router(rag_router, tags=["RAG"])
 app.include_router(passwords_router, prefix="/api/auth", tags=["Passwords"])
 app.include_router(websocket_router, tags=["WebSocket"])
 app.include_router(utils_router, prefix="/api/utils", tags=["Utilities"])

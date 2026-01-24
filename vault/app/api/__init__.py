@@ -10,6 +10,7 @@ from app.api.expert import router as expert_router
 from app.api.helper import router as helper_router
 from app.api.knowledge_base import router as kb_router
 from app.api.passwords import router as passwords_router
+from app.api.rag import router as rag_router
 from app.api.user import router as users_router
 from app.api.utils import router as utils_router
 from app.api.validator import router as validator_router
@@ -22,6 +23,7 @@ __all__ = [
     "companies_router",
     "kb_router",
     "passwords_router",
+    "rag_router",
     "websocket_router",
     "utils_router",
     "collector_router",

@@ -37,6 +37,10 @@ import MaintenancePage from "@/features/common/pages/MaintenancePage";
 import BusinessThemePage from "@/features/theme/pages/BusinessThemePage";
 import KBUploadPage from "@/features/kb/pages/KBUploadPage";
 import KBDocumentsPage from "@/features/kb/pages/KBDocumentsPage";
+import DashboardPage from "@/pages/DashboardPage";
+import ChatPage from "@/pages/ChatPage";
+import ChatPageV2 from "@/pages/ChatPageV2";
+import DashboardPageV2 from "@/pages/DashboardPageV2";
 import { Loader } from "../components/feedback/loader";
 
 interface ChildrenProps {
@@ -469,6 +473,16 @@ const router = createBrowserRouter([
           </RoleRoute>
         ),
         id: "KBDocuments",
+      },
+      {
+        path: "/rag/dashboard",
+        element: <DashboardPageV2 />,
+        id: "RAGDashboard",
+      },
+      {
+        path: "/rag/chat",
+        element: <ChatPageV2 />,
+        id: "RAGChat",
       },
       { path: "*", element: <NotFoundPage /> },
     ],

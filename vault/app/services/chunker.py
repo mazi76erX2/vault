@@ -1,7 +1,9 @@
 """
-Improved chunking with semantic boundaries and overlap.
+Smart document chunker with semantic boundary detection and overlap.
+Optimized for Python 3.14.
 """
 
+import logging
 import re
 from dataclasses import dataclass
 from enum import StrEnum, auto
@@ -10,8 +12,12 @@ from langchain_text_splitters import RecursiveCharacterTextSplitter
 
 from app.core.config import settings
 
+logger = logging.getLogger(__name__)
+
 
 class ChunkingStrategy(StrEnum):
+    """Chunking strategies."""
+
     FIXED = auto()
     RECURSIVE = auto()
     SEMANTIC = auto()
@@ -20,6 +26,7 @@ class ChunkingStrategy(StrEnum):
 @dataclass(slots=True, frozen=True)
 class ChunkConfig:
     """Chunking configuration."""
+
     size: int = 1000
     overlap: int = 150  # ~15% overlap
     min_size: int = 100
@@ -39,22 +46,22 @@ class SmartChunker:
 
     # Semantic boundaries in order of preference
     SEPARATORS = [
-        "\n\n\n",      # Triple newline (major section)
-        "\n\n",        # Double newline (paragraph)
-        "\n",          # Single newline
-        ". ",          # Sentence end
-        "? ",          # Question end
-        "! ",          # Exclamation end
-        "; ",          # Semicolon
-        ", ",          # Comma
-        " ",           # Word boundary
-        "",            # Character (last resort)
+        "\n\n\n",  # Triple newline (major section)
+        "\n\n",  # Double newline (paragraph)
+        "\n",  # Single newline
+        ". ",  # Sentence end
+        "? ",  # Question end
+        "! ",  # Exclamation end
+        "; ",  # Semicolon
+        ", ",  # Comma
+        " ",  # Word boundary
+        "",  # Character (last resort)
     ]
 
     def __init__(self, config: ChunkConfig | None = None) -> None:
         self.config = config or ChunkConfig(
             size=settings.CHUNK_SIZE,
-            overlap=settings.CHUNK_OVERLAP,
+            overlap=settings.KB_CHUNK_OVERLAP,
         )
         self._splitter = RecursiveCharacterTextSplitter(
             chunk_size=self.config.size,
@@ -71,7 +78,7 @@ class SmartChunker:
     ) -> list[dict]:
         """
         Chunk text with metadata.
-        
+
         Returns list of:
             {
                 "content": str,
@@ -117,6 +124,7 @@ class SmartChunker:
                 },
             })
 
+        logger.debug(f"Chunked {len(text)} chars into {len(result)} chunks")
         return result
 
     def chunk_with_context(
@@ -127,7 +135,7 @@ class SmartChunker:
     ) -> list[dict]:
         """
         Chunk with surrounding context included.
-        
+
         Each chunk includes content from adjacent chunks
         for better context during retrieval.
         """
@@ -165,23 +173,25 @@ class SmartChunker:
                 },
             })
 
+        logger.debug(f"Added context to {len(result)} chunks")
         return result
 
     def _clean_text(self, text: str) -> str:
         """Clean text while preserving structure."""
         # Normalize whitespace
-        text = re.sub(r'\r\n', '\n', text)
-        text = re.sub(r'\r', '\n', text)
+        text = re.sub(r"\r\n", "\n", text)
+        text = re.sub(r"\r", "\n", text)
 
         # Remove excessive newlines (more than 3)
-        text = re.sub(r'\n{4,}', '\n\n\n', text)
+        text = re.sub(r"\n{4,}", "\n\n\n", text)
 
         # Remove excessive spaces
-        text = re.sub(r' {3,}', '  ', text)
+        text = re.sub(r" {3,}", "  ", text)
 
         return text.strip()
 
 
 # Factory
 def get_chunker(config: ChunkConfig | None = None) -> SmartChunker:
+    """Get a chunker instance."""
     return SmartChunker(config)
