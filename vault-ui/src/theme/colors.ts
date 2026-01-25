@@ -5,66 +5,66 @@
 
 export const lightTheme = {
   // Background
-  background: "#ffffff",
-  surface: "#f0f0f0",
-  surfaceAlt: "#f8f8f8",
+  background: "#FFFFFF",
+  surface: "#F9FAFB",
+  surfaceAlt: "#F3F4F6",
 
-  // Primary
-  primary: "#6061c0",
-  primaryLight: "#50a0e0",
-  primaryDark: "#504090",
+  // Primary (Vault Orange)
+  primary: "#E66334",
+  primaryLight: "#F08A68",
+  primaryDark: "#BF4E28",
 
   // Accent colors
-  accent1: "#81334b",
-  accent2: "#6ea861",
-  accent3: "#ee9e6e",
+  accent1: "#81334B", // Rose
+  accent2: "#10B981", // Emerald
+  accent3: "#F59E0B", // Amber
 
   // Text
-  text: "#000000",
-  textSecondary: "#666666",
-  textMuted: "#a0a0a0",
+  text: "#111827",
+  textSecondary: "#4B5563",
+  textMuted: "#9CA3AF",
 
   // Borders
-  border: "#e0e0e0",
-  borderLight: "#f0f0f0",
+  border: "#E5E7EB",
+  borderLight: "#F3F4F6",
 
   // Status
-  success: "#6ea861",
-  warning: "#ee9e6e",
-  error: "#81334b",
-  info: "#50a0e0",
+  success: "#10B981",
+  warning: "#F59E0B",
+  error: "#EF4444",
+  info: "#3B82F6",
 };
 
 export const darkTheme = {
   // Background
-  background: "#0f0f0f",
-  surface: "#1a1a2e",
-  surfaceAlt: "#16213e",
+  background: "#09090B",
+  surface: "#18181B",
+  surfaceAlt: "#27272A",
 
-  // Primary (using dark theme palette)
-  primary: "#55BBAD",
-  primaryLight: "#DD5794",
-  primaryDark: "#6C4572",
+  // Primary (Vault Orange)
+  primary: "#E66334",
+  primaryLight: "#F08A68",
+  primaryDark: "#BF4E28",
 
   // Accent colors
-  accent1: "#DD5794",
-  accent2: "#55BBAD",
-  accent3: "#DBC1CA",
+  accent1: "#FB7185",
+  accent2: "#34D399",
+  accent3: "#FBBF24",
 
   // Text
-  text: "#ffffff",
-  textSecondary: "#e0e0e0",
-  textMuted: "#a0a0a0",
+  text: "#FAFAFA",
+  textSecondary: "#D4D4D8",
+  textMuted: "#71717A",
 
   // Borders
-  border: "#333333",
-  borderLight: "#2a2a2a",
+  border: "#27272A",
+  borderLight: "#3F3F46",
 
   // Status
-  success: "#55BBAD",
-  warning: "#DD5794",
-  error: "#DD5794",
-  info: "#55BBAD",
+  success: "#10B981",
+  warning: "#F59E0B",
+  error: "#EF4444",
+  info: "#3B82F6",
 };
 
 export type Theme = typeof lightTheme;

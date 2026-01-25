@@ -201,8 +201,13 @@ const router = createBrowserRouter([
       },
       {
         path: "/dashboard",
-        element: renderPage(<HomePage />),
+        element: <DashboardPageV2 />,
         id: "Dashboard",
+      },
+      {
+        path: "/chat",
+        element: <ChatPageV2 />,
+        id: "ChatPortal",
       },
       {
         path: "/users/organisation",

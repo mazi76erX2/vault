@@ -13,6 +13,7 @@ import {
   Database,
   Upload,
   Search,
+  MessageSquare,
 } from "lucide-react";
 import { useAuthContext } from "@/hooks/useAuthContext";
 import { cn } from "@/lib/utils";
@@ -58,6 +59,11 @@ export const MenuListItems: React.FC<MenuListItemsProps> = ({ open }) => {
       title: "Dashboard",
       to: "/dashboard",
       icon: <LayoutDashboard className="w-5 h-5" />,
+    },
+    {
+      title: "AI Chat",
+      to: "/chat",
+      icon: <MessageSquare className="w-5 h-5" />,
     },
     {
       title: "Organisational Details",
@@ -199,39 +205,34 @@ const MenuListItem: React.FC<MenuListItemProps> = ({
         type="button"
         onClick={handleClick}
         className={cn(
-          "w-full flex items-center h-10 transition-all duration-200",
-          "hover:bg-muted/50",
-          !showText ? "justify-center px-0" : "gap-3 px-4",
-          subItem && showText && "px-8",
-          isActive && !subItem && "bg-primary text-primary-foreground",
-          isActive && subItem && "text-primary font-medium bg-muted",
-          !isActive && "text-foreground bg-transparent",
+          "w-full flex items-center h-11 transition-all duration-200 rounded-xl mb-1 group px-4",
+          !showText ? "justify-center px-0" : "gap-3",
+          subItem && showText && "pl-12",
+          isActive
+            ? "bg-white/10 text-white font-semibold shadow-sm"
+            : "text-zinc-400 hover:bg-white/5 hover:text-white",
         )}
       >
         {!subItem && item.icon && (
-          <span className="min-w-[20px] flex items-center justify-center">
-            {item.icon}
+          <span
+            className={cn(
+              "flex items-center justify-center transition-colors",
+              isActive
+                ? "text-primary"
+                : "text-zinc-500 group-hover:text-white",
+            )}
+          >
+            {React.cloneElement(item.icon as React.ReactElement, { size: 20 })}
           </span>
         )}
 
         {showText && (
-          <span
-            className={cn(
-              "flex-1 text-left",
-              subItem && isActive ? "font-bold" : "text-base",
-            )}
-          >
-            {item.title}
-          </span>
+          <span className="flex-1 text-left text-sm">{item.title}</span>
         )}
 
         {item.subMenu && showText && (
-          <span className="ml-auto">
-            {isExpanded ? (
-              <ChevronUp className="w-4 h-4" />
-            ) : (
-              <ChevronDown className="w-4 h-4" />
-            )}
+          <span className="ml-auto text-zinc-600">
+            {isExpanded ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
           </span>
         )}
       </button>

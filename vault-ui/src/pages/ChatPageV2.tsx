@@ -4,9 +4,6 @@ import { toast } from "sonner";
 import {
   Send,
   Loader2,
-  AlertCircle,
-  Moon,
-  Sun,
   Sparkles,
   Search,
   Book,
@@ -79,7 +76,7 @@ const ChatPageV2: React.FC = () => {
   const [showSuggestions, setShowSuggestions] = useState(true);
   const messagesEndRef = useRef<HTMLDivElement | null>(null);
   const location = useLocation();
-  const { mode, colors, toggleTheme } = useTheme();
+  const { colors } = useTheme();
 
   const { selectedQuestion } = (location.state as LocationState) || {};
 
@@ -174,73 +171,38 @@ const ChatPageV2: React.FC = () => {
       className="flex flex-col h-screen transition-colors duration-300"
     >
       {/* Header */}
-      <header
-        style={{
-          backgroundColor: colors.surface,
-          borderBottomColor: colors.border,
-        }}
-        className="border-b backdrop-blur-sm sticky top-0 z-10"
-      >
-        <div className="max-w-6xl mx-auto px-4 py-4 flex items-center justify-between">
+      {/* Header */}
+      <header className="px-6 py-6 border-b border-border/50">
+        <div className="max-w-4xl mx-auto flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div
-              style={{ color: colors.primary }}
-              className="text-2xl font-bold"
-            >
-              🔮
+            <div className="w-8 h-8 rounded-lg bg-primary flex items-center justify-center">
+              <MessageSquare className="text-white w-5 h-5" />
             </div>
             <div>
-              <h1 className="text-xl font-bold">Vault RAG</h1>
+              <h1 className="text-lg font-bold tracking-tight">AI Chat</h1>
               <p style={{ color: colors.textMuted }} className="text-xs">
-                AI-powered document search
+                Intelligent search & synthesis
               </p>
             </div>
           </div>
-
-          <button
-            onClick={toggleTheme}
-            style={{
-              backgroundColor: colors.primaryLight,
-              color: colors.text,
-            }}
-            className="p-2 rounded-lg hover:opacity-80 transition-opacity"
-            title="Toggle theme"
-          >
-            {mode === "dark" ? (
-              <Sun className="w-5 h-5" />
-            ) : (
-              <Moon className="w-5 h-5" />
-            )}
-          </button>
         </div>
       </header>
 
       {/* Main Content */}
       <div className="flex-1 overflow-y-auto">
-        <div className="max-w-4xl mx-auto px-4 py-8">
+        <div className="max-w-3xl mx-auto px-6 py-12">
           {messages.length === 0 && showSuggestions ? (
             // Hero Section
-            <div className="flex flex-col items-center justify-center min-h-full gap-12 py-20">
-              {/* Illustration Placeholder */}
-              <div
-                className="flex items-center justify-center w-48 h-48 rounded-full"
-                style={{ backgroundColor: colors.surface }}
-              >
-                <div style={{ color: colors.primary }} className="text-6xl">
-                  📚
-                </div>
-              </div>
-
-              <div className="text-center max-w-2xl">
-                <h2 className="text-4xl font-bold mb-4">
-                  Welcome to Vault RAG
+            <div className="flex flex-col items-center justify-center min-h-[60vh] gap-10">
+              <div className="text-center">
+                <h2 className="text-4xl font-bold tracking-tight mb-4">
+                  Where knowledge begins
                 </h2>
                 <p
                   style={{ color: colors.textSecondary }}
-                  className="text-lg mb-8"
+                  className="text-lg max-w-xl"
                 >
-                  Ask questions about your documents and get instant, accurate
-                  answers powered by AI and intelligent search.
+                  Search your documents and get instant, cited answers.
                 </p>
               </div>
 
@@ -251,30 +213,25 @@ const ChatPageV2: React.FC = () => {
                   return (
                     <button
                       key={index}
+                      type="button"
                       onClick={() =>
                         handleSuggestedQuestion(
-                          `Help me ${item.title.toLowerCase()}: ${item.description}`,
+                          `Help me ${item.title.toLowerCase()}: ${
+                            item.description
+                          }`,
                         )
                       }
-                      style={{
-                        backgroundColor: colors.surface,
-                        borderColor: colors.border,
-                        color: colors.text,
-                      }}
-                      className="p-4 rounded-lg border text-left hover:shadow-lg hover:scale-105 transition-all"
+                      className="p-5 rounded-2xl border border-border bg-card text-left hover:border-primary/50 hover:bg-primary/5 transition-all group active:scale-[0.98]"
                     >
-                      <div className="flex items-start gap-3">
-                        <Icon
-                          style={{ color: colors.primary }}
-                          className="w-6 h-6 flex-shrink-0 mt-1"
-                        />
+                      <div className="flex items-start gap-4">
+                        <div className="p-2 rounded-lg bg-surfaceAlt text-primary group-hover:bg-primary/10 transition-colors">
+                          <Icon className="w-5 h-5" />
+                        </div>
                         <div>
-                          <h3 className="font-semibold text-sm">
-                            {item.title}
-                          </h3>
+                          <h3 className="font-bold text-sm">{item.title}</h3>
                           <p
                             style={{ color: colors.textMuted }}
-                            className="text-xs"
+                            className="text-xs mt-1"
                           >
                             {item.description}
                           </p>
@@ -287,186 +244,82 @@ const ChatPageV2: React.FC = () => {
             </div>
           ) : (
             // Chat Messages
-            <div className="space-y-6 py-4">
+            <div className="space-y-12 pb-32">
               {messages.map((msg) => (
-                <div key={msg.id}>
+                <div
+                  key={msg.id}
+                  className="animate-in fade-in slide-in-from-bottom-4 duration-500"
+                >
                   {msg.sender === "user" ? (
                     // User Message
-                    <div className="flex justify-end mb-4">
-                      <div
-                        style={{
-                          backgroundColor: colors.primary,
-                          color: "#ffffff",
-                        }}
-                        className="max-w-2xl rounded-2xl px-6 py-4 shadow-lg"
-                      >
-                        <p className="text-base">{msg.content}</p>
-                        <p
-                          style={{ color: "rgba(255,255,255,0.7)" }}
-                          className="text-xs mt-2"
-                        >
-                          {msg.timestamp}
-                        </p>
-                      </div>
+                    <div className="flex justify-start mb-8">
+                      <h3 className="text-3xl font-semibold tracking-tight text-foreground/90">
+                        {msg.content}
+                      </h3>
                     </div>
                   ) : (
                     // Bot Message
-                    <div className="flex justify-start mb-4">
-                      <div
-                        style={{
-                          backgroundColor: colors.surface,
-                          borderColor: colors.border,
-                        }}
-                        className="max-w-2xl rounded-2xl px-6 py-4 border shadow-lg"
-                      >
-                        {/* Answer */}
-                        <p className="text-base leading-relaxed mb-4">
-                          {msg.content}
-                        </p>
-
-                        {/* Sources */}
-                        {msg.sources && msg.sources.length > 0 && (
-                          <div
-                            className="mt-4 pt-4 border-t"
-                            style={{ borderColor: colors.border }}
-                          >
-                            <h4
-                              style={{ color: colors.primary }}
-                              className="text-xs font-semibold mb-3 uppercase tracking-wide"
-                            >
-                              📌 Sources
-                            </h4>
-                            <div className="space-y-2">
-                              {msg.sources.map((source) => (
-                                <div
-                                  key={source.index}
-                                  style={{
-                                    backgroundColor: colors.surfaceAlt,
-                                    borderColor: colors.borderLight,
-                                  }}
-                                  className="p-3 rounded-lg border text-xs"
-                                >
-                                  <div className="flex items-center justify-between mb-2">
-                                    <span className="font-semibold truncate">
-                                      {source.source}
-                                    </span>
-                                    <span
-                                      style={{ color: colors.primary }}
-                                      className="font-bold"
-                                    >
-                                      {(source.score * 100).toFixed(0)}%
-                                    </span>
-                                  </div>
-                                  <p
-                                    style={{ color: colors.textSecondary }}
-                                    className="line-clamp-2"
-                                  >
-                                    {source.content_preview}
-                                  </p>
-                                </div>
-                              ))}
-                            </div>
-                          </div>
-                        )}
-
-                        {/* Performance Metrics */}
-                        {msg.performance && (
-                          <div
-                            className="mt-4 pt-4 border-t"
-                            style={{ borderColor: colors.border }}
-                          >
-                            <h4
-                              style={{ color: colors.primary }}
-                              className="text-xs font-semibold mb-3 uppercase tracking-wide"
-                            >
-                              ⚡ Performance
-                            </h4>
-                            <div className="grid grid-cols-2 gap-2 text-xs">
-                              <div>
-                                <span style={{ color: colors.textMuted }}>
-                                  Embedding
-                                </span>
-                                <div className="font-mono font-bold">
-                                  {msg.performance.embedding_ms?.toFixed(0) ||
-                                    0}
-                                  ms
-                                </div>
-                              </div>
-                              <div>
-                                <span style={{ color: colors.textMuted }}>
-                                  Search
-                                </span>
-                                <div className="font-mono font-bold">
-                                  {msg.performance.search_ms?.toFixed(0) || 0}
-                                  ms
-                                </div>
-                              </div>
-                              {msg.performance.rerank_ms && (
-                                <div>
-                                  <span style={{ color: colors.textMuted }}>
-                                    Rerank
-                                  </span>
-                                  <div className="font-mono font-bold">
-                                    {msg.performance.rerank_ms.toFixed(0)}ms
-                                  </div>
-                                </div>
-                              )}
-                              {msg.performance.generation_ms && (
-                                <div>
-                                  <span style={{ color: colors.textMuted }}>
-                                    Generation
-                                  </span>
-                                  <div className="font-mono font-bold">
-                                    {msg.performance.generation_ms.toFixed(0)}
-                                    ms
-                                  </div>
-                                </div>
-                              )}
-                              <div className="col-span-2">
-                                <span style={{ color: colors.textMuted }}>
-                                  Total
-                                </span>
-                                <div
-                                  style={{ color: colors.primary }}
-                                  className="font-mono font-bold text-base"
-                                >
-                                  {msg.performance.total_ms?.toFixed(0) || 0}
-                                  ms
-                                </div>
-                              </div>
-                            </div>
-                          </div>
-                        )}
-
-                        <p
-                          style={{ color: colors.textMuted }}
-                          className="text-xs mt-4"
-                        >
-                          {msg.timestamp}
-                        </p>
+                    <div className="flex flex-col gap-6">
+                      <div className="flex items-center gap-2 text-primary font-bold text-sm uppercase tracking-widest">
+                        <div className="w-5 h-5 rounded bg-primary flex items-center justify-center">
+                          <Sparkles size={12} className="text-white" />
+                        </div>
+                        Vault AI
                       </div>
+
+                      <div className="text-lg leading-relaxed text-foreground/90 whitespace-pre-wrap font-medium">
+                        {msg.content}
+                      </div>
+
+                      {/* Sources */}
+                      {msg.sources && msg.sources.length > 0 && (
+                        <div className="flex gap-3 overflow-x-auto pb-4 scrollbar-hide">
+                          {msg.sources.map((source) => (
+                            <div
+                              key={source.index}
+                              className="flex-shrink-0 w-64 p-4 rounded-xl border border-border bg-surfaceAlt/50 hover:bg-surfaceAlt transition-colors cursor-pointer"
+                            >
+                              <div className="flex items-center gap-2 mb-2">
+                                <div className="w-4 h-4 rounded-full bg-primary/20 flex items-center justify-center text-[10px] font-bold text-primary">
+                                  {source.index + 1}
+                                </div>
+                                <span className="text-xs font-bold truncate">
+                                  {source.source}
+                                </span>
+                              </div>
+                              <p
+                                style={{ color: colors.textSecondary }}
+                                className="text-[11px] line-clamp-2 leading-normal"
+                              >
+                                {source.content_preview}
+                              </p>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+
+                      {/* Performance Metric - Minimalist */}
+                      {msg.performance && (
+                        <div className="text-[10px] text-textMuted flex items-center gap-3">
+                          <span>
+                            Found in {msg.performance.total_ms?.toFixed(0)}ms
+                          </span>
+                          <span>•</span>
+                          <span>{msg.timestamp}</span>
+                        </div>
+                      )}
                     </div>
                   )}
                 </div>
               ))}
 
               {isLoading && (
-                <div className="flex justify-start">
-                  <div
-                    style={{
-                      backgroundColor: colors.surface,
-                      borderColor: colors.border,
-                    }}
-                    className="rounded-2xl px-6 py-4 border flex items-center gap-2"
-                  >
-                    <Loader2
-                      style={{ color: colors.primary }}
-                      className="w-4 h-4 animate-spin"
-                    />
-                    <span style={{ color: colors.textSecondary }}>
-                      Searching and thinking...
-                    </span>
+                <div className="flex flex-col gap-4 animate-pulse">
+                  <div className="flex items-center gap-2 text-primary/50 font-bold text-sm uppercase tracking-widest">
+                    Vault AI is searching...
                   </div>
+                  <div className="h-4 bg-surfaceAlt rounded-full w-3/4" />
+                  <div className="h-4 bg-surfaceAlt rounded-full w-1/2" />
                 </div>
               )}
 
@@ -476,44 +329,24 @@ const ChatPageV2: React.FC = () => {
         </div>
       </div>
 
-      {/* Input Area */}
-      <div
-        style={{
-          backgroundColor: colors.surface,
-          borderTopColor: colors.border,
-        }}
-        className="border-t sticky bottom-0 backdrop-blur-sm"
-      >
-        <div className="max-w-4xl mx-auto px-4 py-6">
-          <div
-            style={{
-              backgroundColor: colors.surfaceAlt,
-              borderColor: colors.border,
-            }}
-            className="flex items-center gap-3 rounded-2xl border p-2 hover:shadow-lg transition-shadow"
-          >
+      {/* Input Area - Floating Modern */}
+      <div className="fixed bottom-0 left-0 right-0 pointer-events-none">
+        <div className="max-w-3xl mx-auto px-6 pb-10">
+          <div className="bg-card border border-border shadow-2xl rounded-[32px] p-2 pointer-events-auto flex items-center gap-2 backdrop-blur-xl">
             <input
               type="text"
               value={newMessage}
               onChange={(e) => setNewMessage(e.target.value)}
               onKeyDown={handleKeyPress}
-              placeholder="Ask anything about your documents..."
+              placeholder="Ask a follow-up..."
               disabled={isLoading}
-              style={{
-                backgroundColor: colors.surfaceAlt,
-                color: colors.text,
-              }}
-              className="flex-1 bg-transparent px-4 py-3 outline-none placeholder-gray-400 disabled:opacity-50"
+              className="flex-1 bg-transparent px-6 py-4 outline-none text-base placeholder-textMuted disabled:opacity-50"
             />
             <button
+              type="button"
               onClick={sendMessage}
               disabled={!newMessage.trim() || isLoading}
-              style={{
-                backgroundColor: colors.primary,
-                color: "#ffffff",
-              }}
-              className="p-3 rounded-lg hover:opacity-90 disabled:opacity-50 transition-opacity"
-              title="Send message"
+              className="w-12 h-12 rounded-full bg-primary text-white flex items-center justify-center hover:opacity-90 disabled:opacity-30 transition-all active:scale-90"
             >
               {isLoading ? (
                 <Loader2 className="w-5 h-5 animate-spin" />
@@ -522,14 +355,6 @@ const ChatPageV2: React.FC = () => {
               )}
             </button>
           </div>
-
-          <p
-            style={{ color: colors.textMuted }}
-            className="text-xs text-center mt-3"
-          >
-            Vault RAG uses AI to search and answer questions. Always verify
-            important information.
-          </p>
         </div>
       </div>
     </div>
