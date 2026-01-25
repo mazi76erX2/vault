@@ -4,7 +4,7 @@ import { toast } from "sonner";
 import axios from "axios";
 import { User, Lock } from "lucide-react";
 import { Button } from "@/components/ui/button/button";
-import { TextField } from "@/components/forms/text-field";
+import { TextField } from "@/components/forms";
 import Logo from "@/assets/VAULT_LOGO_ORANGE_NEW.svg";
 import Map from "@/assets/truechart_map.png";
 

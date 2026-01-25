@@ -51,7 +51,7 @@ const KBDocumentsPage: React.FC = () => {
   };
 
   const filteredDocuments = documents.filter((doc) =>
-    doc.title.toLowerCase().includes(searchQuery.toLowerCase())
+    doc.title.toLowerCase().includes(searchQuery.toLowerCase()),
   );
 
   if (loading) {

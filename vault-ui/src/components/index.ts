@@ -10,6 +10,9 @@ export * from "./feedback";
 // Layout
 export * from "./layout";
 
+// Auth
+export * from "./auth";
+
 // Editors
 export * from "./editors";
 

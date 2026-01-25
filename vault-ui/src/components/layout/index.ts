@@ -1,2 +1,2 @@
-export * from "./alignment";
-export * from "./segment-tabs";
+export * from "./Alignment/Alignment";
+export * from "./SegmentTabs/SegmentTabs";

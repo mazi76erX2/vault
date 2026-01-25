@@ -3,9 +3,9 @@ import { useLocation } from "react-router-dom";
 import { toast } from "sonner";
 import { Send, Loader2, AlertCircle } from "lucide-react";
 import { AxiosError } from "axios";
-import { Button } from "@/components/ui/button";
-import { TextField } from "@/components/forms/text-field";
-import { Card } from "@/components/ui/card";
+import { Button } from "@/components/ui/button/button";
+import { TextField } from "@/components/forms";
+import { Card } from "@/components/ui/card/card";
 import Api from "@/services/Instance";
 
 interface ChatMessage {
@@ -95,9 +95,7 @@ const ChatPage: React.FC = () => {
       let errorMessage = "Failed to process query";
       if (error instanceof AxiosError) {
         errorMessage =
-          error.response?.data?.detail ||
-          error.message ||
-          errorMessage;
+          error.response?.data?.detail || error.message || errorMessage;
       }
       toast.error(errorMessage);
       console.error("RAG query failed:", error);
@@ -134,7 +132,9 @@ const ChatPage: React.FC = () => {
     <div className="min-h-screen bg-gradient-to-br from-slate-900 to-slate-800">
       <div className="bg-slate-800 text-white px-6 py-4 shadow-md border-b border-slate-700">
         <h1 className="text-2xl font-bold">💬 RAG Chat</h1>
-        <p className="text-slate-400 text-sm">Ask questions about your knowledge base</p>
+        <p className="text-slate-400 text-sm">
+          Ask questions about your knowledge base
+        </p>
       </div>
 
       <div className="max-w-4xl mx-auto mt-6 flex flex-col h-[calc(100vh-140px)] px-4">

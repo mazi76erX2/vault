@@ -10,7 +10,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card/card";
-import { DataTable } from "@/components/data-display/data-table";
+import { DataTable } from "@/components/data-display";
 import Api from "@/services/Instance";
 
 interface Project {

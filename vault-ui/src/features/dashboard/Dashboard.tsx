@@ -2,8 +2,8 @@ import React, { useEffect, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import Api from "@/services/Instance";
 import { Loader2, AlertCircle, TrendingUp } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { Card } from "@/components/ui/card";
+import { Button } from "@/components/ui/button/button";
+import { Card } from "@/components/ui/card/card";
 
 interface StatsData {
   total_chunks: number;
@@ -86,7 +86,9 @@ export const Dashboard: React.FC = () => {
         {/* Header */}
         <div className="flex items-center justify-between mb-8">
           <div>
-            <h1 className="text-4xl font-bold text-white mb-2">🔮 Vault RAG Dashboard</h1>
+            <h1 className="text-4xl font-bold text-white mb-2">
+              🔮 Vault RAG Dashboard
+            </h1>
             <p className="text-slate-400">
               Real-time metrics and statistics for your RAG pipeline
             </p>
@@ -141,7 +143,9 @@ export const Dashboard: React.FC = () => {
                         {stat.value}
                       </p>
                       {stat.trend && (
-                        <span className="text-sm text-green-400">{stat.trend}</span>
+                        <span className="text-sm text-green-400">
+                          {stat.trend}
+                        </span>
                       )}
                     </div>
                   </div>
@@ -244,7 +248,9 @@ export const Dashboard: React.FC = () => {
               <div className="flex items-start gap-3">
                 <span className="text-green-400 font-bold mt-1">✓</span>
                 <div>
-                  <p className="text-white font-medium">Cloud-First Generation</p>
+                  <p className="text-white font-medium">
+                    Cloud-First Generation
+                  </p>
                   <p className="text-slate-400 text-sm">
                     Gemini API with Ollama fallback
                   </p>

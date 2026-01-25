@@ -6,9 +6,9 @@ import { AxiosError } from "axios";
 import { ArrowRight, Upload, Sparkles } from "lucide-react";
 import type { ColumnDef } from "@tanstack/react-table";
 import { useAuthContext } from "@/hooks/useAuthContext";
-import { DataTable } from "@/components/data-display/data-table";
+import { DataTable } from "@/components/data-display";
 import { Button } from "@/components/ui/button/button";
-import { Loader } from "@/components/feedback/loader";
+import { Loader } from "@/components/ui/loader/loader";
 import Api from "@/services/Instance";
 
 interface QuestionRowData {

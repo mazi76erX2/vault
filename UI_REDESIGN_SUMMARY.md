@@ -10,6 +10,7 @@
 ## 🎨 What's New
 
 ### Complete Design Overhaul
+
 - ✅ Modern Perplexity-inspired interface
 - ✅ Dark & Light mode switching
 - ✅ Custom color palette
@@ -21,6 +22,7 @@
 ### Color Scheme
 
 **Light Mode:**
+
 ```
 #f0f0f0 (Surface)
 #6061c0 (Primary - Deep Blue)
@@ -33,6 +35,7 @@
 ```
 
 **Dark Mode:**
+
 ```
 #1a1a2e (Surface)
 #55BBAD (Primary - Teal)
@@ -48,6 +51,7 @@
 ## 📁 New Files Created
 
 ### Theme System
+
 ```
 src/theme/
 ├── colors.ts           ← Color palette definitions
@@ -55,6 +59,7 @@ src/theme/
 ```
 
 ### New Components
+
 ```
 src/pages/
 ├── ChatPageV2.tsx      ← Beautiful chat interface
@@ -65,6 +70,7 @@ src/features/dashboard/
 ```
 
 ### Documentation
+
 ```
 vault-ui/
 ├── DESIGN_SYSTEM.md    ← Design guidelines
@@ -76,13 +82,16 @@ vault-ui/
 ## 🎯 Key Features
 
 ### Chat Interface (ChatPageV2)
+
 ✅ **Hero Section**
+
 - Large illustration area
 - Welcome message
 - Suggested actions with icons
 - Smooth fade in/out
 
 ✅ **Suggested Questions**
+
 - Search Documents
 - Ask Questions
 - Summarize
@@ -91,6 +100,7 @@ vault-ui/
 - Smooth interactions
 
 ✅ **Messages**
+
 - User messages: Primary color background
 - Bot messages: Surface color with border
 - Source bubbles with relevance scores
@@ -98,6 +108,7 @@ vault-ui/
 - Smooth animations
 
 ✅ **Input Area**
+
 - Modern rounded design (24px)
 - Placeholder text
 - Keyboard shortcuts (Enter to send)
@@ -105,12 +116,15 @@ vault-ui/
 - Hover effects
 
 ✅ **Theme Toggle**
+
 - Moon/Sun icon button
 - Smooth transition
 - Saved preference
 
 ### Dashboard (DashboardV2)
+
 ✅ **Statistics Cards**
+
 - Total Chunks count
 - Total Documents count
 - System Status
@@ -118,12 +132,14 @@ vault-ui/
 - Loading skeletons
 
 ✅ **System Information**
+
 - API endpoint display
 - Current status
 - Last updated time
 - Auto-refresh intervals (10s, 30s, 60s)
 
 ✅ **Features Showcase**
+
 - Hybrid Search
 - Reranking
 - Query Enhancement
@@ -132,6 +148,7 @@ vault-ui/
 - Source Attribution
 
 ✅ **Hero Section**
+
 - AI-powered illustration
 - Status message
 - Call-to-action
@@ -147,21 +164,22 @@ import { useTheme } from "@/theme/ThemeContext";
 
 const MyComponent = () => {
   const { mode, colors, toggleTheme } = useTheme();
-  
+
   return (
-    <div style={{
-      backgroundColor: colors.background,
-      color: colors.text
-    }}>
-      <button onClick={toggleTheme}>
-        Toggle Theme
-      </button>
+    <div
+      style={{
+        backgroundColor: colors.background,
+        color: colors.text,
+      }}
+    >
+      <button onClick={toggleTheme}>Toggle Theme</button>
     </div>
   );
 };
 ```
 
 ### Features
+
 - Automatic localStorage persistence
 - System preference detection
 - Real-time CSS variable updates
@@ -173,11 +191,13 @@ const MyComponent = () => {
 ## 📱 Responsive Design
 
 ### Breakpoints
+
 - **Mobile:** 320px - 767px (1 column)
-- **Tablet:** 768px - 1023px (2 columns)  
+- **Tablet:** 768px - 1023px (2 columns)
 - **Desktop:** 1024px+ (3+ columns)
 
 ### Mobile Optimizations
+
 - Larger touch targets (44px minimum)
 - Single column layout
 - Full-width inputs
@@ -189,6 +209,7 @@ const MyComponent = () => {
 ## ✨ Animations & Interactions
 
 ### Smooth Transitions
+
 - Color changes: 300ms
 - Hover effects: 200ms
 - Theme toggle: Instant
@@ -196,6 +217,7 @@ const MyComponent = () => {
 - Loading spinner: Continuous
 
 ### User Feedback
+
 - Button hover states
 - Loading indicators
 - Error states with icons
@@ -207,6 +229,7 @@ const MyComponent = () => {
 ## 🎨 Design System
 
 See **DESIGN_SYSTEM.md** for:
+
 - Complete color reference
 - Component examples
 - Spacing system
@@ -220,6 +243,7 @@ See **DESIGN_SYSTEM.md** for:
 ## 🖼️ Illustrations
 
 ### Current Implementation
+
 - Uses emoji/icons from Lucide React
 - Placeholder areas ready for illustrations
 - Can be replaced with external CDN
@@ -227,6 +251,7 @@ See **DESIGN_SYSTEM.md** for:
 ### Recommended Illustration Services
 
 1. **Undraw.co** (Recommended)
+
    ```
    https://undraw.co/api/illustration/search?color=#6061c0
    https://undraw.co/api/illustration/chat?color=#6061c0
@@ -245,7 +270,7 @@ See **DESIGN_SYSTEM.md** for:
 
 ```tsx
 // Replace emoji with external image
-<img 
+<img
   src="https://undraw.co/api/illustration/search?color=#6061c0"
   alt="Search"
   className="w-48 h-48"
@@ -257,16 +282,19 @@ See **DESIGN_SYSTEM.md** for:
 ## 🔄 Migration Guide
 
 ### Old Components
+
 - `ChatPage.tsx` → Keep for reference
 - `Dashboard.tsx` → Keep for reference
 - `DashboardPage.tsx` → Keep for reference
 
 ### New Components (Active)
+
 - `ChatPageV2.tsx` → Use for chat
 - `DashboardV2.tsx` → Use for dashboard
 - `DashboardPageV2.tsx` → Wrapper component
 
 ### Routes Updated
+
 ```tsx
 path: "/rag/chat"       → ChatPageV2
 path: "/rag/dashboard"  → DashboardPageV2
@@ -277,38 +305,41 @@ path: "/rag/dashboard"  → DashboardPageV2
 ## 🎯 Features by Component
 
 ### ChatPageV2
-| Feature | Status |
-|---------|--------|
-| Light mode | ✅ |
-| Dark mode | ✅ |
-| Hero section | ✅ |
-| Suggested questions | ✅ |
-| Chat messages | ✅ |
-| Source display | ✅ |
-| Performance metrics | ✅ |
-| Theme toggle | ✅ |
-| Responsive design | ✅ |
-| Loading states | ✅ |
+
+| Feature             | Status |
+| ------------------- | ------ |
+| Light mode          | ✅     |
+| Dark mode           | ✅     |
+| Hero section        | ✅     |
+| Suggested questions | ✅     |
+| Chat messages       | ✅     |
+| Source display      | ✅     |
+| Performance metrics | ✅     |
+| Theme toggle        | ✅     |
+| Responsive design   | ✅     |
+| Loading states      | ✅     |
 
 ### DashboardV2
-| Feature | Status |
-|---------|--------|
-| Light mode | ✅ |
-| Dark mode | ✅ |
-| Stats cards | ✅ |
-| System info | ✅ |
-| Feature list | ✅ |
-| Auto-refresh | ✅ |
-| Theme toggle | ✅ |
-| Responsive design | ✅ |
-| Loading states | ✅ |
-| Error handling | ✅ |
+
+| Feature           | Status |
+| ----------------- | ------ |
+| Light mode        | ✅     |
+| Dark mode         | ✅     |
+| Stats cards       | ✅     |
+| System info       | ✅     |
+| Feature list      | ✅     |
+| Auto-refresh      | ✅     |
+| Theme toggle      | ✅     |
+| Responsive design | ✅     |
+| Loading states    | ✅     |
+| Error handling    | ✅     |
 
 ---
 
 ## 🚀 Performance
 
 ### Optimizations
+
 - CSS variables for theming (no re-renders)
 - Lazy component loading
 - Smooth transitions (GPU accelerated)
@@ -316,6 +347,7 @@ path: "/rag/dashboard"  → DashboardPageV2
 - Minimal bundle impact
 
 ### File Sizes
+
 - `ThemeContext.tsx`: ~3KB
 - `ChatPageV2.tsx`: ~12KB
 - `DashboardV2.tsx`: ~10KB
@@ -327,6 +359,7 @@ path: "/rag/dashboard"  → DashboardPageV2
 ## ♿ Accessibility
 
 ### WCAG Compliance
+
 - High contrast ratios
 - Semantic HTML
 - Keyboard navigation
@@ -335,6 +368,7 @@ path: "/rag/dashboard"  → DashboardPageV2
 - Screen reader support
 
 ### Keyboard Shortcuts
+
 - `Enter` → Send message
 - `Tab` → Navigate elements
 - `Space` → Toggle buttons
@@ -345,6 +379,7 @@ path: "/rag/dashboard"  → DashboardPageV2
 ## 🧪 Testing
 
 ### Component Testing
+
 ```tsx
 // Test theme switching
 render(<ChatPageV2 />);
@@ -354,11 +389,13 @@ fireEvent.click(themeButton);
 ```
 
 ### Color Contrast Testing
+
 - All text meets WCAG AA standard
 - 7:1 ratio for primary text
 - 4.5:1 ratio for secondary text
 
 ### Responsive Testing
+
 - Mobile: 375px width
 - Tablet: 768px width
 - Desktop: 1440px width
@@ -368,6 +405,7 @@ fireEvent.click(themeButton);
 ## 📋 Checklist
 
 ### Implementation
+
 - [x] Color palette defined
 - [x] Theme context created
 - [x] Chat interface redesigned
@@ -384,6 +422,7 @@ fireEvent.click(themeButton);
 - [x] App.tsx updated
 
 ### Documentation
+
 - [x] Design system created
 - [x] Color guide created
 - [x] Component examples provided
@@ -392,6 +431,7 @@ fireEvent.click(themeButton);
 - [x] This summary created
 
 ### Future Enhancements
+
 - [ ] Add illustrations from Undraw
 - [ ] Add gradient backgrounds
 - [ ] Add Framer Motion animations
@@ -405,6 +445,7 @@ fireEvent.click(themeButton);
 ## 💡 Usage Examples
 
 ### Simple Chat Message
+
 ```tsx
 <div style={{ backgroundColor: colors.primary, color: "#ffffff" }}>
   Hello! This is a chat message.
@@ -412,6 +453,7 @@ fireEvent.click(themeButton);
 ```
 
 ### Stat Card
+
 ```tsx
 <StatCard
   icon={<Database className="w-5 h-5" />}
@@ -423,12 +465,11 @@ fireEvent.click(themeButton);
 ```
 
 ### Theme Toggle
+
 ```tsx
 const { mode, toggleTheme } = useTheme();
 
-<button onClick={toggleTheme}>
-  {mode === "dark" ? <Sun /> : <Moon />}
-</button>
+<button onClick={toggleTheme}>{mode === "dark" ? <Sun /> : <Moon />}</button>;
 ```
 
 ---
@@ -436,6 +477,7 @@ const { mode, toggleTheme } = useTheme();
 ## 🔗 Integration
 
 ### With Existing Code
+
 - ✅ Works with current API
 - ✅ Compatible with auth system
 - ✅ Uses existing components
@@ -443,6 +485,7 @@ const { mode, toggleTheme } = useTheme();
 - ✅ Backward compatible
 
 ### Dependencies
+
 - React 18+
 - TailwindCSS
 - Lucide React (icons)
@@ -453,19 +496,20 @@ const { mode, toggleTheme } = useTheme();
 
 ## 📊 Browser Support
 
-| Browser | Support |
-|---------|---------|
-| Chrome | ✅ Latest 2 versions |
-| Firefox | ✅ Latest 2 versions |
-| Safari | ✅ Latest 2 versions |
-| Edge | ✅ Latest 2 versions |
-| Mobile | ✅ iOS 12+, Android 5+ |
+| Browser | Support                |
+| ------- | ---------------------- |
+| Chrome  | ✅ Latest 2 versions   |
+| Firefox | ✅ Latest 2 versions   |
+| Safari  | ✅ Latest 2 versions   |
+| Edge    | ✅ Latest 2 versions   |
+| Mobile  | ✅ iOS 12+, Android 5+ |
 
 ---
 
 ## 🎓 Design Decisions
 
 ### Why Perplexity Inspiration?
+
 - Clean, minimal design
 - Focus on content
 - Modern interactions
@@ -473,6 +517,7 @@ const { mode, toggleTheme } = useTheme();
 - Professional appearance
 
 ### Why Dual Themes?
+
 - User preference respect
 - Accessibility options
 - Reduced eye strain (dark mode)
@@ -480,6 +525,7 @@ const { mode, toggleTheme } = useTheme();
 - Better brand presence
 
 ### Why Custom Colors?
+
 - Brand consistency
 - Psychological appeal
 - Better contrast options
@@ -491,19 +537,24 @@ const { mode, toggleTheme } = useTheme();
 ## 📞 Support
 
 ### Design Questions
+
 See `DESIGN_SYSTEM.md` for:
+
 - Color reference
 - Component examples
 - Spacing guidelines
 - Animation specs
 
 ### Implementation Questions
+
 See component files:
+
 - `ChatPageV2.tsx` - Chat interface
 - `DashboardV2.tsx` - Dashboard
 - `ThemeContext.tsx` - Theme system
 
 ### Adding Illustrations
+
 1. Go to Undraw.co
 2. Search for illustration
 3. Get shareable link
@@ -515,18 +566,21 @@ See component files:
 ## 🚀 Next Steps
 
 ### Immediate
+
 1. Test the new interface
 2. Try theme switching
 3. Check responsive design
 4. Verify all features work
 
 ### Short-term
+
 1. Add illustrations from Undraw
 2. Test on various devices
 3. Gather user feedback
 4. Fix any issues
 
 ### Medium-term
+
 1. Implement more animations
 2. Add data visualizations
 3. Optimize performance
@@ -538,15 +592,15 @@ See component files:
 
 ### Before vs After
 
-| Aspect | Before | After |
-|--------|--------|-------|
-| Themes | Only dark | Light + Dark |
-| Design | Basic | Modern (Perplexity) |
-| Colors | Limited | Custom palette |
-| Animations | Minimal | Smooth transitions |
-| Mobile | Basic | Fully responsive |
-| Illustrations | None | Placeholder-ready |
-| User Experience | Functional | Delightful |
+| Aspect          | Before     | After               |
+| --------------- | ---------- | ------------------- |
+| Themes          | Only dark  | Light + Dark        |
+| Design          | Basic      | Modern (Perplexity) |
+| Colors          | Limited    | Custom palette      |
+| Animations      | Minimal    | Smooth transitions  |
+| Mobile          | Basic      | Fully responsive    |
+| Illustrations   | None       | Placeholder-ready   |
+| User Experience | Functional | Delightful          |
 
 ---
 
@@ -561,7 +615,7 @@ Your Vault RAG UI is now:
 ✅ **Accessible** - WCAG compliant  
 ✅ **Animated** - Smooth interactions  
 ✅ **Professional** - Production-ready  
-✅ **Documented** - Complete design system  
+✅ **Documented** - Complete design system
 
 **Ready to ship!** 🚀
 
@@ -572,6 +626,7 @@ Your Vault RAG UI is now:
 **Last Updated:** 2026-01-24
 
 For questions or enhancements, see:
+
 - `DESIGN_SYSTEM.md` - Design guidelines
 - `ChatPageV2.tsx` - Chat implementation
 - `DashboardV2.tsx` - Dashboard implementation

@@ -3,11 +3,11 @@ import { useNavigate, useLocation } from "react-router-dom";
 import { toast } from "sonner";
 import { AxiosError } from "axios";
 import { useAuthContext } from "@/hooks/useAuthContext";
-import { TextField } from "@/components/forms/text-field";
+import { TextField } from "@/components/forms";
 import { Button } from "@/components/ui/button/button";
-import { Loader } from "@/components/feedback/loader";
+import { Loader } from "@/components/ui/loader/loader";
 import { Card, CardContent } from "@/components/ui/card/card";
-import { RadioButtonGroup as RadioGroup } from "@/components/forms/radio-group";
+import { RadioButtonGroup as RadioGroup } from "@/components/forms";
 import Api from "@/services/Instance";
 
 interface LocationState {

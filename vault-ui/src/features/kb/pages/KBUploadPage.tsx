@@ -71,7 +71,7 @@ const KBUploadPage: React.FC = () => {
       toast.success(
         `${uploadType === "file" ? "File" : "Website"} uploaded! ${
           response.data.chunks
-        } chunks indexed.`
+        } chunks indexed.`,
       );
 
       // Reset form

@@ -107,7 +107,8 @@ async def store_bulk_in_kb(docs_list: list[dict], db: AsyncSession) -> dict:
                 embedding=embedding,
                 title=d.get("file_title"),
                 sourcefile=d.get("file_name"),
-                accesslevel=d.get("level", 1)
+                accesslevel=d.get("level", 1),
+                meta=None,
             )
             chunk_objects.append(chunk)
 

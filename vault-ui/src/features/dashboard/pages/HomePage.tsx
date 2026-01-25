@@ -2,7 +2,7 @@ import React from "react";
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button/button";
 import { useAuthContext } from "@/hooks/useAuthContext";
-import { Loader } from "@/components/feedback/loader";
+import { Loader } from "@/components/ui/loader/loader";
 
 const HomePage: React.FC = () => {
   const authContext = useAuthContext();

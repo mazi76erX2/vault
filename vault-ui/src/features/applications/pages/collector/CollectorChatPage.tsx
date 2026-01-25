@@ -6,7 +6,7 @@ import { Send, ArrowRight } from "lucide-react";
 import { useAuthContext } from "@/hooks/useAuthContext";
 import { Button } from "@/components/ui/button/button";
 import { Textarea } from "@/components/ui/textarea/textarea";
-import { Loader } from "@/components/feedback/loader";
+import { Loader } from "@/components/ui/loader/loader";
 import Api from "@/services/Instance";
 import assistantIcon from "@/assets/assistant-icon.png";
 import { formatColor } from "@/utils/colorUtils";

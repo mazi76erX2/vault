@@ -4,8 +4,8 @@ import { toast } from "sonner";
 import { AxiosError } from "axios";
 import type { ColumnDef } from "@tanstack/react-table";
 import { useAuthContext } from "@/hooks/useAuthContext";
-import { DataTable } from "@/components/data-display/data-table";
-import { Loader } from "@/components/feedback/loader";
+import { DataTable } from "@/components/data-display";
+import { Loader } from "@/components/ui/loader/loader";
 import { Button } from "@/components/ui/button/button";
 import Api from "@/services/Instance";
 

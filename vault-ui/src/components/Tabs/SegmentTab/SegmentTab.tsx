@@ -1,6 +1,11 @@
 import React from "react";
 import { Button } from "@/components/ui/button/button";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs/tabs";
+import {
+  Tabs,
+  TabsContent,
+  TabsList,
+  TabsTrigger,
+} from "@/components/ui/tabs/tabs";
 
 export interface SegmentTabItem {
   label: string;

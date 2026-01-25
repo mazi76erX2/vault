@@ -12,8 +12,8 @@ import {
   Database,
   CheckCircle,
 } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { Card } from "@/components/ui/card";
+import { Button } from "@/components/ui/button/button";
+import { Card } from "@/components/ui/card/card";
 import { useTheme } from "@/theme/ThemeContext";
 
 interface StatsData {
@@ -101,7 +101,12 @@ export const DashboardV2: React.FC = () => {
   const [refreshInterval, setRefreshInterval] = useState(30000);
   const { mode, colors, toggleTheme } = useTheme();
 
-  const { data: statsData, isLoading, error, refetch } = useQuery({
+  const {
+    data: statsData,
+    isLoading,
+    error,
+    refetch,
+  } = useQuery({
     queryKey: ["rag-stats"],
     queryFn: async () => {
       try {
@@ -190,7 +195,10 @@ export const DashboardV2: React.FC = () => {
             }}
             className="mb-6 p-4 bg-opacity-10 border rounded-lg flex items-center gap-3"
           >
-            <AlertCircle style={{ color: colors.accent1 }} className="w-5 h-5 flex-shrink-0" />
+            <AlertCircle
+              style={{ color: colors.accent1 }}
+              className="w-5 h-5 flex-shrink-0"
+            />
             <div>
               <p className="font-semibold">Error Loading Stats</p>
               <p style={{ color: colors.textSecondary }} className="text-sm">
@@ -239,9 +247,7 @@ export const DashboardV2: React.FC = () => {
                     colors={colors}
                   />
                   <StatCard
-                    icon={
-                      <CheckCircle className="w-5 h-5" />
-                    }
+                    icon={<CheckCircle className="w-5 h-5" />}
                     label="System Status"
                     value={
                       stats.system_status === "operational"
@@ -393,8 +399,10 @@ export const DashboardV2: React.FC = () => {
             }}
             className="border rounded-2xl p-12"
           >
-            <div className="flex items-center justify-center w-32 h-32 mx-auto mb-6 rounded-full"
-              style={{ backgroundColor: colors.primaryLight }}>
+            <div
+              className="flex items-center justify-center w-32 h-32 mx-auto mb-6 rounded-full"
+              style={{ backgroundColor: colors.primaryLight }}
+            >
               <span className="text-6xl">🤖</span>
             </div>
             <h3 className="text-xl font-bold mb-2">Powered by AI</h3>

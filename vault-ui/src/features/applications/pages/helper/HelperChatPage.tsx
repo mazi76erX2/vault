@@ -4,10 +4,10 @@ import { toast } from "sonner";
 import { AxiosError } from "axios";
 import { Send, FileText, TrendingUp } from "lucide-react";
 import { useAuthContext } from "@/hooks/useAuthContext";
-import { TextField } from "@/components/forms/text-field";
+import { TextField } from "@/components/forms";
 import { Button } from "@/components/ui/button/button";
-import { Loader } from "@/components/feedback/loader";
-import { VoiceRecorder } from "@/components/VoiceRecorder";
+import { Loader } from "@/components/ui/loader/loader";
+import { VoiceRecorder } from "@/components/auth";
 import Api from "@/services/Instance";
 
 interface LocationState {

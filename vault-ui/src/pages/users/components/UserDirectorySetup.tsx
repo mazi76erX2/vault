@@ -1,11 +1,11 @@
 import React, { useState } from "react";
 import { toast } from "sonner";
 import { Info } from "lucide-react";
-import { Checkbox } from "@/components/ui/checkbox";
-import { TextField } from "@/components/forms/text-field";
-import { Button } from "@/components/ui/button";
-import { Card } from "@/components/ui/card";
-import { Label } from "@/components/ui/label";
+import { Checkbox } from "@/components/ui/checkbox/checkbox";
+import { TextField } from "@/components/forms";
+import { Button } from "@/components/ui/button/button";
+import { Card } from "@/components/ui/card/card";
+import { Label } from "@/components/ui/label/label";
 import { useAuthContext } from "@/hooks/useAuthContext";
 import Api from "@/services/Instance";
 

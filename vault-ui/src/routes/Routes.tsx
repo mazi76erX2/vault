@@ -41,7 +41,7 @@ import DashboardPage from "@/pages/DashboardPage";
 import ChatPage from "@/pages/ChatPage";
 import ChatPageV2 from "@/pages/ChatPageV2";
 import DashboardPageV2 from "@/pages/DashboardPageV2";
-import { Loader } from "../components/feedback/loader";
+import { Loader } from "../components/ui/loader/loader";
 
 interface ChildrenProps {
   children: ReactNode;

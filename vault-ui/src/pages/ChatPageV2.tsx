@@ -222,7 +222,10 @@ const ChatPageV2: React.FC = () => {
             // Hero Section
             <div className="flex flex-col items-center justify-center min-h-full gap-12 py-20">
               {/* Illustration Placeholder */}
-              <div className="flex items-center justify-center w-48 h-48 rounded-full" style={{ backgroundColor: colors.surface }}>
+              <div
+                className="flex items-center justify-center w-48 h-48 rounded-full"
+                style={{ backgroundColor: colors.surface }}
+              >
                 <div style={{ color: colors.primary }} className="text-6xl">
                   📚
                 </div>
@@ -232,7 +235,10 @@ const ChatPageV2: React.FC = () => {
                 <h2 className="text-4xl font-bold mb-4">
                   Welcome to Vault RAG
                 </h2>
-                <p style={{ color: colors.textSecondary }} className="text-lg mb-8">
+                <p
+                  style={{ color: colors.textSecondary }}
+                  className="text-lg mb-8"
+                >
                   Ask questions about your documents and get instant, accurate
                   answers powered by AI and intelligent search.
                 </p>
@@ -247,7 +253,7 @@ const ChatPageV2: React.FC = () => {
                       key={index}
                       onClick={() =>
                         handleSuggestedQuestion(
-                          `Help me ${item.title.toLowerCase()}: ${item.description}`
+                          `Help me ${item.title.toLowerCase()}: ${item.description}`,
                         )
                       }
                       style={{
@@ -320,7 +326,10 @@ const ChatPageV2: React.FC = () => {
 
                         {/* Sources */}
                         {msg.sources && msg.sources.length > 0 && (
-                          <div className="mt-4 pt-4 border-t" style={{ borderColor: colors.border }}>
+                          <div
+                            className="mt-4 pt-4 border-t"
+                            style={{ borderColor: colors.border }}
+                          >
                             <h4
                               style={{ color: colors.primary }}
                               className="text-xs font-semibold mb-3 uppercase tracking-wide"
@@ -362,7 +371,10 @@ const ChatPageV2: React.FC = () => {
 
                         {/* Performance Metrics */}
                         {msg.performance && (
-                          <div className="mt-4 pt-4 border-t" style={{ borderColor: colors.border }}>
+                          <div
+                            className="mt-4 pt-4 border-t"
+                            style={{ borderColor: colors.border }}
+                          >
                             <h4
                               style={{ color: colors.primary }}
                               className="text-xs font-semibold mb-3 uppercase tracking-wide"
@@ -441,10 +453,16 @@ const ChatPageV2: React.FC = () => {
               {isLoading && (
                 <div className="flex justify-start">
                   <div
-                    style={{ backgroundColor: colors.surface, borderColor: colors.border }}
+                    style={{
+                      backgroundColor: colors.surface,
+                      borderColor: colors.border,
+                    }}
                     className="rounded-2xl px-6 py-4 border flex items-center gap-2"
                   >
-                    <Loader2 style={{ color: colors.primary }} className="w-4 h-4 animate-spin" />
+                    <Loader2
+                      style={{ color: colors.primary }}
+                      className="w-4 h-4 animate-spin"
+                    />
                     <span style={{ color: colors.textSecondary }}>
                       Searching and thinking...
                     </span>

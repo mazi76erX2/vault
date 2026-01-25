@@ -4,7 +4,7 @@ import { toast } from "sonner";
 import { AxiosError } from "axios";
 import { useAuthContext } from "@/hooks/useAuthContext";
 import { Button } from "@/components/ui/button/button";
-import { Loader } from "@/components/feedback/loader";
+import { Loader } from "@/components/ui/loader/loader";
 import { Input } from "@/components/ui/input/input";
 import { Label } from "@/components/ui/label/label";
 import Api from "@/services/Instance";
@@ -155,107 +155,106 @@ const CollectorMetaDataPage: React.FC = () => {
           </p>
         </div>
 
-          <div className="bg-card text-card-foreground p-6 rounded-lg shadow-md border border-border space-y-6">
-            <div className="space-y-2">
-              <Label htmlFor="documentTitle">
-                Document Title <span className="text-red-500">*</span>
-              </Label>
-              <Input
-                id="documentTitle"
-                value={documentTitle}
-                onChange={(e) => {
-                  setDocumentTitle(e.target.value);
-                  setErrors((prev) => ({ ...prev, title: undefined }));
-                }}
-                placeholder="Enter document title"
-                className={errors.title ? "border-red-500" : ""}
-              />
-              {errors.title && (
-                <p className="text-sm text-red-500">{errors.title}</p>
-              )}
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="sourceLink">Source Link (optional)</Label>
-              <Input
-                id="sourceLink"
-                value={sourceLink}
-                onChange={(e) => setSourceLink(e.target.value)}
-                placeholder="https://example.com/source"
-              />
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="contact">Contact (optional)</Label>
-              <Input
-                id="contact"
-                value={contact}
-                onChange={(e) => setContact(e.target.value)}
-                placeholder="Email or phone number"
-              />
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="severity">Severity Level</Label>
-              <select
-                id="severity"
-                value={severity}
-                onChange={(e) => setSeverity(e.target.value)}
-                className="w-full h-10 px-3 rounded-md border border-input bg-background text-foreground"
-              >
-                <option value="Low">Low</option>
-                <option value="Medium">Medium</option>
-                <option value="High">High</option>
-                <option value="Critical">Critical</option>
-              </select>
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="validator">
-                Assign Validator <span className="text-red-500">*</span>
-              </Label>
-              <select
-                id="validator"
-                value={validatorId}
-                onChange={(e) => {
-                  setValidatorId(e.target.value);
-                  setErrors((prev) => ({ ...prev, validator: undefined }));
-                }}
-                className={`w-full h-10 px-3 rounded-md border bg-background text-foreground ${
-                  errors.validator ? "border-red-500" : "border-input"
-                }`}
-              >
-                <option value="">Select a validator</option>
-                {validators.map((v) => (
-                  <option key={v.id} value={v.id}>
-                    {v.fullName}
-                  </option>
-                ))}
-              </select>
-              {errors.validator && (
-                <p className="text-sm text-red-500">{errors.validator}</p>
-              )}
-            </div>
+        <div className="bg-card text-card-foreground p-6 rounded-lg shadow-md border border-border space-y-6">
+          <div className="space-y-2">
+            <Label htmlFor="documentTitle">
+              Document Title <span className="text-red-500">*</span>
+            </Label>
+            <Input
+              id="documentTitle"
+              value={documentTitle}
+              onChange={(e) => {
+                setDocumentTitle(e.target.value);
+                setErrors((prev) => ({ ...prev, title: undefined }));
+              }}
+              placeholder="Enter document title"
+              className={errors.title ? "border-red-500" : ""}
+            />
+            {errors.title && (
+              <p className="text-sm text-red-500">{errors.title}</p>
+            )}
           </div>
 
-          <div className="mt-6 flex justify-end gap-4">
-            <Button
-              variant="outline"
-              onClick={() => navigate(-1)}
-              size="lg"
-              disabled={loading}
-            >
-              Back
-            </Button>
-            <Button
-              onClick={handleSubmit}
-              disabled={loading}
-              size="lg"
-              className="bg-[#e66334] hover:bg-[#FF8234]"
-            >
-              {loading ? "Saving..." : "Save & Submit"}
-            </Button>
+          <div className="space-y-2">
+            <Label htmlFor="sourceLink">Source Link (optional)</Label>
+            <Input
+              id="sourceLink"
+              value={sourceLink}
+              onChange={(e) => setSourceLink(e.target.value)}
+              placeholder="https://example.com/source"
+            />
           </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="contact">Contact (optional)</Label>
+            <Input
+              id="contact"
+              value={contact}
+              onChange={(e) => setContact(e.target.value)}
+              placeholder="Email or phone number"
+            />
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="severity">Severity Level</Label>
+            <select
+              id="severity"
+              value={severity}
+              onChange={(e) => setSeverity(e.target.value)}
+              className="w-full h-10 px-3 rounded-md border border-input bg-background text-foreground"
+            >
+              <option value="Low">Low</option>
+              <option value="Medium">Medium</option>
+              <option value="High">High</option>
+              <option value="Critical">Critical</option>
+            </select>
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="validator">
+              Assign Validator <span className="text-red-500">*</span>
+            </Label>
+            <select
+              id="validator"
+              value={validatorId}
+              onChange={(e) => {
+                setValidatorId(e.target.value);
+                setErrors((prev) => ({ ...prev, validator: undefined }));
+              }}
+              className={`w-full h-10 px-3 rounded-md border bg-background text-foreground ${
+                errors.validator ? "border-red-500" : "border-input"
+              }`}
+            >
+              <option value="">Select a validator</option>
+              {validators.map((v) => (
+                <option key={v.id} value={v.id}>
+                  {v.fullName}
+                </option>
+              ))}
+            </select>
+            {errors.validator && (
+              <p className="text-sm text-red-500">{errors.validator}</p>
+            )}
+          </div>
+        </div>
+
+        <div className="mt-6 flex justify-end gap-4">
+          <Button
+            variant="outline"
+            onClick={() => navigate(-1)}
+            size="lg"
+            disabled={loading}
+          >
+            Back
+          </Button>
+          <Button
+            onClick={handleSubmit}
+            disabled={loading}
+            size="lg"
+            className="bg-[#e66334] hover:bg-[#FF8234]"
+          >
+            {loading ? "Saving..." : "Save & Submit"}
+          </Button>
         </div>
       </div>
     </div>

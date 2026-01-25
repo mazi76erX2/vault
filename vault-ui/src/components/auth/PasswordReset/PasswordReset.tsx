@@ -10,7 +10,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card/card";
-import { isEmail } from "../utils";
+import { isEmail } from "@/utils";
 
 const PasswordReset: React.FC = () => {
   const [loading, setLoading] = useState(false);
@@ -63,7 +63,7 @@ const PasswordReset: React.FC = () => {
           <CardHeader className="text-center">
             <CardTitle>Check Your Email</CardTitle>
             <CardDescription>
-              If an account exists with the email you provided, we've sent
+              If an account exists with the email you provided, we&apos;ve sent
               instructions to reset your password.
             </CardDescription>
           </CardHeader>
@@ -83,8 +83,8 @@ const PasswordReset: React.FC = () => {
         <CardHeader>
           <CardTitle>Reset Your Password</CardTitle>
           <CardDescription>
-            Enter your email address and we'll send you instructions to reset
-            your password.
+            Enter your email address and we&apos;ll send you instructions to
+            reset your password.
           </CardDescription>
         </CardHeader>
         <CardContent>

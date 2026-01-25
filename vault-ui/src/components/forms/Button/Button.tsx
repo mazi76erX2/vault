@@ -1,6 +1,9 @@
 import * as React from "react";
 import { Loader2 } from "lucide-react";
-import { Button as ShadButton, ButtonProps } from "@/components/ui/button/button";
+import {
+  Button as ShadButton,
+  ButtonProps,
+} from "@/components/ui/button/button";
 import { cn } from "@/lib/utils";
 
 type HCVariant = "primary" | "secondary" | "tertiary";

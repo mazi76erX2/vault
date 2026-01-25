@@ -3,10 +3,10 @@ import { toast } from "sonner";
 import { AxiosError } from "axios";
 import { Upload } from "lucide-react";
 import { Button } from "@/components/ui/button/button";
-import { TextField } from "@/components/forms/text-field";
-import { ColorPicker } from "@/components/pickers/color-picker";
-import { Loader } from "@/components/feedback/loader";
-import { CheckBox } from "@/components/forms/checkbox";
+import { TextField } from "@/components/forms";
+import { ColorPicker } from "@/components/pickers";
+import { Loader } from "@/components/ui/loader/loader";
+import { CheckBox } from "@/components/forms";
 import { Card, CardContent } from "@/components/ui/card/card";
 import { useAuthContext } from "@/hooks/useAuthContext";
 import { getContrastColor, isColorReadable } from "@/utils/colorUtils";
@@ -86,7 +86,7 @@ const BusinessThemePage: React.FC = () => {
   useEffect(() => {
     const effectiveColor = isColorReadable(
       userChatColor,
-      intendedUserChatFontColor
+      intendedUserChatFontColor,
     )
       ? intendedUserChatFontColor
       : getContrastColor(userChatColor);
@@ -96,7 +96,7 @@ const BusinessThemePage: React.FC = () => {
   useEffect(() => {
     const effectiveColor = isColorReadable(
       botChatColor,
-      intendedBotChatFontColor
+      intendedBotChatFontColor,
     )
       ? intendedBotChatFontColor
       : getContrastColor(botChatColor);
@@ -123,17 +123,17 @@ const BusinessThemePage: React.FC = () => {
           fontOptions.find((f) => f.value === settings.font) || {
             id: "tahoma",
             value: "Tahoma",
-          }
+          },
         );
         setLogoPreview(settings.logo || "");
         setBotProfilePicPreview(settings.botProfilePicture || assistantIcon);
         toast.success("Theme settings loaded.");
 
         setIntendedUserChatFontColor(
-          addHashIfMissing(settings.userChatFontColor)
+          addHashIfMissing(settings.userChatFontColor),
         );
         setIntendedBotChatFontColor(
-          addHashIfMissing(settings.botChatFontColor)
+          addHashIfMissing(settings.botChatFontColor),
         );
       }
     } catch (err) {
@@ -198,7 +198,7 @@ const BusinessThemePage: React.FC = () => {
 
   const handleFileUpload = (
     e: React.ChangeEvent<HTMLInputElement>,
-    isLogo: boolean
+    isLogo: boolean,
   ) => {
     if (e.target.files && e.target.files[0]) {
       const file = e.target.files[0];
@@ -425,7 +425,7 @@ const BusinessThemePage: React.FC = () => {
                       {message.text}
                     </div>
                   </div>
-                )
+                ),
               )}
             </div>
 

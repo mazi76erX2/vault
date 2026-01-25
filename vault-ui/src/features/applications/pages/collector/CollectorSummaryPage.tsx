@@ -4,7 +4,7 @@ import { toast } from "sonner";
 import { AxiosError } from "axios";
 import { useAuthContext } from "@/hooks/useAuthContext";
 import { Button } from "@/components/ui/button/button";
-import { Loader } from "@/components/feedback/loader";
+import { Loader } from "@/components/ui/loader/loader";
 import { Card } from "@/components/ui/card/card";
 import Api from "@/services/Instance";
 
@@ -164,119 +164,116 @@ const CollectorSummaryPage: React.FC = () => {
           </p>
         </div>
 
-          <Card className="bg-card text-card-foreground shadow-md p-6 space-y-4">
-            {summary ? (
-              <>
-                <div>
-                  <h3 className="text-sm font-semibold text-muted-foreground">
-                    Document Title
-                  </h3>
-                  <p className="text-lg text-foreground">
-                    {summary.title || "Untitled"}
-                  </p>
-                </div>
-
-                <div>
-                  <h3 className="text-sm font-semibold text-muted-foreground">
-                    Summary
-                  </h3>
-                  <p className="text-lg text-foreground">
-                    {summary.summary ||
-                      generatedSummary ||
-                      "No summary available"}
-                  </p>
-                </div>
-
-                <div>
-                  <h3 className="text-sm font-semibold text-muted-foreground">
-                    Status
-                  </h3>
-                  <p className="text-lg capitalize text-foreground">
-                    {summary.status || "Draft"}
-                  </p>
-                </div>
-
-                {summary.severity_levels && (
-                  <div>
-                    <h3 className="text-sm font-semibold text-muted-foreground">
-                      Severity Level
-                    </h3>
-                    <p className="text-lg text-foreground">
-                      {summary.severity_levels}
-                    </p>
-                  </div>
-                )}
-
-                {summary.tags && summary.tags.length > 0 && (
-                  <div>
-                    <h3 className="text-sm font-semibold text-muted-foreground">
-                      Tags
-                    </h3>
-                    <div className="flex flex-wrap gap-2 mt-1">
-                      {summary.tags.map((tag, index) => (
-                        <span
-                          key={index}
-                          className="px-2 py-1 bg-muted rounded text-sm"
-                        >
-                          {tag}
-                        </span>
-                      ))}
-                    </div>
-                  </div>
-                )}
-
-                {summary.link && (
-                  <div>
-                    <h3 className="text-sm font-semibold text-muted-foreground">
-                      Source Link
-                    </h3>
-                    <a
-                      href={summary.link}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="text-lg text-blue-600 hover:underline"
-                    >
-                      {summary.link}
-                    </a>
-                  </div>
-                )}
-              </>
-            ) : (
-              <div className="text-center py-8 text-muted-foreground">
-                {generatedSummary ? (
-                  <div>
-                    <h3 className="text-sm font-semibold text-muted-foreground mb-2">
-                      Generated Summary
-                    </h3>
-                    <p className="text-lg text-foreground">
-                      {generatedSummary}
-                    </p>
-                  </div>
-                ) : (
-                  "Loading summary..."
-                )}
+        <Card className="bg-card text-card-foreground shadow-md p-6 space-y-4">
+          {summary ? (
+            <>
+              <div>
+                <h3 className="text-sm font-semibold text-muted-foreground">
+                  Document Title
+                </h3>
+                <p className="text-lg text-foreground">
+                  {summary.title || "Untitled"}
+                </p>
               </div>
-            )}
-          </Card>
 
-          <div className="mt-6 flex justify-end gap-4">
-            <Button
-              variant="outline"
-              onClick={() => navigate(-1)}
-              size="lg"
-              disabled={loading}
-            >
-              Back
-            </Button>
-            <Button
-              onClick={handleSubmit}
-              disabled={loading}
-              size="lg"
-              className="bg-[#e66334] hover:bg-[#FF8234]"
-            >
-              {loading ? "Submitting..." : "Submit Session"}
-            </Button>
-          </div>
+              <div>
+                <h3 className="text-sm font-semibold text-muted-foreground">
+                  Summary
+                </h3>
+                <p className="text-lg text-foreground">
+                  {summary.summary ||
+                    generatedSummary ||
+                    "No summary available"}
+                </p>
+              </div>
+
+              <div>
+                <h3 className="text-sm font-semibold text-muted-foreground">
+                  Status
+                </h3>
+                <p className="text-lg capitalize text-foreground">
+                  {summary.status || "Draft"}
+                </p>
+              </div>
+
+              {summary.severity_levels && (
+                <div>
+                  <h3 className="text-sm font-semibold text-muted-foreground">
+                    Severity Level
+                  </h3>
+                  <p className="text-lg text-foreground">
+                    {summary.severity_levels}
+                  </p>
+                </div>
+              )}
+
+              {summary.tags && summary.tags.length > 0 && (
+                <div>
+                  <h3 className="text-sm font-semibold text-muted-foreground">
+                    Tags
+                  </h3>
+                  <div className="flex flex-wrap gap-2 mt-1">
+                    {summary.tags.map((tag, index) => (
+                      <span
+                        key={index}
+                        className="px-2 py-1 bg-muted rounded text-sm"
+                      >
+                        {tag}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {summary.link && (
+                <div>
+                  <h3 className="text-sm font-semibold text-muted-foreground">
+                    Source Link
+                  </h3>
+                  <a
+                    href={summary.link}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-lg text-blue-600 hover:underline"
+                  >
+                    {summary.link}
+                  </a>
+                </div>
+              )}
+            </>
+          ) : (
+            <div className="text-center py-8 text-muted-foreground">
+              {generatedSummary ? (
+                <div>
+                  <h3 className="text-sm font-semibold text-muted-foreground mb-2">
+                    Generated Summary
+                  </h3>
+                  <p className="text-lg text-foreground">{generatedSummary}</p>
+                </div>
+              ) : (
+                "Loading summary..."
+              )}
+            </div>
+          )}
+        </Card>
+
+        <div className="mt-6 flex justify-end gap-4">
+          <Button
+            variant="outline"
+            onClick={() => navigate(-1)}
+            size="lg"
+            disabled={loading}
+          >
+            Back
+          </Button>
+          <Button
+            onClick={handleSubmit}
+            disabled={loading}
+            size="lg"
+            className="bg-[#e66334] hover:bg-[#FF8234]"
+          >
+            {loading ? "Submitting..." : "Submit Session"}
+          </Button>
         </div>
       </div>
     </div>

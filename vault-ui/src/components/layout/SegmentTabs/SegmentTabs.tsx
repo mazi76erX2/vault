@@ -1,5 +1,10 @@
 import * as React from "react";
-import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs/tabs";
+import {
+  Tabs,
+  TabsList,
+  TabsTrigger,
+  TabsContent,
+} from "@/components/ui/tabs/tabs";
 import { cn } from "@/lib/utils";
 
 export interface TabItem {

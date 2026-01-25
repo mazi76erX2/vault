@@ -7,6 +7,7 @@ The new Vault RAG UI is inspired by Perplexity.ai with a modern, clean design th
 ## 🌈 Color Palette
 
 ### Light Mode
+
 ```
 Background:      #ffffff
 Surface:         #f0f0f0
@@ -23,6 +24,7 @@ Borders:         #e0e0e0
 ```
 
 ### Dark Mode
+
 ```
 Background:      #0f0f0f
 Surface:         #1a1a2e
@@ -40,7 +42,9 @@ Borders:         #333333
 ## 📱 Components
 
 ### Chat Interface
+
 **Features:**
+
 - Hero section with illustration when empty
 - Suggested questions with icons
 - Real-time message streaming
@@ -49,6 +53,7 @@ Borders:         #333333
 - Smooth transitions and animations
 
 **Key Elements:**
+
 - Input field with rounded corners (24px border-radius)
 - Send button with icon
 - Message bubbles with different styles for user/bot
@@ -56,7 +61,9 @@ Borders:         #333333
 - Performance breakdown table
 
 ### Dashboard
+
 **Features:**
+
 - System statistics with trend indicators
 - Health status indicator
 - Feature checklist with icons
@@ -64,6 +71,7 @@ Borders:         #333333
 - Real-time metric updates
 
 **Key Elements:**
+
 - Stat cards with icons and trends
 - Status indicator (green/red)
 - Feature grid (2 columns on desktop, 1 on mobile)
@@ -72,12 +80,13 @@ Borders:         #333333
 ## 🎭 Theme Implementation
 
 ### Using the Theme
+
 ```tsx
 import { useTheme } from "@/theme/ThemeContext";
 
 const MyComponent: React.FC = () => {
   const { mode, colors, toggleTheme } = useTheme();
-  
+
   return (
     <div style={{ backgroundColor: colors.background, color: colors.text }}>
       <button onClick={toggleTheme}>
@@ -89,6 +98,7 @@ const MyComponent: React.FC = () => {
 ```
 
 ### Theme Switching
+
 - Automatically saves preference to localStorage
 - Respects system preference on first load
 - Smooth transitions between modes
@@ -97,12 +107,14 @@ const MyComponent: React.FC = () => {
 ## 📐 Design Principles
 
 ### 1. **Minimalist Design**
+
 - Clean whitespace
 - Clear hierarchy
 - Focus on content
 - Minimal decorative elements
 
 ### 2. **Perplexity Inspiration**
+
 - Large input area
 - Hero section for empty state
 - Suggested actions
@@ -110,6 +122,7 @@ const MyComponent: React.FC = () => {
 - Expandable sources
 
 ### 3. **Accessibility**
+
 - High contrast ratios
 - Clear visual hierarchy
 - Focus states for keyboard navigation
@@ -117,6 +130,7 @@ const MyComponent: React.FC = () => {
 - ARIA labels where needed
 
 ### 4. **Responsive Design**
+
 - Mobile-first approach
 - Fluid typography
 - Flexible layouts
@@ -125,6 +139,7 @@ const MyComponent: React.FC = () => {
 ## 🎨 Styling Guidelines
 
 ### Colors
+
 - Use `colors.primary` for primary actions
 - Use `colors.primaryLight` for hover states
 - Use `colors.accent1/2/3` for important information
@@ -132,18 +147,21 @@ const MyComponent: React.FC = () => {
 - Use `colors.border` for dividers
 
 ### Spacing
+
 - Use Tailwind's spacing scale (4px units)
 - Use gap for flex layouts
 - Use mb/mt for vertical spacing
 - Consistent padding: 4px, 6px, 8px, 12px, 16px, 24px, 32px, 48px
 
 ### Typography
+
 - Headings: Bold, large size, clear hierarchy
 - Body: Regular weight, medium size
 - Small text: Reduced opacity for secondary info
 - Monospace: For code/timing information
 
 ### Borders & Shadows
+
 - Border radius: 8px for cards, 24px for input
 - Borders: 1px solid, subtle color
 - Shadows: Subtle, used for depth
@@ -152,17 +170,20 @@ const MyComponent: React.FC = () => {
 ## 🎬 Animations & Transitions
 
 ### Smooth Transitions
+
 - Color changes: 300ms
 - Hover effects: 200ms
 - Loading spinner: Continuous
 - Message appearance: Smooth scroll
 
 ### Loading States
+
 - Show spinner on button
 - Disable interactions during loading
 - Display "Searching and thinking..." message
 
 ### Error States
+
 - Alert box with icon
 - Clear error message
 - Retry button
@@ -182,6 +203,7 @@ xl: 24px   (component gap)
 ## 🎨 Component Examples
 
 ### Input Field
+
 ```tsx
 <input
   style={{
@@ -194,6 +216,7 @@ xl: 24px   (component gap)
 ```
 
 ### Button
+
 ```tsx
 <button
   style={{
@@ -207,6 +230,7 @@ xl: 24px   (component gap)
 ```
 
 ### Card
+
 ```tsx
 <Card
   style={{
@@ -220,6 +244,7 @@ xl: 24px   (component gap)
 ```
 
 ### Message Bubble
+
 ```tsx
 <div
   style={{
@@ -235,16 +260,19 @@ xl: 24px   (component gap)
 ## 🌙 Dark Mode Considerations
 
 ### Contrast
+
 - Ensure text is readable on dark backgrounds
 - Use lighter colors for text in dark mode
 - Use borders for definition
 
 ### Reduced Motion
+
 - Respect `prefers-reduced-motion`
 - Disable animations if requested
 - Keep interactions responsive
 
 ### Color Accessibility
+
 - Test with color blindness simulators
 - Use distinct colors for status
 - Don't rely on color alone
@@ -260,6 +288,7 @@ Desktop:  1024px+ (3+ columns)
 ## 🎭 State Management
 
 ### Theme State
+
 ```tsx
 interface ThemeContextType {
   mode: "light" | "dark";
@@ -287,6 +316,7 @@ interface ThemeContextType {
 For free illustrations that match your design:
 
 ### Vector Illustration Sites
+
 1. **Undraw.co** - Consistency across illustrations
    - Search: "search", "chat", "dashboard", "document"
    - License: Free for personal & commercial use
@@ -317,7 +347,7 @@ import { Search } from "lucide-react";
 <Search style={{ color: colors.primary }} className="w-48 h-48" />
 
 // Option 3: External image
-<img 
+<img
   src="https://undraw.co/api/illustration/search?color=#6061c0"
   alt="Search"
   className="w-48 h-48"
@@ -356,6 +386,7 @@ import { Search } from "lucide-react";
 ## 📚 Style Reference
 
 ### Hierarchy
+
 ```
 H1: 32px, bold     (Page title)
 H2: 24px, bold     (Section title)
@@ -367,6 +398,7 @@ Tiny: 11px, regular (Timestamp)
 ```
 
 ### Font Stack
+
 ```
 Primary: 'Roboto', system fonts
 Fallback: -apple-system, BlinkMacSystemFont, 'Segoe UI'

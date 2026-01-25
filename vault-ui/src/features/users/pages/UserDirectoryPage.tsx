@@ -3,11 +3,11 @@ import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import { AxiosError } from "axios";
 import { Button } from "@/components/ui/button/button";
-import { TextField } from "@/components/forms/text-field";
-import { CheckBox } from "@/components/forms/checkbox";
-import { Loader } from "@/components/feedback/loader";
+import { TextField } from "@/components/forms";
+import { CheckBox } from "@/components/forms";
+import { Loader } from "@/components/ui/loader/loader";
 import { Card } from "@/components/ui/card/card";
-import { SegmentTabs } from "@/components/layout/segment-tabs";
+import { SegmentTabs } from "@/components/layout";
 import { useAuthContext } from "@/hooks/useAuthContext";
 import Api from "@/services/Instance";
 
@@ -24,7 +24,7 @@ interface UserData {
 }
 
 const UserDirectoryPage: React.FC = () => {
-  const [activeTab, setActiveTab] = useState(0);
+  const [activeTab, setActiveTab] = useState("0");
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
   const authContext = useAuthContext();
@@ -42,8 +42,8 @@ const UserDirectoryPage: React.FC = () => {
   });
 
   const tabs = [
-    { label: "Create User", value: 0 },
-    { label: "Import Users", value: 1 },
+    { label: "Create User", value: "0", content: <div /> },
+    { label: "Import Users", value: "1", content: <div /> },
   ];
 
   const handleInputChange = (
@@ -146,11 +146,11 @@ const UserDirectoryPage: React.FC = () => {
           <SegmentTabs
             tabs={tabs}
             value={activeTab}
-            onChange={setActiveTab}
+            onValueChange={setActiveTab}
             className="mb-6"
           />
 
-          {activeTab === 0 && (
+          {activeTab === "0" && (
             <form onSubmit={handleSubmit}>
               <Card className="bg-[#d3d3d3] p-6 shadow-md space-y-6">
                 <TextField
@@ -256,7 +256,7 @@ const UserDirectoryPage: React.FC = () => {
             </form>
           )}
 
-          {activeTab === 1 && (
+          {activeTab === "1" && (
             <Card className="bg-[#d3d3d3] p-6 shadow-md">
               <h3 className="text-lg font-semibold mb-4">
                 Import Users from CSV

@@ -4,7 +4,7 @@ import { toast } from "sonner";
 import { Users, Save, X } from "lucide-react";
 import { Button } from "@/components/ui/button/button";
 import { Checkbox } from "@/components/ui/checkbox/checkbox";
-import { TextField } from "@/components/forms/text-field";
+import { TextField } from "@/components/forms";
 import { Card } from "@/components/ui/card/card";
 import { Label } from "@/components/ui/label/label";
 import {
@@ -17,7 +17,7 @@ import {
 } from "@/components/ui/table/table";
 import { useAuthContext } from "@/hooks/useAuthContext";
 import Api from "@/services/Instance";
-import { Loader } from "@/components/feedback/loader";
+import { Loader } from "@/components/ui/loader/loader";
 
 interface UserDTO {
   id: string;

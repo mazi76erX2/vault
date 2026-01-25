@@ -2,10 +2,10 @@ import React, { useState, useEffect } from "react";
 import { toast } from "sonner";
 import { AxiosError } from "axios";
 import { Button } from "@/components/ui/button/button";
-import { TextField } from "@/components/forms/text-field";
-import { Loader } from "@/components/feedback/loader";
+import { TextField } from "@/components/forms";
+import { Loader } from "@/components/ui/loader/loader";
 import { Card } from "@/components/ui/card/card";
-import { SegmentTabs } from "@/components/layout/segment-tabs";
+import { SegmentTabs } from "@/components/layout";
 import { useAuthContext } from "@/hooks/useAuthContext";
 import Api from "@/services/Instance";
 

@@ -16,7 +16,7 @@ import {
 } from "lucide-react";
 import { useAuthContext } from "@/hooks/useAuthContext";
 import { cn } from "@/lib/utils";
-import { LogoutButton } from "@/components/LogoutButton";
+import { LogoutButton } from "@/components/auth/LogoutButton";
 
 interface MenuItem {
   to: string;

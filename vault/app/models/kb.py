@@ -1,68 +1,172 @@
 """
-Knowledge Base models for RAG (Retrieval Augmented Generation)
+Knowledge Base models for RAG (Retrieval Augmented Generation).
 """
 
 import uuid
 
 from pgvector.sqlalchemy import Vector
-from sqlalchemy import Column, DateTime, Integer, String, Text, func, ForeignKey
-from sqlalchemy.dialects.postgresql import UUID, TSVECTOR
+from sqlalchemy import (
+    BigInteger,
+    Column,
+    DateTime,
+    ForeignKey,
+    Index,
+    Integer,
+    String,
+    Text,
+    func,
+)
+from sqlalchemy.dialects.postgresql import TSVECTOR, UUID
 from sqlalchemy.orm import relationship
 
 from app.core.config import settings
 from app.models.base import Base
 
 
-class KBDocument(Base):
-    """Knowledge base document for RAG."""
+class KnowledgeBase(Base):
+    """
+    Knowledge Base container - represents a collection of documents.
+    
+    Each company can have multiple knowledge bases (e.g., HR Policies, Safety Manuals, etc.)
+    """
 
-    __tablename__ = "kbdocuments"
+    __tablename__ = "knowledge_bases"
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    content = Column(Text, nullable=False)
-    sourcefile = Column(String(500), nullable=True)
-    title = Column(String(500), nullable=True)
-    accesslevel = Column(Integer, default=1, index=True)
-    
-    # Hybrid Search support: Text search vector
-    tsv = Column(TSVECTOR)
+    name = Column(String(255), nullable=False)
+    description = Column(Text, nullable=True)
 
-    # multi-tenancy
-    companyid = Column(Integer, nullable=True, index=True)
+    # Multi-tenancy
+    company_id = Column(BigInteger, nullable=False, index=True)
+    company_reg_no = Column(String(50), nullable=False, index=True)
+
+    # Ownership
+    created_by = Column(UUID(as_uuid=True), ForeignKey("profiles.id"), nullable=False)
+
+    # Access control
+    access_level = Column(Integer, default=1)  # 1=Public, 2=Low, 3=Medium, 4=High, 5=Critical
     department = Column(String(100), nullable=True)
 
-    createdat = Column(DateTime(timezone=True), server_default=func.now())
-    updatedat = Column(DateTime(timezone=True), onupdate=func.now())
+    # Metadata
+    is_active = Column(Integer, default=1)  # 0=archived, 1=active
+    document_count = Column(Integer, default=0)  # Cached count
 
-    # Relationship to chunks
-    chunks = relationship("KBChunk", back_populates="document", cascade="all, delete-orphan")
+    # Timestamps
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), onupdate=func.now())
+    last_indexed_at = Column(DateTime(timezone=True), nullable=True)
+
+    # Relationships
+    documents = relationship("KBDocument", back_populates="knowledge_base", cascade="all, delete-orphan")
+    creator = relationship("Profile", foreign_keys=[created_by])
+
+    __table_args__ = (
+        Index("idx_kb_company", "company_id", "company_reg_no"),
+        Index("idx_kb_active", "is_active"),
+        Index("idx_kb_access", "access_level"),
+    )
 
     def __repr__(self):
-        return f"<KBDocument(id={self.id}, title={self.title})>"
+        return f"<KnowledgeBase(id={self.id}, name='{self.name}', company={self.company_reg_no})>"
+
+
+class KBDocument(Base):
+    """
+    Knowledge base document (parent container for chunks).
+    
+    Represents a single document that gets chunked for vector search.
+    """
+
+    __tablename__ = "kb_documents"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+
+    # Link to knowledge base
+    kb_id = Column(UUID(as_uuid=True), ForeignKey("knowledge_bases.id", ondelete="CASCADE"), nullable=False, index=True)
+
+    # Document content
+    content = Column(Text, nullable=False)  # Full document text
+    title = Column(String(500), nullable=True)
+    source_file = Column(String(500), nullable=True)
+
+    # Multi-tenancy (denormalized for performance)
+    company_id = Column(BigInteger, nullable=False, index=True)
+    company_reg_no = Column(String(50), nullable=False, index=True)
+
+    # Access control (inherited from KB but can be overridden)
+    access_level = Column(Integer, nullable=False, default=1, index=True)
+    department = Column(String(100), nullable=True)
+
+    # Metadata
+    doc_type = Column(String(50), nullable=True)  # pdf, docx, txt, etc.
+    file_size = Column(Integer, nullable=True)  # bytes
+    chunk_count = Column(Integer, default=0)  # cached
+
+    # Timestamps
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), onupdate=func.now())
+
+    # Relationships
+    knowledge_base = relationship("KnowledgeBase", back_populates="documents")
+    chunks = relationship("KBChunk", back_populates="document", cascade="all, delete-orphan")
+
+    __table_args__ = (
+        Index("idx_kb_doc_kb", "kb_id"),
+        Index("idx_kb_doc_company", "company_id", "company_reg_no"),
+        Index("idx_kb_doc_access", "access_level"),
+    )
+
+    def __repr__(self):
+        return f"<KBDocument(id={self.id}, title='{self.title}')>"
 
 
 class KBChunk(Base):
-    """Chunks of Knowledge base documents with vector embedding for RAG."""
+    """
+    Chunks of documents with vector embeddings for RAG.
+    
+    This is what gets searched - each document is split into chunks
+    for better retrieval granularity.
+    """
 
-    __tablename__ = "kbchunks"
+    __tablename__ = "kb_chunks"
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    doc_id = Column(UUID(as_uuid=True), ForeignKey("kbdocuments.id", ondelete="CASCADE"), index=True)
-    chunk_index = Column(Integer, nullable=False)
-    
-    content = Column(Text, nullable=False)
-    embedding = Column(Vector(settings.VECTOR_DIMENSIONS), nullable=True)
-    
-    # Hybrid Search support: Text search vector per chunk
-    tsv = Column(TSVECTOR)
 
-    # Metadata (denormalized for fast single-table retrieval)
+    # Link to parent document
+    doc_id = Column(UUID(as_uuid=True), ForeignKey("kb_documents.id", ondelete="CASCADE"), nullable=False, index=True)
+
+    # Chunk data
+    chunk_index = Column(Integer, nullable=False)
+    content = Column(Text, nullable=False)
+
+    # Vector embedding for semantic search
+    embedding = Column(Vector(settings.VECTOR_DIMENSIONS), nullable=False)
+
+    # Full-text search vector (auto-generated by PostgreSQL trigger)
+    tsv = Column(TSVECTOR, nullable=True)
+
+    # Denormalized metadata for fast single-table queries
     title = Column(String(500), nullable=True)
-    sourcefile = Column(String(500), nullable=True)
-    accesslevel = Column(Integer, default=1, index=True)
+    source_file = Column(String(500), nullable=True)
+    company_id = Column(BigInteger, nullable=False, index=True)
+    company_reg_no = Column(String(50), nullable=False, index=True)
+    access_level = Column(Integer, nullable=False, default=1, index=True)
+    department = Column(String(100), nullable=True)
+
+    # Additional metadata (JSON stored as text)
+    meta = Column(Text, nullable=True)  # Changed from 'metadata' to 'meta'
+
+    # Timestamps
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
 
     # Relationships
     document = relationship("KBDocument", back_populates="chunks")
+
+    __table_args__ = (
+        Index("idx_kb_chunk_doc", "doc_id"),
+        Index("idx_kb_chunk_company", "company_id", "company_reg_no"),
+        Index("idx_kb_chunk_access", "access_level"),
+    )
 
     def __repr__(self):
         return f"<KBChunk(doc_id={self.doc_id}, index={self.chunk_index})>"

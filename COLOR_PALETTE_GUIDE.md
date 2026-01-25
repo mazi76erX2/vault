@@ -97,6 +97,7 @@
 ### Primary Colors
 
 **Light Mode - Deep Blue (#6061c0)**
+
 - Main buttons
 - Links
 - Active states
@@ -104,6 +105,7 @@
 - Important elements
 
 **Dark Mode - Teal (#55BBAD)**
+
 - Main buttons
 - Links
 - Active states
@@ -113,18 +115,21 @@
 ### Accent Colors
 
 **Error/Warning (#81334b light, #DD5794 dark)**
+
 - Error messages
 - Warning alerts
 - Delete actions
 - Important negatives
 
 **Success/Positive (#6ea861 light, #55BBAD dark)**
+
 - Success messages
 - Checkmarks
 - Completed states
 - Positive indicators
 
 **Info/Highlight (#ee9e6e light, #DBC1CA dark)**
+
 - Information alerts
 - Highlights
 - New features
@@ -133,6 +138,7 @@
 ## 📱 Component Colors
 
 ### Chat Bubble (User)
+
 ```
 Light Mode:
   Background: #6061c0 (Primary)
@@ -144,6 +150,7 @@ Dark Mode:
 ```
 
 ### Chat Bubble (Bot)
+
 ```
 Light Mode:
   Background: #f0f0f0 (Surface)
@@ -157,6 +164,7 @@ Dark Mode:
 ```
 
 ### Source Card
+
 ```
 Light Mode:
   Background: #f8f8f8 (Surface Alt)
@@ -172,6 +180,7 @@ Dark Mode:
 ```
 
 ### Button (Primary)
+
 ```
 Light Mode:
   Background: #6061c0 (Primary)
@@ -185,6 +194,7 @@ Dark Mode:
 ```
 
 ### Button (Secondary)
+
 ```
 Light Mode:
   Background: #f0f0f0 (Surface)
@@ -200,6 +210,7 @@ Dark Mode:
 ```
 
 ### Input Field
+
 ```
 Light Mode:
   Background: #f8f8f8 (Surface Alt)
@@ -217,6 +228,7 @@ Dark Mode:
 ## 🎨 Gradients (Optional)
 
 ### Hero Background
+
 ```
 Light Mode:
   from: #f0f0f0
@@ -230,6 +242,7 @@ Dark Mode:
 ```
 
 ### Button Hover
+
 ```
 Light Mode:
   from: #6061c0
@@ -243,6 +256,7 @@ Dark Mode:
 ## 📐 Color Contrast Ratios
 
 ### Text Contrast (WCAG AA)
+
 ```
 Light Mode - Body Text:
   #000000 on #ffffff = 21:1 ✅ (AAA)
@@ -258,6 +272,7 @@ Dark Mode - Body Text:
 ```
 
 ### Button Contrast (WCAG AA)
+
 ```
 Light Mode - Primary Button:
   #ffffff on #6061c0 = 8.2:1 ✅ (AAA)
@@ -278,18 +293,21 @@ Dark Mode - Primary Button:
 ## 🎬 Animation Colors
 
 ### Loading Spinner
+
 ```
 Light Mode: #6061c0 (Primary)
 Dark Mode: #55BBAD (Primary)
 ```
 
 ### Success Animation
+
 ```
 Light Mode: #6ea861 (Accent 2)
 Dark Mode: #55BBAD (Accent 2)
 ```
 
 ### Error Animation
+
 ```
 Light Mode: #81334b (Accent 1)
 Dark Mode: #DD5794 (Accent 1)
@@ -318,12 +336,12 @@ Dark Mode: #DD5794 (Accent 1)
   /* Dark Mode */
   --color-background: #0f0f0f;
   --color-surface: #1a1a2e;
-  --color-primary: #55BBAD;
-  --color-primaryLight: #DD5794;
-  --color-primaryDark: #6C4572;
-  --color-accent1: #DD5794;
-  --color-accent2: #55BBAD;
-  --color-accent3: #DBC1CA;
+  --color-primary: #55bbad;
+  --color-primaryLight: #dd5794;
+  --color-primaryDark: #6c4572;
+  --color-accent1: #dd5794;
+  --color-accent2: #55bbad;
+  --color-accent3: #dbc1ca;
   --color-text: #ffffff;
   --color-textSecondary: #e0e0e0;
   --color-textMuted: #a0a0a0;
@@ -338,15 +356,11 @@ import { useTheme } from "@/theme/ThemeContext";
 
 export const MyComponent = () => {
   const { colors } = useTheme();
-  
+
   return (
     <div style={{ backgroundColor: colors.background }}>
-      <button style={{ backgroundColor: colors.primary }}>
-        Click me
-      </button>
-      <p style={{ color: colors.textMuted }}>
-        Secondary text
-      </p>
+      <button style={{ backgroundColor: colors.primary }}>Click me</button>
+      <p style={{ color: colors.textMuted }}>Secondary text</p>
     </div>
   );
 };

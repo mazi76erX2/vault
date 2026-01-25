@@ -4,7 +4,7 @@ import { toast } from "sonner";
 import { AxiosError } from "axios";
 import { useAuthContext } from "@/hooks/useAuthContext";
 import { Button } from "@/components/ui/button/button";
-import { Loader } from "@/components/feedback/loader";
+import { Loader } from "@/components/ui/loader/loader";
 import { Card, CardContent } from "@/components/ui/card/card";
 import { Badge } from "@/components/ui/badge/badge";
 import Api from "@/services/Instance";

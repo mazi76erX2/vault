@@ -1,8 +1,5 @@
 FROM node:18-alpine
 
-RUN mkdir -p /dependencies
-COPY ./dist/dependencies/generic-components-1.0.0.tgz ./dependencies
-
 #COPY ./dist/dockerstart.sh /dockerstart.sh
 
 WORKDIR /vaultui
