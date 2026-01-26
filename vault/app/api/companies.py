@@ -9,7 +9,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import get_async_db
-from app.middleware.auth import verify_token
+from app.middleware.auth import verify_token_with_tenant
 from app.models import Company, Profile, Role, UserRole
 from app.schemas.company import (
     CompanyContactDetails,
@@ -210,7 +210,7 @@ async def update_company_theme_settings(
 @router.post("/contact/get", response_model=CompanyContactDetails)
 async def get_company_contact_details(
     request: GetCompanyContactDetailsRequest,
-    current_user: dict = Depends(verify_token),
+    current_user: dict = Depends(verify_token_with_tenant),
     db: AsyncSession = Depends(get_async_db),
 ):
     """Get company contact details."""
@@ -236,12 +236,12 @@ async def get_company_contact_details(
             raise HTTPException(status_code=404, detail="Company not found")
 
         return CompanyContactDetails(
-            firstName=company.contact_first_name or "",
-            lastName=company.contact_last_name or "",
+            first_name=company.contact_first_name or "",
+            last_name=company.contact_last_name or "",
             email=company.contact_email or "",
             telephone=company.contact_telephone or "",
             company=company.name or "",
-            registeredSince=(
+            registered_since=(
                 company.registered_since.isoformat() if company.registered_since else ""
             ),
         )
@@ -256,7 +256,7 @@ async def get_company_contact_details(
 @router.post("/contact/update", response_model=CompanyContactDetails)
 async def update_company_contact_details(
     request: UpdateCompanyContactDetailsRequest,
-    current_user: dict = Depends(verify_token),
+    current_user: dict = Depends(verify_token_with_tenant),
     db: AsyncSession = Depends(get_async_db),
 ):
     """Update company contact details (Administrator only)."""
@@ -313,12 +313,12 @@ async def update_company_contact_details(
         logger.info(f"Company contact details updated for company ID: {company_id}")
 
         return CompanyContactDetails(
-            firstName=company.contact_first_name or "",
-            lastName=company.contact_last_name or "",
+            first_name=company.contact_first_name or "",
+            last_name=company.contact_last_name or "",
             email=company.contact_email or "",
             telephone=company.contact_telephone or "",
             company=company.name or "",
-            registeredSince=(
+            registered_since=(
                 company.registered_since.isoformat() if company.registered_since else ""
             ),
         )

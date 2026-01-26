@@ -46,22 +46,19 @@ const OrganisationDetailsPage: React.FC = () => {
   const fetchCompanyContactDetails = async (userId: string) => {
     try {
       setLoading(true);
-      const response = await Api.post(
-        "/api/v1/companies/getcompanycontactdetails",
-        {
-          userid: userId,
-        },
-      );
+      const response = await Api.post("/api/companies/contact/get", {
+        user_id: userId,
+      });
 
       if (response.data) {
         setFormData({
-          firstName: response.data.firstname || "",
-          lastName: response.data.lastname || "",
+          firstName: response.data.first_name || "",
+          lastName: response.data.last_name || "",
           email: response.data.email || "",
           telephone: response.data.telephone || "",
-          company: response.data.companyname || "",
+          company: response.data.company || "",
           registeredSince:
-            response.data.registeredsince || formData.registeredSince,
+            response.data.registered_since || formData.registeredSince,
         });
       }
     } catch (err) {
@@ -81,13 +78,12 @@ const OrganisationDetailsPage: React.FC = () => {
       setLoading(true);
       const userId = authContext?.user?.id;
 
-      await Api.post("/api/v1/companies/updatecompanycontactdetails", {
-        userid: userId,
-        firstname: formData.firstName,
-        lastname: formData.lastName,
+      await Api.post("/api/companies/contact/update", {
+        user_id: userId,
+        first_name: formData.firstName,
+        last_name: formData.lastName,
         email: formData.email,
         telephone: formData.telephone,
-        companyname: formData.company,
       });
 
       toast.success("Company details updated successfully.");

@@ -66,7 +66,7 @@ const ValidatorStartPage: React.FC = () => {
     try {
       setLoading(true);
       const response = await Api.get<FetchDocumentsResponse>(
-        "/api/v1/validator/documents",
+        `/api/v1/validator/get-documents?userid=${authContext.user.id}`,
       );
       setRows(response.data.documents);
     } catch (err: unknown) {
@@ -102,7 +102,11 @@ const ValidatorStartPage: React.FC = () => {
     if (authContext && !authContext.isLoadingUser && authContext.isLoggedIn) {
       fetchDocuments();
     }
-  }, [authContext]);
+  }, [
+    authContext?.isLoadingUser,
+    authContext?.isLoggedIn,
+    authContext?.user?.id,
+  ]);
 
   return (
     <div className="relative">

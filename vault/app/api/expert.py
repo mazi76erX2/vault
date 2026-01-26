@@ -31,7 +31,7 @@ async def expert_get_documents(
     """
     Get documents assigned to expert for review (status = 'On Review').
     """
-    user_id = current_user["user_id"]
+    user_id = current_user["user"]["id"]
     company_reg_no = current_user.get("company_reg_no")
 
     try:
@@ -76,7 +76,7 @@ async def expert_get_document(
     """
     Fetch full document details for expert review.
     """
-    user_id = current_user["user_id"]
+    user_id = current_user["user"]["id"]
     current_user.get("company_reg_no")
 
     try:
@@ -128,7 +128,7 @@ async def expert_accept_document(
     """
     Expert accepts document - move to 'Validated - Awaiting Approval'.
     """
-    user_id = current_user["user_id"]
+    user_id = current_user["user"]["id"]
 
     try:
         # Get document
@@ -184,7 +184,7 @@ async def expert_reject_document(
     """
     Expert rejects document - status = 'Rejected'.
     """
-    user_id = current_user["user_id"]
+    user_id = current_user["user"]["id"]
 
     try:
         # Get document
@@ -288,7 +288,7 @@ async def validator_expert_review_documents(
     """
     For validators: show documents currently 'On Review' where validator is responsible.
     """
-    user_id = current_user["user_id"]
+    user_id = current_user["user"]["id"]
     company_reg_no = current_user.get("company_reg_no")
 
     try:

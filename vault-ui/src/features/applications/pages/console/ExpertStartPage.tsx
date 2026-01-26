@@ -19,10 +19,6 @@ interface Document {
   [key: string]: unknown;
 }
 
-interface FetchDocumentsResponse {
-  documents: Document[];
-}
-
 const ExpertStartPage: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [rows, setRows] = useState<Document[]>([]);
@@ -74,10 +70,10 @@ const ExpertStartPage: React.FC = () => {
 
     try {
       setLoading(true);
-      const response = await Api.get<FetchDocumentsResponse>(
-        "/api/v1/expert/documents",
+      const response = await Api.get<Document[]>(
+        "/api/v1/expert/get-documents",
       );
-      setRows(response.data.documents);
+      setRows(response.data || []);
     } catch (err: unknown) {
       console.error("Error fetching documents:", err);
       if (!(err instanceof AxiosError && err.response?.status === 401)) {
@@ -111,7 +107,11 @@ const ExpertStartPage: React.FC = () => {
     if (authContext && !authContext.isLoadingUser && authContext.isLoggedIn) {
       fetchDocuments();
     }
-  }, [authContext]);
+  }, [
+    authContext?.isLoadingUser,
+    authContext?.isLoggedIn,
+    authContext?.user?.id,
+  ]);
 
   return (
     <div className="relative">

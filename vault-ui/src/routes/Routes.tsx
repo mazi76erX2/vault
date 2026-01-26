@@ -41,6 +41,7 @@ import DashboardPage from "@/pages/DashboardPage";
 import ChatPage from "@/pages/ChatPage";
 import ChatPageV2 from "@/pages/ChatPageV2";
 import DashboardPageV2 from "@/pages/DashboardPageV2";
+import DashboardV3 from "@/features/dashboard/DashboardV3";
 import { Loader } from "../components/ui/loader/loader";
 
 interface ChildrenProps {
@@ -201,7 +202,7 @@ const router = createBrowserRouter([
       },
       {
         path: "/dashboard",
-        element: <DashboardPageV2 />,
+        element: <DashboardV3 />,
         id: "Dashboard",
       },
       {

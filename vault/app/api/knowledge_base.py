@@ -187,14 +187,16 @@ async def get_documents(
         company_id = profile_data.company_id if profile_data else None
 
         # List documents
-        docs = list_documents(
+        docs = await list_documents(
+            db=db,
             limit=limit,
             offset=offset,
             access_level=access_level,
             company_id=company_id,
         )
 
-        total = get_document_count(
+        total = await get_document_count(
+            db=db,
             access_level=access_level,
             company_id=company_id,
         )

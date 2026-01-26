@@ -50,7 +50,7 @@ async def get_documents(
     """
     Get documents awaiting validator action (status: Pending, Validated - Awaiting Approval).
     """
-    token_uid = current_user["user_id"]
+    token_uid = current_user["user"]["id"]
     company_reg_no = current_user.get("company_reg_no")
 
     if userid != token_uid:
@@ -102,7 +102,7 @@ async def completed_documents(
     """
     Get completed documents for validator (status: Rejected, Validated - Stored).
     """
-    token_uid = current_user["user_id"]
+    token_uid = current_user["user"]["id"]
     company_reg_no = current_user.get("company_reg_no")
 
     try:
@@ -147,7 +147,7 @@ async def fetch_document_by_id(
     """
     Fetch document by ID with access control.
     """
-    token_uid = current_user["user_id"]
+    token_uid = current_user["user"]["id"]
 
     try:
         # Get document
@@ -202,7 +202,7 @@ async def accept_document(
     """
     Validator accepts document - status = 'Validated - Stored'.
     """
-    token_uid = current_user["user_id"]
+    token_uid = current_user["user"]["id"]
 
     try:
         # Get document
@@ -259,7 +259,7 @@ async def reject_document(
     """
     Validator rejects document - status = 'Rejected'.
     """
-    token_uid = current_user["user_id"]
+    token_uid = current_user["user"]["id"]
 
     try:
         # Get document
@@ -318,7 +318,7 @@ async def delegate_document(
     Delegate document to an expert - status = 'On Review'.
     Validator remains responsible, expert becomes reviewer.
     """
-    token_uid = current_user["user_id"]
+    token_uid = current_user["user"]["id"]
 
     if payload.delegator_id != token_uid:
         raise HTTPException(
@@ -382,7 +382,7 @@ async def get_stats(
     """
     Get validator statistics: total assigned, completed, average review time.
     """
-    token_uid = current_user["user_id"]
+    token_uid = current_user["user"]["id"]
 
     try:
         # Get all documents for this validator
@@ -432,7 +432,7 @@ async def fetch_delegators(
     """
     Fetch list of experts (delegators) for delegation.
     """
-    token_uid = current_user["user_id"]
+    token_uid = current_user["user"]["id"]
     company_reg_no = current_user.get("company_reg_no")
 
     userid = data.get("user_id")
@@ -492,7 +492,7 @@ async def fetch_assigned_documents(
     """
     Fetch documents assigned to validator (summary view).
     """
-    token_uid = current_user["user_id"]
+    token_uid = current_user["user"]["id"]
     validator_id = data.get("validator_id")
 
     if not validator_id or validator_id != token_uid:

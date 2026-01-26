@@ -4,10 +4,9 @@ Implements the MCP pattern with composable endpoints.
 """
 
 import logging
-from typing import Annotated, Any
-from uuid import UUID
+from typing import Any
 
-from fastapi import APIRouter, Depends, Query, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.database import get_async_db
@@ -19,7 +18,6 @@ from app.schemas.rag import (
     StatsResponse,
 )
 from app.services.rag_pipeline import RAGPipeline, get_rag_pipeline
-from app.models.kb import KnowledgeBase
 
 router = APIRouter(prefix="/api/v1/rag", tags=["RAG"])
 logger = logging.getLogger(__name__)
@@ -188,26 +186,30 @@ async def get_stats(
 ) -> StatsResponse:
     """Get RAG system statistics."""
     try:
-        from sqlalchemy import select, func
+        from sqlalchemy import func, select
+
         from app.models.kb import KBChunk, KnowledgeBase
 
-        # Get user's documents count
-        user_id = (
-            current_user.get("user_id")
-            or current_user.get("user", {}).get("id")
-            or current_user.get("profile", {}).get("id")
-        )
+        # Get user's company
+        company_reg_no = current_user.get("company_reg_no")
+
+        if not company_reg_no:
+            return StatsResponse(
+                total_chunks=0,
+                total_documents=0,
+                system_status="error",
+            )
 
         # Count chunks
         chunks_stmt = select(func.count(KBChunk.id)).where(
-            KBChunk.user_id == user_id
+            KBChunk.company_reg_no == company_reg_no
         )
         chunks_result = await db.execute(chunks_stmt)
         total_chunks = chunks_result.scalar() or 0
 
         # Count knowledge bases
         kb_stmt = select(func.count(KnowledgeBase.id)).where(
-            KnowledgeBase.user_id == user_id
+            KnowledgeBase.company_reg_no == company_reg_no
         )
         kb_result = await db.execute(kb_stmt)
         total_kbs = kb_result.scalar() or 0
