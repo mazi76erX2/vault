@@ -16,17 +16,19 @@ const RootLayout: React.FC = () => {
     <div className="flex h-screen overflow-hidden bg-background">
       {/* Sidebar */}
       <div
-        className={`bg-zinc-950 text-zinc-400 border-r border-zinc-800 transition-all duration-300 flex flex-col z-20 ${
+        className={`bg-sidebar text-sidebar-foreground border-r border-sidebar-border transition-all duration-300 flex flex-col z-20 ${
           open ? "w-[260px]" : "w-[72px]"
         }`}
       >
-        <div className="h-20 flex items-center justify-between px-5 border-b border-zinc-800/50">
+        <div className="h-20 flex items-center justify-between px-5 border-b border-sidebar-border">
           <div className="flex items-center gap-3 overflow-hidden">
             <div className="w-8 h-8 rounded-lg bg-primary flex items-center justify-center flex-shrink-0 shadow-lg shadow-primary/20">
-              <span className="text-white font-bold text-xl">V</span>
+              <span className="text-primary-foreground font-bold text-xl">
+                V
+              </span>
             </div>
             {open && (
-              <span className="font-bold text-xl tracking-tight whitespace-nowrap text-zinc-100">
+              <span className="font-bold text-xl tracking-tight whitespace-nowrap text-sidebar-foreground">
                 Vault
               </span>
             )}
@@ -34,7 +36,7 @@ const RootLayout: React.FC = () => {
           <button
             type="button"
             onClick={handleDrawerToggle}
-            className="p-2 hover:bg-white/5 rounded-xl text-zinc-500 hover:text-white transition-colors"
+            className="p-2 hover:bg-sidebar-accent rounded-xl text-muted-foreground hover:text-sidebar-foreground transition-colors"
           >
             {open ? <ChevronLeft size={18} /> : <Menu size={18} />}
           </button>
@@ -44,7 +46,7 @@ const RootLayout: React.FC = () => {
           <MenuListItems open={open} />
         </nav>
 
-        <div className="p-4 border-t border-zinc-800/50 space-y-4">
+        <div className="p-4 border-t border-sidebar-border space-y-4">
           <div
             className={cn(
               "flex items-center",
@@ -52,7 +54,7 @@ const RootLayout: React.FC = () => {
             )}
           >
             {open && (
-              <span className="text-xs font-semibold text-zinc-500 uppercase tracking-wider">
+              <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
                 Theme
               </span>
             )}

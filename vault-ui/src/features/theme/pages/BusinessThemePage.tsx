@@ -291,7 +291,7 @@ const BusinessThemePage: React.FC = () => {
               const font = fontOptions.find((f) => f.id === e.target.value);
               if (font) setSelectedFont(font);
             }}
-            className="w-full p-2 border border-border rounded bg-input text-foreground"
+            className="w-full p-2 border border-border rounded-2xl bg-input text-foreground"
           >
             {fontOptions.map((font) => (
               <option key={font.id} value={font.id}>
@@ -434,7 +434,7 @@ const BusinessThemePage: React.FC = () => {
                 value={previewMessage}
                 onChange={(e) => setPreviewMessage(e.target.value)}
                 placeholder="Type your message here..."
-                className="w-full p-3 pr-12 border border-border rounded resize-none bg-input text-foreground"
+                className="w-full p-3 pr-12 border border-border rounded-3xl resize-none bg-input text-foreground"
                 style={{
                   fontFamily: selectedFont.value,
                   color: effectiveUserChatFontColor,
@@ -442,7 +442,7 @@ const BusinessThemePage: React.FC = () => {
                 rows={2}
               />
               <Button
-                className="absolute bottom-2 right-2 p-2"
+                className="absolute bottom-2 right-2 rounded-full px-4"
                 style={{ backgroundColor: sendButtonColor }}
               >
                 Send

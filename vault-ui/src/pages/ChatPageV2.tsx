@@ -168,7 +168,7 @@ const ChatPageV2: React.FC = () => {
   return (
     <div
       style={{ backgroundColor: colors.background, color: colors.text }}
-      className="flex flex-col h-screen transition-colors duration-300"
+      className="flex flex-col min-h-full transition-colors duration-300 relative"
     >
       {/* Header */}
       {/* Header */}
@@ -330,9 +330,9 @@ const ChatPageV2: React.FC = () => {
       </div>
 
       {/* Input Area - Floating Modern */}
-      <div className="fixed bottom-0 left-0 right-0 pointer-events-none">
+      <div className="fixed bottom-0 left-0 right-0 z-10">
         <div className="max-w-3xl mx-auto px-6 pb-10">
-          <div className="bg-card border border-border shadow-2xl rounded-[32px] p-2 pointer-events-auto flex items-center gap-2 backdrop-blur-xl">
+          <div className="bg-card border border-border shadow-2xl rounded-[32px] p-2 flex items-center gap-2 backdrop-blur-xl">
             <input
               type="text"
               value={newMessage}

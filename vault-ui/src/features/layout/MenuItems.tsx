@@ -209,8 +209,8 @@ const MenuListItem: React.FC<MenuListItemProps> = ({
           !showText ? "justify-center px-0" : "gap-3",
           subItem && showText && "pl-12",
           isActive
-            ? "bg-white/10 text-white font-semibold shadow-sm"
-            : "text-zinc-400 hover:bg-white/5 hover:text-white",
+            ? "bg-sidebar-accent text-sidebar-accent-foreground font-semibold shadow-sm"
+            : "text-sidebar-foreground/70 hover:bg-sidebar-accent/50 hover:text-sidebar-foreground",
         )}
       >
         {!subItem && item.icon && (
@@ -219,7 +219,7 @@ const MenuListItem: React.FC<MenuListItemProps> = ({
               "flex items-center justify-center transition-colors",
               isActive
                 ? "text-primary"
-                : "text-zinc-500 group-hover:text-white",
+                : "text-muted-foreground group-hover:text-sidebar-foreground",
             )}
           >
             {React.cloneElement(item.icon as React.ReactElement, { size: 20 })}
@@ -231,7 +231,7 @@ const MenuListItem: React.FC<MenuListItemProps> = ({
         )}
 
         {item.subMenu && showText && (
-          <span className="ml-auto text-zinc-600">
+          <span className="ml-auto text-muted-foreground">
             {isExpanded ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
           </span>
         )}

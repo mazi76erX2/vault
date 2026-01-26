@@ -52,11 +52,11 @@ export const ColorPicker = React.forwardRef<
             ref={ref}
             variant="outline"
             disabled={disabled}
-            className="w-full justify-start text-left font-normal"
+            className="w-full justify-start text-left font-normal rounded-2xl"
           >
             <div className="flex items-center gap-2">
               <div
-                className="h-6 w-6 rounded border"
+                className="h-6 w-6 rounded-lg border"
                 style={{ backgroundColor: value }}
               />
               <span>{value}</span>
