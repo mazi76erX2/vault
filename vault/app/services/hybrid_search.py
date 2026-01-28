@@ -78,14 +78,14 @@ class HybridSearchService:
     ) -> list[SearchResult]:
         """
         Hybrid search with RRF score fusion using SQLAlchemy.
-        
+
         Args:
             db: Database session
             query: Text query for keyword search
             query_embedding: Query embedding for vector search
             limit: Max results
             filters: Optional filters (e.g., {"accesslevel": 1})
-            
+
         Returns:
             Ranked search results
         """
@@ -101,7 +101,7 @@ class HybridSearchService:
             select(
                 KBChunk.id,
                 KBChunk.content,
-                KBChunk.metadata,
+                KBChunk.meta,
                 (1 - KBChunk.embedding.cosine_distance(query_embedding)).label("vector_score"),
                 func.row_number().over(
                     order_by=KBChunk.embedding.cosine_distance(query_embedding)
@@ -110,7 +110,7 @@ class HybridSearchService:
             .where(*filter_conditions) if filter_conditions else select(
                 KBChunk.id,
                 KBChunk.content,
-                KBChunk.metadata,
+                KBChunk.meta,
                 (1 - KBChunk.embedding.cosine_distance(query_embedding)).label("vector_score"),
                 func.row_number().over(
                     order_by=KBChunk.embedding.cosine_distance(query_embedding)
@@ -125,7 +125,7 @@ class HybridSearchService:
             select(
                 KBChunk.id,
                 KBChunk.content,
-                KBChunk.metadata,
+                KBChunk.meta,
                 func.ts_rank_cd(KBChunk.tsv, tsquery).label("keyword_score"),
                 func.row_number().over(
                     order_by=func.ts_rank_cd(KBChunk.tsv, tsquery).desc()
@@ -146,7 +146,7 @@ class HybridSearchService:
             select(
                 func.coalesce(vector_search.c.id, keyword_search.c.id).label("id"),
                 func.coalesce(vector_search.c.content, keyword_search.c.content).label("content"),
-                func.coalesce(vector_search.c.metadata, keyword_search.c.metadata).label("metadata"),
+                func.coalesce(vector_search.c.meta, keyword_search.c.meta).label("metadata"),
                 func.coalesce(vector_search.c.vector_score, 0).label("vector_score"),
                 func.coalesce(keyword_search.c.keyword_score, 0).label("keyword_score"),
                 (
@@ -204,7 +204,7 @@ class HybridSearchService:
             select(
                 KBChunk.id,
                 KBChunk.content,
-                KBChunk.metadata,
+                KBChunk.meta,
                 (1 - KBChunk.embedding.cosine_distance(query_embedding)).label("score"),
             )
             .order_by(KBChunk.embedding.cosine_distance(query_embedding))

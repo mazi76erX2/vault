@@ -1,0 +1,23 @@
+user_input,retrieved_contexts,response,reference,faithfulness,answer_relevancy
+What is the policy for processing high-risk financial transactions?,[],"The provided context does not contain information about policies for processing high-risk financial transactions. The context only references the existence of a Privacy Policy and Terms of Service, but does not include any details about financial transaction processing procedures or risk management policies.
+
+To answer your question accurately, I would need access to documentation that specifically addresses financial transaction policies, such as:
+- The Terms of Service document
+- A dedicated financial services policy
+- Risk management guidelines
+- Compliance documentation
+
+Please provide the relevant context containing this information.",High-risk transactions require dual-authorization from a senior manager and must be logged in the secure vault system.,,0.0
+How long are legal audit logs retained?,[],"Based on the provided context, I don't have information about legal audit log retention periods. The context provided doesn't include details about regulatory requirements, compliance standards, or legal frameworks governing audit log retention.
+
+To provide an accurate answer about how long legal audit logs should be retained, I would need information about:
+
+- **Applicable regulations** (such as GDPR, HIPAA, SOX, PCI-DSS, or industry-specific requirements)
+- **Jurisdiction** (different countries and regions have varying requirements)
+- **Industry sector** (finance, healthcare, government, etc.)
+- **Type of organization** (public vs. private company)
+
+If you have specific regulatory frameworks or industry contexts in mind, I can help analyze those requirements. Alternatively, if you have additional documentation or context about audit log retention policies, please provide that so I can give you a proper answer based on the available information.",Legal audit logs are retained for a minimum of 7 years in compliance with regional financial regulations.,,0.0
+Who has access to the critical level documents?,[],"I don't have access to any context or documents that contain information about ""critical level documents."" The context you provided appears to be empty or incomplete.
+
+To answer your question about who has access to critical level documents, I would need you to provide the relevant source material or context that discusses these documents and their access permissions.",Only users with 'Admin' role and explicit 'Critical' clearance can access these documents.,,0.0
